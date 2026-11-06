@@ -1,0 +1,240 @@
+{
+  "probed_at": "2026-11-06T17:21:44+0300",
+  "results": [
+    {
+      "service": "duyurular",
+      "method": "GetDuyurular_json",
+      "params": {},
+      "url": "https://api.ibb.gov.tr/iett/UlasimDinamikVeri/Duyurular.asmx",
+      "http_status": 200,
+      "elapsed_ms": 700,
+      "bytes": 72131,
+      "result_kind": "json",
+      "auth_required": false,
+      "works": true,
+      "records": 291,
+      "fields": [
+        "HATKODU",
+        "HAT",
+        "TIP",
+        "GUNCELLEME_SAATI",
+        "MESAJ"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": false,
+      "fixture": "tests/fixtures/iett/duyurular.GetDuyurular_json.json"
+    },
+    {
+      "service": "sefer-gerceklesme",
+      "method": "GetFiloAracKonum_json",
+      "params": {},
+      "url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+      "http_status": 200,
+      "elapsed_ms": 1403,
+      "bytes": 1117546,
+      "result_kind": "json",
+      "auth_required": false,
+      "works": true,
+      "records": 6940,
+      "fields": [
+        "Operator",
+        "Garaj",
+        "KapiNo",
+        "Saat",
+        "Boylam",
+        "Enlem",
+        "Hiz",
+        "Plaka"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": true,
+      "fixture": "tests/fixtures/iett/sefer-gerceklesme.GetFiloAracKonum_json.json"
+    },
+    {
+      "service": "sefer-gerceklesme",
+      "method": "GetHatOtoKonum_json",
+      "params": {
+        "HatKodu": "34"
+      },
+      "url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+      "http_status": 200,
+      "elapsed_ms": 46,
+      "bytes": 861,
+      "result_kind": "json",
+      "auth_required": false,
+      "works": true,
+      "records": 2,
+      "fields": [
+        "kapino",
+        "boylam",
+        "enlem",
+        "hatkodu",
+        "guzergahkodu",
+        "hatad",
+        "yon",
+        "son_konum_zamani",
+        "yakinDurakKodu"
+      ],
+      "newest_timestamp": "2026-11-06 17:20",
+      "has_coordinates": true,
+      "fixture": "tests/fixtures/iett/sefer-gerceklesme.GetHatOtoKonum_json.json"
+    },
+    {
+      "service": "sefer-gerceklesme",
+      "method": "GetBozukSatih_json",
+      "params": {},
+      "url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+      "http_status": 200,
+      "elapsed_ms": 139,
+      "bytes": 5752,
+      "result_kind": "json",
+      "auth_required": false,
+      "works": true,
+      "records": 29,
+      "fields": [
+        "NMESAJID",
+        "SKAPINUMARASI",
+        "SSOFORSICILNO",
+        "SMESAJMETNI",
+        "DTKAYITZAMANI",
+        "NBOYLAM",
+        "NENLEM"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": true,
+      "fixture": "tests/fixtures/iett/sefer-gerceklesme.GetBozukSatih_json.json"
+    },
+    {
+      "service": "hat-durak-guzergah",
+      "method": "GetHat_json",
+      "params": {
+        "HatKodu": "34"
+      },
+      "url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/HatDurakGuzergah.asmx",
+      "http_status": 200,
+      "elapsed_ms": 35,
+      "bytes": 478,
+      "result_kind": "json",
+      "auth_required": false,
+      "works": true,
+      "records": 1,
+      "fields": [
+        "SHATKODU",
+        "SHATADI",
+        "TARIFE",
+        "HAT_UZUNLUGU",
+        "SEFER_SURESI"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": false,
+      "fixture": "tests/fixtures/iett/hat-durak-guzergah.GetHat_json.json"
+    },
+    {
+      "service": "hat-durak-guzergah",
+      "method": "GetGaraj_json",
+      "params": {},
+      "url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/HatDurakGuzergah.asmx",
+      "http_status": 200,
+      "elapsed_ms": 55,
+      "bytes": 10750,
+      "result_kind": "json",
+      "auth_required": false,
+      "works": true,
+      "records": 86,
+      "fields": [
+        "ID",
+        "GARAJ_ADI",
+        "GARAJ_KODU",
+        "KOORDINAT"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": true,
+      "fixture": "tests/fixtures/iett/hat-durak-guzergah.GetGaraj_json.json"
+    },
+    {
+      "service": "planlanan-sefer-saati",
+      "method": "GetPlanlananSeferSaati_json",
+      "params": {
+        "HatKodu": "34"
+      },
+      "url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx",
+      "http_status": 200,
+      "elapsed_ms": 78,
+      "bytes": 46357,
+      "result_kind": "json",
+      "auth_required": false,
+      "works": true,
+      "records": 267,
+      "fields": [
+        "SHATKODU",
+        "HATADI",
+        "SGUZERAH",
+        "SYON",
+        "SGUNTIPI",
+        "GUZERGAH_ISARETI",
+        "SSERVISTIPI",
+        "DT"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": false,
+      "fixture": "tests/fixtures/iett/planlanan-sefer-saati.GetPlanlananSeferSaati_json.json"
+    },
+    {
+      "service": "ibb",
+      "method": "DurakDetay_GYY",
+      "params": {
+        "hat_kodu": "34"
+      },
+      "url": "https://api.ibb.gov.tr/iett/ibb/ibb.asmx",
+      "http_status": 200,
+      "elapsed_ms": 624,
+      "bytes": 18640,
+      "result_kind": "inline-xml",
+      "auth_required": false,
+      "works": true,
+      "records": 53,
+      "fields": [
+        "HATKODU",
+        "YON",
+        "SIRANO",
+        "DURAKKODU",
+        "DURAKADI",
+        "XKOORDINATI",
+        "YKOORDINATI",
+        "DURAKTIPI",
+        "ISLETMEBOLGE",
+        "ISLETMEALTBOLGE",
+        "ILCEADI"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": true,
+      "fixture": "tests/fixtures/iett/ibb.DurakDetay_GYY.json"
+    },
+    {
+      "service": "ibb",
+      "method": "HatServisi_GYY",
+      "params": {
+        "hat_kodu": "34"
+      },
+      "url": "https://api.ibb.gov.tr/iett/ibb/ibb.asmx",
+      "http_status": 200,
+      "elapsed_ms": 70,
+      "bytes": 620,
+      "result_kind": "inline-xml",
+      "auth_required": false,
+      "works": true,
+      "records": 1,
+      "fields": [
+        "HAT_KODU",
+        "HAT_ADI",
+        "TAM_HAT_ADI",
+        "HAT_DURUMU",
+        "BOLGE",
+        "SEFER_SURESI"
+      ],
+      "newest_timestamp": null,
+      "has_coordinates": false,
+      "fixture": "tests/fixtures/iett/ibb.HatServisi_GYY.json"
+    }
+  ]
+}

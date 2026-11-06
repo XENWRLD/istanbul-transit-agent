@@ -1,0 +1,60 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetRailwayGroups",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:18+0300",
+    "http_status": "200",
+    "total_records": 4,
+    "trimmed_to": null,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Group": "M",
+        "Name": "Metro Hatları",
+        "Lines": {
+          "1": "M2",
+          "2": "M3",
+          "3": "M4",
+          "5": "M5",
+          "6": "M6",
+          "7": "M7",
+          "8": "M8",
+          "9": "M1A",
+          "10": "M1B",
+          "17": "M9"
+        }
+      },
+      {
+        "Group": "T",
+        "Name": "Tramvay Hatları",
+        "Lines": {
+          "11": "T1",
+          "12": "T3",
+          "13": "T4",
+          "14": "T5"
+        }
+      },
+      {
+        "Group": "F",
+        "Name": "Füniküler Hatları",
+        "Lines": {
+          "4": "F1",
+          "20": "F4"
+        }
+      },
+      {
+        "Group": "TF",
+        "Name": "Teleferik Hatları",
+        "Lines": {
+          "15": "TF1",
+          "16": "TF2"
+        }
+      }
+    ]
+  }
+}

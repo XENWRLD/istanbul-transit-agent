@@ -1,0 +1,79 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/ispark/Park",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:08+0300",
+    "http_status": "200",
+    "total_records": 240,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": [
+    {
+      "parkID": 3068,
+      "parkName": "15 Temmuz Şehitler Meydanı Zeminaltı Otoparkı",
+      "lat": "41.0246",
+      "lng": "29.0915",
+      "capacity": 1029,
+      "emptyCapacity": 426,
+      "workHours": "24 Saat",
+      "parkType": "KAPALI OTOPARK",
+      "freeTime": 15,
+      "district": "ÜMRANİYE",
+      "isOpen": 1
+    },
+    {
+      "parkID": 2338,
+      "parkName": "19 Mayıs Açık",
+      "lat": "41.0563",
+      "lng": "28.9941",
+      "capacity": 65,
+      "emptyCapacity": 22,
+      "workHours": "24 Saat",
+      "parkType": "AÇIK OTOPARK",
+      "freeTime": 0,
+      "district": "ŞİŞLİ",
+      "isOpen": 1
+    },
+    {
+      "parkID": 1751,
+      "parkName": "4.Levent PD Açık Otoparkı",
+      "lat": "41.0836",
+      "lng": "29.0081",
+      "capacity": 236,
+      "emptyCapacity": 70,
+      "workHours": "24 Saat",
+      "parkType": "AÇIK OTOPARK",
+      "freeTime": 5,
+      "district": "KAĞITHANE",
+      "isOpen": 1
+    },
+    {
+      "parkID": 3328,
+      "parkName": "4.Levent Servis ve Turizm Araçları Açık Otoparkı",
+      "lat": "41.0841",
+      "lng": "29.0054",
+      "capacity": 300,
+      "emptyCapacity": 130,
+      "workHours": "24 Saat",
+      "parkType": "AÇIK OTOPARK",
+      "freeTime": 5,
+      "district": "ŞİŞLİ",
+      "isOpen": 1
+    },
+    {
+      "parkID": 3412,
+      "parkName": "5. Levent Gaziosmanpaşa Adliyesi Yanı Açık Otoparkı",
+      "lat": "41.0927",
+      "lng": "28.9494",
+      "capacity": 250,
+      "emptyCapacity": 208,
+      "workHours": "07:00-23:00",
+      "parkType": "AÇIK OTOPARK",
+      "freeTime": 15,
+      "district": "EYÜP",
+      "isOpen": 1
+    }
+  ]
+}

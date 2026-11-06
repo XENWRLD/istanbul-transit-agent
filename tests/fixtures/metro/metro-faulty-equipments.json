@@ -1,0 +1,105 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipments",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:14+0300",
+    "http_status": "200",
+    "total_records": 1,
+    "trimmed_to": null,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "EquipmentServiceStatus": [
+          {
+            "Name": "Hatlar",
+            "Active": 18,
+            "Inactive": 3,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-1.png",
+            "GroupName": "Hat",
+            "IsShow": true,
+            "Order": 1
+          },
+          {
+            "Name": "Yürüyen Merdiven",
+            "Active": 1966,
+            "Inactive": 41,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-2.png",
+            "GroupName": "Yürüyen Merdiven",
+            "IsShow": true,
+            "Order": 2
+          },
+          {
+            "Name": "Yürüyen Bantlar",
+            "Active": 52,
+            "Inactive": 6,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-3.png",
+            "GroupName": "Yürüyen Bant",
+            "IsShow": true,
+            "Order": 3
+          },
+          {
+            "Name": "Asansörler",
+            "Active": 669,
+            "Inactive": 30,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-4.png",
+            "GroupName": "Asansör",
+            "IsShow": true,
+            "Order": 4
+          }
+        ],
+        "StationServiceStatus": [
+          {
+            "Name": "İstasyonlar",
+            "Active": 248,
+            "Inactive": 14,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-5.png",
+            "GroupName": "İstasyon",
+            "IsShow": true,
+            "Order": 1
+          },
+          {
+            "Name": "Giriş / Çıkış",
+            "Active": 619,
+            "Inactive": 5,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-6.png",
+            "GroupName": "Giriş / Çıkış",
+            "IsShow": true,
+            "Order": 2
+          },
+          {
+            "Name": "Tuvaletler",
+            "Active": 395,
+            "Inactive": 0,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-7.png",
+            "GroupName": "Tuvalet",
+            "IsShow": true,
+            "Order": 3
+          },
+          {
+            "Name": "Mescidler",
+            "Active": 79,
+            "Inactive": 0,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-8.png",
+            "GroupName": "Mescid",
+            "IsShow": true,
+            "Order": 4
+          },
+          {
+            "Name": "Bebek Odası",
+            "Active": 44,
+            "Inactive": 0,
+            "Icon": "https://www.metro.istanbul/Content/assets/img/service-information/icon-9.png",
+            "GroupName": "Bebek Odası",
+            "IsShow": false,
+            "Order": 1
+          }
+        ]
+      }
+    ]
+  }
+}

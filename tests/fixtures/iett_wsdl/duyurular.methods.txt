@@ -1,0 +1,8 @@
+# duyurular  (veri seti 351, grup A)
+# WSDL: https://api.ibb.gov.tr/iett/UlasimDinamikVeri/Duyurular.asmx?wsdl
+# Okunma: 2026-11-06T17:20:01+0300
+# Ayrıştırma: zeep
+# 2 metot
+
+GetDuyurular_XML()
+GetDuyurular_json()

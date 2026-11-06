@@ -1,0 +1,19 @@
+{
+  "metro-faulty-equipment-details": {
+    "method": "POST",
+    "body": {
+      "EquipmentGroupName": "Yürüyen Merdiven"
+    },
+    "records": 1,
+    "fixture": "tests/fixtures/metro/metro-faulty-equipment-details.json"
+  },
+  "metro-directions-by-line-and-station": {
+    "method": "POST",
+    "body": {
+      "LineId": 4,
+      "StationId": 188
+    },
+    "records": 1,
+    "fixture": "tests/fixtures/metro/metro-directions-by-line-and-station.json"
+  }
+}

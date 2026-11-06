@@ -1,0 +1,14 @@
+# sefer-gerceklesme  (veri seti 349, grup A)
+# WSDL: https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx?wsdl
+# Okunma: 2026-11-06T17:20:01+0300
+# Ayrıştırma: WSDL XML (zeep reddetti)
+# 6 metot
+# zeep hatası: IndexError: No definition '{http://tempuri.org/}GetBozukSatih_XMLAuthHeader' in 'messages' found
+# SOAP auth header: AuthHeader
+
+GetBozukSatih_XML()
+GetBozukSatih_json()
+GetFiloAracKonum_json()    <-- GÜÇLÜ ADAY
+GetHatOtoKonum_json(HatKodu)    <-- konum geçiyor
+GetKazaLokasyon_XML(Tarih)    <-- konum geçiyor
+GetKazaLokasyon_json(Tarih)    <-- konum geçiyor

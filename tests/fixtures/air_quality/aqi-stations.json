@@ -1,0 +1,44 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIStations",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:15+0300",
+    "http_status": "200",
+    "total_records": 28,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": [
+    {
+      "Id": "6b7a9840-1e13-4045-a79d-0f881c4852ad",
+      "Name": "Maslak",
+      "Adress": "İstanbul / Sarıyer - Turkey",
+      "Location": "POINT (29.024512004171349 41.100072371412381)"
+    },
+    {
+      "Id": "914b525e-f275-41e1-b45b-118ada8f08c3",
+      "Name": "Esenler",
+      "Adress": "İstanbul / Esenler - Turkey",
+      "Location": "POINT (28.888071049660041 41.036871407562813)"
+    },
+    {
+      "Id": "6929a9ca-977d-4cb3-b1b5-26b95f4d4515",
+      "Name": "Yenibosna",
+      "Adress": "İstanbul / Bahçelievler - Turkey",
+      "Location": "POINT (28.82703188207584 40.997387017164129)"
+    },
+    {
+      "Id": "41f90c1f-570d-46cd-9beb-493d9162639a",
+      "Name": "Beylikdüzü",
+      "Adress": "İstanbul - Beylikdüzü",
+      "Location": "POINT (28.612769803421966 40.971651116893213)"
+    },
+    {
+      "Id": "377e1216-bcc7-42c0-aad8-4d5b3d602b78",
+      "Name": "Ümraniye 1",
+      "Adress": "İstanbul / Ümraniye - Turkey",
+      "Location": "POINT (29.161812932369855 41.0126908139832)"
+    }
+  ]
+}

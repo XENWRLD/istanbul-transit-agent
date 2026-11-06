@@ -1,0 +1,80 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/iett/ibb/ibb.asmx",
+    "soap_action": "http://tempuri.org/DurakDetay_GYY",
+    "request_params": {
+      "hat_kodu": "34"
+    },
+    "fetched_at": "2026-11-06T17:21:43+0300",
+    "total_records": 53,
+    "trimmed_to": 5,
+    "auth_header_sent": false
+  },
+  "response": [
+    {
+      "HATKODU": "34",
+      "YON": "D",
+      "SIRANO": "1",
+      "DURAKKODU": "900081",
+      "DURAKADI": "ZİNCİRLİKUYU",
+      "XKOORDINATI": "29.014361",
+      "YKOORDINATI": "41.066232",
+      "DURAKTIPI": "ISTASYON",
+      "ISLETMEBOLGE": "Metrobüs",
+      "ISLETMEALTBOLGE": "Metrobüs",
+      "ILCEADI": "Besiktas"
+    },
+    {
+      "HATKODU": "34",
+      "YON": "D",
+      "SIRANO": "2",
+      "DURAKKODU": "900091",
+      "DURAKADI": "MECİDİYEKÖY",
+      "XKOORDINATI": "28.992350",
+      "YKOORDINATI": "41.066778",
+      "DURAKTIPI": "ISTASYON",
+      "ISLETMEBOLGE": "Metrobüs",
+      "ISLETMEALTBOLGE": "Metrobüs",
+      "ILCEADI": "Sisli"
+    },
+    {
+      "HATKODU": "34",
+      "YON": "D",
+      "SIRANO": "3",
+      "DURAKKODU": "900101",
+      "DURAKADI": "ÇAĞLAYAN",
+      "XKOORDINATI": "28.981684",
+      "YKOORDINATI": "41.067342",
+      "DURAKTIPI": "ISTASYON",
+      "ISLETMEBOLGE": "Metrobüs",
+      "ISLETMEALTBOLGE": "Metrobüs",
+      "ILCEADI": "Sisli"
+    },
+    {
+      "HATKODU": "34",
+      "YON": "D",
+      "SIRANO": "4",
+      "DURAKKODU": "900111",
+      "DURAKADI": "OKMEYDANI HASTANE",
+      "XKOORDINATI": "28.976696",
+      "YKOORDINATI": "41.067430",
+      "DURAKTIPI": "ISTASYON",
+      "ISLETMEBOLGE": "Metrobüs",
+      "ISLETMEALTBOLGE": "Metrobüs",
+      "ILCEADI": "Sisli"
+    },
+    {
+      "HATKODU": "34",
+      "YON": "D",
+      "SIRANO": "5",
+      "DURAKKODU": "900121",
+      "DURAKADI": "DARÜLACEZE PERPA",
+      "XKOORDINATI": "28.967832",
+      "YKOORDINATI": "41.062420",
+      "DURAKTIPI": "ISTASYON",
+      "ISLETMEBOLGE": "Metrobüs",
+      "ISLETMEALTBOLGE": "Metrobüs",
+      "ILCEADI": "Kagithane"
+    }
+  ]
+}

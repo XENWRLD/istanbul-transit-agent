@@ -1,0 +1,34 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/tkmservices/api/TrafficData/v1/TrafficIndexHistory/1/5M",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:08+0300",
+    "http_status": "200",
+    "total_records": 288,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": [
+    {
+      "TrafficIndex": 76,
+      "TrafficIndexDate": "2026-11-06T17:22:00"
+    },
+    {
+      "TrafficIndex": 76,
+      "TrafficIndexDate": "2026-11-06T17:17:00"
+    },
+    {
+      "TrafficIndex": 76,
+      "TrafficIndexDate": "2026-11-06T17:12:00"
+    },
+    {
+      "TrafficIndex": 72,
+      "TrafficIndexDate": "2026-11-06T17:07:00"
+    },
+    {
+      "TrafficIndex": 72,
+      "TrafficIndexDate": "2026-11-06T17:03:00"
+    }
+  ]
+}

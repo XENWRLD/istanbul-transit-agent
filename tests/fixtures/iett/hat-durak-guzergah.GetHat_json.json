@@ -1,0 +1,22 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/HatDurakGuzergah.asmx",
+    "soap_action": "http://tempuri.org/GetHat_json",
+    "request_params": {
+      "HatKodu": "34"
+    },
+    "fetched_at": "2026-11-06T17:21:40+0300",
+    "total_records": 1,
+    "trimmed_to": null,
+    "auth_header_sent": false
+  },
+  "response": [
+    {
+      "SHATKODU": "34",
+      "SHATADI": "AVCILAR-ZİNCİRLİKUYU",
+      "TARIFE": "METROBÜS",
+      "HAT_UZUNLUGU": 30.26193,
+      "SEFER_SURESI": 144.27
+    }
+  ]
+}

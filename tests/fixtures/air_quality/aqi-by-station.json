@@ -1,0 +1,41 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIByStationId?StationId=6b7a9840-1e13-4045-a79d-0f881c4852ad",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:29+0300",
+    "http_status": "200",
+    "total_records": 721,
+    "trimmed_to": 5,
+    "params_used": {
+      "station_id": "6b7a9840-1e13-4045-a79d-0f881c4852ad"
+    }
+  },
+  "response": [
+    {
+      "ReadTime": "2026-10-07T17:23:41.9363279+03:00",
+      "Concentration": null,
+      "AQI": null
+    },
+    {
+      "ReadTime": "2026-10-07T18:23:41.9363279+03:00",
+      "Concentration": null,
+      "AQI": null
+    },
+    {
+      "ReadTime": "2026-10-07T19:23:41.9363279+03:00",
+      "Concentration": null,
+      "AQI": null
+    },
+    {
+      "ReadTime": "2026-10-07T20:23:41.9363279+03:00",
+      "Concentration": null,
+      "AQI": null
+    },
+    {
+      "ReadTime": "2026-10-07T21:23:41.9363279+03:00",
+      "Concentration": null,
+      "AQI": null
+    }
+  ]
+}

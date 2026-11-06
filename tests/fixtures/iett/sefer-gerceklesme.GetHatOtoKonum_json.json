@@ -1,0 +1,37 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+    "soap_action": "http://tempuri.org/GetHatOtoKonum_json",
+    "request_params": {
+      "HatKodu": "34"
+    },
+    "fetched_at": "2026-11-06T17:21:39+0300",
+    "total_records": 2,
+    "trimmed_to": null,
+    "auth_header_sent": false
+  },
+  "response": [
+    {
+      "kapino": "O5084",
+      "boylam": "28.9305695",
+      "enlem": "41.0340871666667",
+      "hatkodu": "34",
+      "guzergahkodu": "34_G_D9041",
+      "hatad": "AVCILAR-ZİNCİRLİKUYU",
+      "yon": "ZİNCİRLİKUYU",
+      "son_konum_zamani": "2026-11-06 17:20:58",
+      "yakinDurakKodu": "900162"
+    },
+    {
+      "kapino": "M4848",
+      "boylam": "28.9880935",
+      "enlem": "41.0671341666667",
+      "hatkodu": "34",
+      "guzergahkodu": "34_G_D9041",
+      "hatad": "AVCILAR-ZİNCİRLİKUYU",
+      "yon": "ZİNCİRLİKUYU",
+      "son_konum_zamani": "2026-11-06 17:20:56",
+      "yakinDurakKodu": "900092"
+    }
+  ]
+}

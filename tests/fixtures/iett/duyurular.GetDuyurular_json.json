@@ -1,0 +1,48 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/iett/UlasimDinamikVeri/Duyurular.asmx",
+    "soap_action": "http://tempuri.org/GetDuyurular_json",
+    "request_params": {},
+    "fetched_at": "2026-11-06T17:21:36+0300",
+    "total_records": 291,
+    "trimmed_to": 5,
+    "auth_header_sent": false
+  },
+  "response": [
+    {
+      "HATKODU": "10",
+      "HAT": "Ü.EGT.ARS.HASTANESI - ATASEHIR / BOSTANCI",
+      "TIP": "Sefer",
+      "GUNCELLEME_SAATI": "Kayit Saati: 04:05",
+      "MESAJ": "BOSTANCI PERONLAR dan Saat 19:10 de hareket etmesi planlanan seferimiz  çesitli nedenlerle yapilamayacaktir."
+    },
+    {
+      "HATKODU": "10",
+      "HAT": "Ü.EGT.ARS.HASTANESI - ATASEHIR / BOSTANCI",
+      "TIP": "Sefer",
+      "GUNCELLEME_SAATI": "Kayit Saati: 04:05",
+      "MESAJ": "BOSTANCI SANAYI dan Saat 17:16 de hareket etmesi planlanan seferimiz  çesitli nedenlerle yapilamayacaktir."
+    },
+    {
+      "HATKODU": "10",
+      "HAT": "Ü.EGT.ARS.HASTANESI - ATASEHIR / BOSTANCI",
+      "TIP": "Sefer",
+      "GUNCELLEME_SAATI": "Kayit Saati: 04:05",
+      "MESAJ": "ÜMRANIYE EGITIM VE ARASTIRMA HASTANESI dan Saat 16:58 de hareket etmesi planlanan seferimiz  çesitli nedenlerle yapilamayacaktir."
+    },
+    {
+      "HATKODU": "10B",
+      "HAT": "BOSTANCI - KADIKÖY",
+      "TIP": "Günlük",
+      "GUNCELLEME_SAATI": "Kayit Saati: 16:07",
+      "MESAJ": "MAÇ NEDENIYLE RECEP PEKER CADDESI KAPALIDIR. ARAÇLARIMIZ BOSTANCI YÖNÜNDE KADIKÖY DURAGINDAN GÜZERGAH DISINA ÇIKARAK IHLAMUR DURAGINDAN GÜZERGAHA GIRECEKTIR."
+    },
+    {
+      "HATKODU": "11H",
+      "HAT": "ORTAÇESME - ÜMRANIYE",
+      "TIP": "Sefer",
+      "GUNCELLEME_SAATI": "Kayit Saati: 04:05",
+      "MESAJ": "TEPEÜSTÜ dan Saat 17:47 de hareket etmesi planlanan seferimiz  çesitli nedenlerle yapilamayacaktir."
+    }
+  ]
+}

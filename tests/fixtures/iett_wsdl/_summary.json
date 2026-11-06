@@ -1,0 +1,252 @@
+{
+  "probed_at": "2026-11-06T17:20:01+0300",
+  "api_base_url": "https://api.ibb.gov.tr",
+  "services": [
+    {
+      "no": 351,
+      "group": "A",
+      "slug": "duyurular",
+      "url": "https://api.ibb.gov.tr/iett/UlasimDinamikVeri/Duyurular.asmx?wsdl",
+      "wsdl_ok": true,
+      "parsed_by": "zeep",
+      "zeep_error": null,
+      "auth_headers": [],
+      "elapsed_ms": 110,
+      "method_count": 2,
+      "methods": [
+        {
+          "name": "GetDuyurular_XML",
+          "signature": ""
+        },
+        {
+          "name": "GetDuyurular_json",
+          "signature": ""
+        }
+      ],
+      "vehicle_position_candidates": []
+    },
+    {
+      "no": 350,
+      "group": "A",
+      "slug": "planlanan-sefer-saati",
+      "url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx?wsdl",
+      "wsdl_ok": true,
+      "parsed_by": "xml",
+      "zeep_error": "IndexError: No definition '{http://tempuri.org/}GetPlanlananSeferSaati_XMLAuthHeader' in 'messages' found",
+      "auth_headers": [
+        "AuthHeader"
+      ],
+      "elapsed_ms": 49,
+      "method_count": 2,
+      "methods": [
+        {
+          "name": "GetPlanlananSeferSaati_XML",
+          "signature": "HatKodu"
+        },
+        {
+          "name": "GetPlanlananSeferSaati_json",
+          "signature": "HatKodu"
+        }
+      ],
+      "vehicle_position_candidates": []
+    },
+    {
+      "no": 349,
+      "group": "A",
+      "slug": "sefer-gerceklesme",
+      "url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx?wsdl",
+      "wsdl_ok": true,
+      "parsed_by": "xml",
+      "zeep_error": "IndexError: No definition '{http://tempuri.org/}GetBozukSatih_XMLAuthHeader' in 'messages' found",
+      "auth_headers": [
+        "AuthHeader"
+      ],
+      "elapsed_ms": 51,
+      "method_count": 6,
+      "methods": [
+        {
+          "name": "GetBozukSatih_XML",
+          "signature": ""
+        },
+        {
+          "name": "GetBozukSatih_json",
+          "signature": ""
+        },
+        {
+          "name": "GetFiloAracKonum_json",
+          "signature": ""
+        },
+        {
+          "name": "GetHatOtoKonum_json",
+          "signature": "HatKodu"
+        },
+        {
+          "name": "GetKazaLokasyon_XML",
+          "signature": "Tarih"
+        },
+        {
+          "name": "GetKazaLokasyon_json",
+          "signature": "Tarih"
+        }
+      ],
+      "vehicle_position_candidates": [
+        {
+          "method": "GetFiloAracKonum_json",
+          "signature": "",
+          "marker": "GÜÇLÜ ADAY"
+        },
+        {
+          "method": "GetHatOtoKonum_json",
+          "signature": "HatKodu",
+          "marker": "konum geçiyor"
+        },
+        {
+          "method": "GetKazaLokasyon_XML",
+          "signature": "Tarih",
+          "marker": "konum geçiyor"
+        },
+        {
+          "method": "GetKazaLokasyon_json",
+          "signature": "Tarih",
+          "marker": "konum geçiyor"
+        }
+      ]
+    },
+    {
+      "no": 172,
+      "group": "A",
+      "slug": "hat-durak-guzergah",
+      "url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/HatDurakGuzergah.asmx?wsdl",
+      "wsdl_ok": true,
+      "parsed_by": "xml",
+      "zeep_error": "KeyError: 'AuthHeader'",
+      "auth_headers": [
+        "AuthHeader"
+      ],
+      "elapsed_ms": 54,
+      "method_count": 9,
+      "methods": [
+        {
+          "name": "GetDurak_XML",
+          "signature": "DurakKodu"
+        },
+        {
+          "name": "GetDurak_csv",
+          "signature": "DurakKodu"
+        },
+        {
+          "name": "GetDurak_json",
+          "signature": "DurakKodu"
+        },
+        {
+          "name": "GetGaraj_XML",
+          "signature": ""
+        },
+        {
+          "name": "GetGaraj_csv",
+          "signature": ""
+        },
+        {
+          "name": "GetGaraj_json",
+          "signature": ""
+        },
+        {
+          "name": "GetHat_XML",
+          "signature": "HatKodu"
+        },
+        {
+          "name": "GetHat_csv",
+          "signature": "HatKodu"
+        },
+        {
+          "name": "GetHat_json",
+          "signature": "HatKodu"
+        }
+      ],
+      "vehicle_position_candidates": []
+    },
+    {
+      "no": 171,
+      "group": "A",
+      "slug": "ibb",
+      "url": "https://api.ibb.gov.tr/iett/ibb/ibb.asmx?wsdl",
+      "wsdl_ok": true,
+      "parsed_by": "xml",
+      "zeep_error": "IndexError: No definition '{http://tempuri.org/}DurakDetay_GYYAuthHeader' in 'messages' found",
+      "auth_headers": [
+        "AuthHeader"
+      ],
+      "elapsed_ms": 49,
+      "method_count": 3,
+      "methods": [
+        {
+          "name": "DurakDetay_GYY",
+          "signature": "hat_kodu"
+        },
+        {
+          "name": "DurakDetay_GYY_wYonAdi",
+          "signature": "hat_kodu"
+        },
+        {
+          "name": "HatServisi_GYY",
+          "signature": "hat_kodu"
+        }
+      ],
+      "vehicle_position_candidates": []
+    },
+    {
+      "no": 347,
+      "group": "A",
+      "slug": "ibb360",
+      "url": "https://api.ibb.gov.tr/iett/ibb/ibb360.asmx?wsdl",
+      "wsdl_ok": true,
+      "parsed_by": "zeep",
+      "zeep_error": null,
+      "auth_headers": [],
+      "elapsed_ms": 24,
+      "method_count": 4,
+      "methods": [
+        {
+          "name": "GetIettArsivGorev_XML",
+          "signature": "Tarih: xsd:string"
+        },
+        {
+          "name": "GetIettArsivGorev_json",
+          "signature": "Tarih: xsd:string"
+        },
+        {
+          "name": "GetIettYolculukHat_XML",
+          "signature": "Tarih: xsd:string"
+        },
+        {
+          "name": "GetIettYolculukHat_json",
+          "signature": "Tarih: xsd:string"
+        }
+      ],
+      "vehicle_position_candidates": []
+    },
+    {
+      "no": 352,
+      "group": "A2",
+      "slug": "arac-ozellik",
+      "url": "https://api.ibb.gov.tr/iett/AracAnaVeri/AracOzellik.asmx?wsdl",
+      "wsdl_ok": true,
+      "parsed_by": "zeep",
+      "zeep_error": null,
+      "auth_headers": [],
+      "elapsed_ms": 22,
+      "method_count": 2,
+      "methods": [
+        {
+          "name": "GetAkarYakitToplamLitre_XML",
+          "signature": "Yil: xsd:int, Ay: xsd:int, _soapheaders={AuthHeader: ns0:AuthHeader}"
+        },
+        {
+          "name": "GetAkarYakitToplamLitre_json",
+          "signature": "Yil: xsd:int, Ay: xsd:int, _soapheaders={AuthHeader: ns0:AuthHeader}"
+        }
+      ],
+      "vehicle_position_candidates": []
+    }
+  ]
+}

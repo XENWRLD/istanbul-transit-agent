@@ -1,0 +1,143 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetLineProjects",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:26+0300",
+    "http_status": "200",
+    "total_records": 67,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Id": 5,
+        "Name": "M5 Yamanevler-Çekmeköy Metro Hattı",
+        "Description": "<p>Hat Anadolu yakasında doğu batı aksında ulaşımı sağlayacaktır, entegre olacağı 5 ayrı hat ile &ouml;nemli bir taşıyıcı hat durumunda olacaktır.</p>\n\n<p>T&uuml;rkiye&#39;nin ilk tam otomatik s&uuml;r&uuml;c&uuml;s&uuml;z (UTO) hattı olan sistemde peron b&ouml;lgelerinde yolcuların hat ile erişimi Peron Ayırıcı Kapı Sistemi ile ayrılarak g&uuml;venlik sağlanmaktadır.</p>\n",
+        "LineName": "M5",
+        "LineTypeId": 1,
+        "LineType": "METRO",
+        "Contractor": "Doğuş İnşaat ve Ticaret AŞ",
+        "StartDate": "2012-03-20T00:00:00.000",
+        "EndDate": "2017-12-17T00:00:00.000",
+        "Price": "676.621.042,00",
+        "Percentage": "% 94",
+        "Content": "<p>Hat Anadolu yakasında doğu batı aksında ulaşımı sağlayacaktır, entegre olacağı 5 ayrı hat ile &ouml;nemli bir taşıyıcı hat durumunda olacaktır.</p>\n\n<p>T&uuml;rkiye&#39;nin ilk tam otomatik s&uuml;r&uuml;c&uuml;s&uuml;z (UTO) hattı olan sistemde peron b&ouml;lgelerinde yolcuların hat ile erişimi Peron Ayırıcı Kapı Sistemi ile ayrılarak g&uuml;venlik sağlanmaktadır.</p>\n",
+        "IntegrationLines": "<p>Hattın tamamı işletmeye a&ccedil;ıldığı zaman,</p>\n\n<p>&Uuml;sk&uuml;dar istasyonunda Marmaray ve Deniz İşletmeleri ile,<br />\nAltunizade istasyonunda Metrob&uuml;s işletmesi ile,<br />\n&Ccedil;arşı istasyonunda M12 G&ouml;ztepe-&Uuml;mraniye metro hattı ile,<br />\nDudullu istasyonunda M8 Bostancı-Dudullu metro hattı ile entegre olacaktır.</p>\n",
+        "TotalKM": 20.0,
+        "PassengersPerHour": 64800.0,
+        "ContentPhoto": "https://www.metro.istanbul/Content/assets/uploaded/85bc0fdb-804c-4e44-8e49-4bc2f588dc03.jpg",
+        "MainPhoto": "https://www.metro.istanbul/Content/assets/uploaded/04b46251-2930-4e24-97a5-d21fc06338f7.jpg",
+        "Color": {
+          "Color_R": "104",
+          "Color_G": "48",
+          "Color_B": "100"
+        },
+        "Language": "TR"
+      },
+      {
+        "Id": 6,
+        "Name": "M8 Bostancı-Dudullu Metro Hattı",
+        "Description": "<p>Yapımına Şubat 2016&rsquo;da İBB tarafından başlanan hat, Anadolu Yakası&#39;nda doğu-batı aksındaki hatları kuzey-g&uuml;ney doğrultusunda bağlayacak şekilde planlanmış ve buna g&ouml;re inşa edilmiştir.</p>\r\n\r\n<p>&nbsp;</p>\r\n",
+        "LineName": "M8",
+        "LineTypeId": 1,
+        "LineType": "METRO",
+        "Contractor": "Şenbay-Kolin-Kalyon Yapım Ortaklığı",
+        "StartDate": "2016-02-26T00:00:00.000",
+        "EndDate": "2019-04-26T00:00:00.000",
+        "Price": "558.800.000,00",
+        "Percentage": "% 21",
+        "Content": "<p>Yapımına Şubat 2016&rsquo;da İBB tarafından başlanan hat, Anadolu Yakası&#39;nda doğu-batı aksındaki hatları kuzey-g&uuml;ney doğrultusunda bağlayacak şekilde planlanmış ve buna g&ouml;re inşa edilmiştir.</p>\r\n\r\n<p>&nbsp;</p>\r\n",
+        "IntegrationLines": "<p>M8 Hattı; Dudullu istasyonunda M5 &Uuml;sk&uuml;dar-&Ccedil;ekmek&ouml;y, Kozyatağı istasyonunda M4 Kadık&ouml;y-Sabiha G&ouml;k&ccedil;en Havalimanı, İMES istasyonunda S&ouml;ğ&uuml;tl&uuml;&ccedil;eşme-Yenidoğan metro hatları ile, Bostancı istasyonunda ise Şehir Hatları ve Marmaray ile entegre ulaşım sağlayacak.</p>\r\n",
+        "TotalKM": 1427.0,
+        "PassengersPerHour": 43280.0,
+        "ContentPhoto": "https://www.metro.istanbul/Content/assets/uploaded/76629f7b-38e8-4bba-a2ff-31b66febedb9.jpg",
+        "MainPhoto": "https://www.metro.istanbul/Content/assets/uploaded/81a4ba07-8c9a-4833-8f20-25d0954a48e8.jpg",
+        "Color": {
+          "Color_R": "69",
+          "Color_G": "122",
+          "Color_B": "189"
+        },
+        "Language": "TR"
+      },
+      {
+        "Id": 7,
+        "Name": "M12 Göztepe-Ümraniye Metro Hattı",
+        "Description": "<p>Tam otomatik s&uuml;r&uuml;c&uuml;s&uuml;z (UTO) olarak inşa edilmektedir. T&uuml;m otomatik sistemlerde olduğu gibi Peron Ayırıcı Kapı Sistemleri PAKS ile yolcu g&uuml;venliği sağlanacaktır.</p>\r\n",
+        "LineName": "M12",
+        "LineTypeId": 1,
+        "LineType": "METRO",
+        "Contractor": "Gülermak-Nurol-Makyol Metro Yapım Adi Ortaklığı",
+        "StartDate": "2017-04-28T00:00:00.000",
+        "EndDate": "2020-02-12T00:00:00.000",
+        "Price": "2.469.924.400,00",
+        "Percentage": "% 1",
+        "Content": "<p>Tam otomatik s&uuml;r&uuml;c&uuml;s&uuml;z (UTO) olarak inşa edilmektedir. T&uuml;m otomatik sistemlerde olduğu gibi Peron Ayırıcı Kapı Sistemleri PAKS ile yolcu g&uuml;venliği sağlanacaktır.</p>\r\n",
+        "IntegrationLines": "<p>Kuzey-g&uuml;ney doğrultusunda ulaşım sağlayacak olan hat;</p>\r\n\r\n<p>&Ccedil;arşı istasyonunda M5 &Uuml;sk&uuml;dar-Sultanbeyli Metro Hattı,<br />\r\nYenisahra istasyonunda M4 Kadık&ouml;y-Sabiha G&ouml;k&ccedil;en Havalimanı Metro Hattı,<br />\r\nT&uuml;t&uuml;nc&uuml; Mehmet Efendi istasyonunda ise Marmaray işletmesi ile entegre&nbsp;olacaktır.</p>\r\n",
+        "TotalKM": 13.0,
+        "PassengersPerHour": 44000.0,
+        "ContentPhoto": "https://www.metro.istanbul/Content/assets/uploaded/41acb5a7-68e9-46c8-a887-9ab4f1ac2bef.jpg",
+        "MainPhoto": "https://www.metro.istanbul/Content/assets/uploaded/3d5051f0-9827-4fbe-886f-d99280ac3865.jpg",
+        "Color": {
+          "Color_R": "193",
+          "Color_G": "211",
+          "Color_B": "47"
+        },
+        "Language": "TR"
+      },
+      {
+        "Id": 10,
+        "Name": "M10 Pendik-SGH Metro Hattı, Pendik-Fevzi Çakmak Etabı",
+        "Description": "<p>Hat M10 Pendik-Sabiha G&ouml;k&ccedil;en Havalimanı metro hattının Pendik Merkez&nbsp;ile Fevzi &Ccedil;akmak-Hastane arasındaki kesimini kapsamaktadır.</p>\r\n",
+        "LineName": "M10",
+        "LineTypeId": 1,
+        "LineType": "METRO",
+        "Contractor": "Özgün İnşaat Taahhüt San. Ve Tic. A.Ş.",
+        "StartDate": "2022-10-10T00:00:00.000",
+        "EndDate": "2025-10-10T00:00:00.000",
+        "Price": "2.896.691.026,14 ₺ + KDV",
+        "Percentage": "% 1",
+        "Content": "<p>Hat M10 Pendik-Sabiha G&ouml;k&ccedil;en Havalimanı metro hattının Pendik Merkez&nbsp;ile Fevzi &Ccedil;akmak-Hastane arasındaki kesimini kapsamaktadır.</p>\r\n",
+        "IntegrationLines": "<p>Pendik istasyonunda Marmaray işletmesi ve Y&uuml;ksek Hızlı Tren hatları ile,<br />\r\nKaynarca Merkez istasyonunda M4 Kadık&ouml;y-Tuzla metro hattı ile entegre olacaktır.</p>\r\n",
+        "TotalKM": 3.9,
+        "PassengersPerHour": 70000.0,
+        "ContentPhoto": "https://www.metro.istanbul/Content/assets/uploaded/8a27e370-f391-4e15-87fd-6f7099715946.jpg",
+        "MainPhoto": "https://www.metro.istanbul/Content/assets/uploaded/12912284-4d1a-4b94-aeb3-17118f428955.jpg",
+        "Color": {
+          "Color_R": "69",
+          "Color_G": "172",
+          "Color_B": "52"
+        },
+        "Language": "TR"
+      },
+      {
+        "Id": 11,
+        "Name": "M13 Yenidoğan-Emek Metro Hattı",
+        "Description": "<p>Yenidoğan-Hastane metro hattı Yenidoğan-T&uuml;rkiş Blokları metro hattının 1. etabı olarak inşa edilmektedir ve M5 &Uuml;sk&uuml;dar-Sultanbeyli metro hattının 2. etabı olan &Ccedil;ekmek&ouml;y-Sultanbeyli etabı ile birlikte ihale edilmiştir. Aynı mali kapsamda inşaat &ccedil;alışmalarının yapılması nedeni ile bu sayfada verilen bazı veriler ortaktır.</p>\r\n",
+        "LineName": "M13",
+        "LineTypeId": 1,
+        "LineType": "METRO",
+        "Contractor": "Doğuş İnş. ve Tic. AŞ-Özaltın İnş. Tic. ve San. AŞ",
+        "StartDate": "2017-04-28T00:00:00.000",
+        "EndDate": "2020-02-12T00:00:00.000",
+        "Price": "2.342.385.741,09 ₺",
+        "Percentage": "% 1",
+        "Content": "<p>Yenidoğan-Hastane metro hattı Yenidoğan-T&uuml;rkiş Blokları metro hattının 1. etabı olarak inşa edilmektedir ve M5 &Uuml;sk&uuml;dar-Sultanbeyli metro hattının 2. etabı olan &Ccedil;ekmek&ouml;y-Sultanbeyli etabı ile birlikte ihale edilmiştir. Aynı mali kapsamda inşaat &ccedil;alışmalarının yapılması nedeni ile bu sayfada verilen bazı veriler ortaktır.</p>\r\n",
+        "IntegrationLines": "<p>Hattın Sarıgazi istasyonunda M5 &Uuml;sk&uuml;dar-Sultanbeyli metro hattına entegrasyon sağlanacaktır.</p>\r\n",
+        "TotalKM": 6.9,
+        "PassengersPerHour": 44000.0,
+        "ContentPhoto": "https://www.metro.istanbul/Content/assets/uploaded/ff30e467-f9e7-4566-88aa-db279316daae.jpg",
+        "MainPhoto": "https://www.metro.istanbul/Content/assets/uploaded/e8daac84-3127-43c1-ac52-65070b8e29e4.jpg",
+        "Color": {
+          "Color_R": "0",
+          "Color_G": "169",
+          "Color_B": "79"
+        },
+        "Language": "TR"
+      }
+    ]
+  }
+}

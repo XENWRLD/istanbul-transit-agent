@@ -1,0 +1,44 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/web/api/junction",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:26+0300",
+    "http_status": "200",
+    "total_records": 2590,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": [
+    {
+      "JunctionNo": 2001,
+      "JunctionName": "AVCILAR İETT",
+      "XCoord": "28.723816573619843",
+      "YCoord": "40.98635112963187"
+    },
+    {
+      "JunctionNo": 2002,
+      "JunctionName": "İ. ÜNİVERSİTESİ AVCILAR KAMPÜSÜ",
+      "XCoord": "28.7221949",
+      "YCoord": "40.9888212"
+    },
+    {
+      "JunctionNo": 2003,
+      "JunctionName": "ORTANCA SOKAK",
+      "XCoord": "28.719136118888855",
+      "YCoord": "40.99056238773209"
+    },
+    {
+      "JunctionNo": 2004,
+      "JunctionName": "AVCILAR BORUSAN",
+      "XCoord": "28.71734851",
+      "YCoord": "40.99274889"
+    },
+    {
+      "JunctionNo": 2005,
+      "JunctionName": "AVCILAR BAĞCI SOKAK",
+      "XCoord": "28.71579269",
+      "YCoord": "40.99470213"
+    }
+  ]
+}

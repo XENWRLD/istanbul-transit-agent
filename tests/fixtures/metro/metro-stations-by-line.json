@@ -1,0 +1,58 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStationById/4",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:28+0300",
+    "http_status": "200",
+    "total_records": 2,
+    "trimmed_to": null,
+    "params_used": {
+      "line_id": "4"
+    }
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Id": 188,
+        "Name": "TAKSIM",
+        "LineId": 4,
+        "LineName": "F1",
+        "Description": "Taksim",
+        "Order": 1,
+        "IsActive": true,
+        "FunctionalCode": "M-F01-S-H-I-02",
+        "DetailInfo": {
+          "Escolator": 0,
+          "Lift": 1,
+          "BabyRoom": false,
+          "WC": false,
+          "Masjid": false,
+          "Latitude": "41.0366994647",
+          "Longitude": "28.9868190279"
+        }
+      },
+      {
+        "Id": 187,
+        "Name": "KABATAS",
+        "LineId": 4,
+        "LineName": "F1",
+        "Description": "Kabataş",
+        "Order": 2,
+        "IsActive": true,
+        "FunctionalCode": "M-F01-S-H-I-01",
+        "DetailInfo": {
+          "Escolator": 4,
+          "Lift": 4,
+          "BabyRoom": false,
+          "WC": false,
+          "Masjid": false,
+          "Latitude": "41.0338745666",
+          "Longitude": "28.9922350785"
+        }
+      }
+    ]
+  }
+}

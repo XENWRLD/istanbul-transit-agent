@@ -1,0 +1,10 @@
+# planlanan-sefer-saati  (veri seti 350, grup A)
+# WSDL: https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx?wsdl
+# Okunma: 2026-11-06T17:20:01+0300
+# Ayrıştırma: WSDL XML (zeep reddetti)
+# 2 metot
+# zeep hatası: IndexError: No definition '{http://tempuri.org/}GetPlanlananSeferSaati_XMLAuthHeader' in 'messages' found
+# SOAP auth header: AuthHeader
+
+GetPlanlananSeferSaati_XML(HatKodu)
+GetPlanlananSeferSaati_json(HatKodu)

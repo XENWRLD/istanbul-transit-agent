@@ -1,0 +1,83 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetActivities",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:23+0300",
+    "http_status": "200",
+    "total_records": 168,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Id": 24,
+        "Title": "Metro İstanbul’a Toplumsal Cinsiyet Eşitliği Alanında Bir Ödül de SODEV’den",
+        "Content": "<p><strong>İstanbul B&uuml;y&uuml;kşehir Belediyesi (İBB) iştiraklerinden Metro İstanbul, kadın tren s&uuml;r&uuml;c&uuml;leri projesi ile, Sosyal Demokrasi Vakfı (SODEV) tarafından d&uuml;zenlenen Cinsiyet Eşitlik&ccedil;i D&ouml;n&uuml;ş&uuml;m &Ouml;d&uuml;lleri&rsquo;nde &ldquo;Toplumsal Cinsiyet Eşitliğine Y&ouml;nelik Sunulan En İyi Uygulama&rdquo; &ouml;d&uuml;l&uuml;n&uuml; aldı.</strong></p>\r\n\r\n<p>T&uuml;m d&uuml;nyada erkek egemen bir sekt&ouml;r olan raylı sistemlerde faaliyet g&ouml;steren Metro İstanbul, 2019 yılında başlattığı toplumsal cinsiyet eşitliğine y&ouml;nelik değişim ve d&ouml;n&uuml;ş&uuml;m hareketi ile bir &ouml;d&uuml;le daha layık g&ouml;r&uuml;ld&uuml;.&nbsp;<br />\r\nSODEV tarafından T&uuml;rkiye &ccedil;apında belediyelerin cinsiyet eşitliğini sağlamaya y&ouml;nelik &ccedil;alışmalarının &ouml;d&uuml;llendirildiği, İsve&ccedil; merkezli Olof Palme International Center iş birliğiyle organize edilen Cinsiyet Eşitlik&ccedil;i D&ouml;n&uuml;ş&uuml;m &Ouml;d&uuml;lleri sahiplerini buldu. 13 farklı kategoride &ouml;d&uuml;l verilen t&ouml;rende Metro İstanbul, kadın tren s&uuml;r&uuml;c&uuml;leri projesi ile &ldquo;Toplumsal Cinsiyet Eşitliğine Y&ouml;nelik Sunulan En İyi Uygulama&rdquo; &ouml;d&uuml;l&uuml;n&uuml; aldı.&nbsp;</p>\r\n\r\n<p><strong>&ldquo;Kadınların başarısını t&uuml;m sekt&ouml;re g&ouml;stermenin haklı gururunu yaşıyoruz&rdquo;</strong><br />\r\nMetro İstanbul adına &ouml;d&uuml;l&uuml; alan Genel M&uuml;d&uuml;r Yardımcısı Yıldıray Yedikardeş, &ldquo;Raylı sistemler sekt&ouml;r&uuml;nde faaliyet g&ouml;steren bir şirket olarak, toplumda erkek işi diye tanımlanan ve &ouml;n yargı ile bakılarak kadınlar yapamaz denilen b&uuml;t&uuml;n iş alanlarında kadınların ne kadar başarılı olduğunu t&uuml;m sekt&ouml;re g&ouml;stermenin haklı gururunu yaşıyoruz. Kurum i&ccedil;inde kadın istihdamının artırılması, kadın ve erkek i&ccedil;in eşit fırsatlar yaratılması, iş tanımlarında ve pozisyonlarda cinsiyet bazlı ayrıştırmaların &ouml;n&uuml;ne ge&ccedil;ilmesi, şirket i&ccedil;inde kadınların terfi alması ve kadın liderlerin teşvik edilmesi &ccedil;alışmalarımız ile toplumsal cinsiyet eşitliğini &ouml;nceleyen bir iş g&uuml;c&uuml; yarattık. 2019 yılından bu yana kadın &ccedil;alışan sayımızı %100 artırdık. &Ccedil;alışmalarımızla toplumsal cinsiyet eşitliği, &ccedil;eşitlilik ve kapsayıcılık alanlarında d&uuml;nya &ccedil;apında rol model kabul edildik. Bug&uuml;n de bu &ccedil;alışmalar kapsamında değerlendirildiğimiz kadın tren s&uuml;r&uuml;c&uuml;leri projemizle SODEV ve Olof Palme International Center tarafından Cinsiyet Eşitlik&ccedil;i D&ouml;n&uuml;ş&uuml;m &Ouml;d&uuml;l&uuml;&rsquo;ne layık g&ouml;r&uuml;ld&uuml;k. Bu &ouml;d&uuml;l&uuml; t&uuml;m Metro İstanbul Ailesi adına alıyorum. Cinsiyet eşitliği &ccedil;alışmalarımızla t&uuml;m sekt&ouml;re ve &uuml;lkemize rol model olmaya devam edeceğiz&rdquo; diye konuştu.</p>\r\n\r\n<p><strong>Kadın tren s&uuml;r&uuml;c&uuml;s&uuml; sayısı 2019&rsquo;dan bu yana 22 kat arttı</strong><br />\r\nMetro İstanbul&rsquo;da g&ouml;rev yapan kadın tren s&uuml;r&uuml;c&uuml;s&uuml; sayısı 2019 yılının Haziran ayında 8 iken, Aralık 2022 itibarıyla bu sayı 22 kat artarak 178&rsquo;e ulaştı.&nbsp;<br />\r\nKadınların toplumsal hayatın her kademesinde eşit ve adil bir şekilde temsil edilmesi ilkesi ile hareket eden Metro İstanbul, bu y&ouml;nde ger&ccedil;ekleştirdiği &ccedil;alışmaları ile Uluslararası Toplu Taşımacılar Birliği (UITP) tarafından &ldquo;&Ccedil;eşitlilik ve Kapsayıcılık: Cinsiyet Eşitliği&rdquo; kategorisinde Avrupa B&ouml;lgesi &Ouml;zel &Ouml;d&uuml;l&uuml;&rsquo;ne, T&uuml;rkiye Kalite Derneği (KalDer) tarafından ise cinsiyet eşitliği yaklaşımı ile rol model g&ouml;sterilerek T&uuml;rkiye M&uuml;kemmellik &Ouml;d&uuml;l&uuml;&rsquo;ne layık g&ouml;r&uuml;ld&uuml;.</p>\r\n",
+        "Photo": "https://www.metro.istanbul/Content/assets/uploaded/e4076e8e-4887-40bb-ad8a-64e37ab1c214.jpg",
+        "StartDate": "2022-12-13T00:00:00.000",
+        "Language": "TR",
+        "Media": {
+          "Video": null,
+          "Images": []
+        }
+      },
+      {
+        "Id": 26,
+        "Title": "15 Temmuz Şehitlerimizi Anıyoruz",
+        "Content": "<p>15 Temmuz Demokrasi ve Milli Birlik G&uuml;n&uuml;&#39;nde, aziz şehir ve gazilerimizi minnet ve ş&uuml;kranla anıyoruz.</p>\r\n\r\n<p>&quot;Egemenlik kayıtsız şartsız milletindir.&quot;</p>\r\n",
+        "Photo": "https://www.metro.istanbul/Content/assets/uploaded/e83e1128-5295-4c4a-9f14-d6948e297f6f.jpg",
+        "StartDate": "2022-07-14T00:00:00.000",
+        "Language": "TR",
+        "Media": {
+          "Video": null,
+          "Images": []
+        }
+      },
+      {
+        "Id": 27,
+        "Title": "Esenler Yerleşkemizde Açık Hava Sineması Günleri Başladı!",
+        "Content": "<p><strong>Her Salı ve Perşembe saat 21.00&rsquo;de!</strong><br />\r\n25 Ağustos&#39;a&nbsp;kadar devam edecek olan etkinlik kapsamında her <strong>Salı </strong>ve <strong>Perşembe </strong>g&uuml;n&uuml; saat <strong>21.00&rsquo;de</strong>&nbsp;yerli ve yabancı toplam 12&nbsp;film g&ouml;sterimi ger&ccedil;ekleşecek. Etkinlik <strong>&uuml;cretsizdir</strong>,&nbsp;t&uuml;m halkımız davetlidir.<br />\r\n<br />\r\nFilm Takvimi:</p>\r\n\r\n<table cellspacing=\"0\">\r\n\t<tbody>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p><strong>Tarih</strong><strong>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</strong></p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p><strong>&nbsp;</strong><strong>Film Adı</strong></p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>19.07.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Buz Devri 5: B&uuml;y&uuml;k &Ccedil;arpışma</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>21.07.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Nadide Hayat</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>26.07.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Fantastik Canavarlar:&nbsp;Grindelwald&#39;ın Su&ccedil;ları</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>28.07.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Sonsuz Aşk</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>02.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Coco</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>04.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>D&ouml;nerse Senindir</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>09.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Percy Jackson Olimposlular Şimşek Hırsızı</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>11.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Aşk Seni Bulur</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>16.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Fantastik Canavarlar Nelerdir, Nerede Bulunurlar?</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>18.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Kral Arthur: Kılı&ccedil; Efsanesi</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>23.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Percy Jackson: Canavarlar Denizi</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t\t<tr>\r\n\t\t\t<td>\r\n\t\t\t<p>25.08.2022&nbsp; &nbsp;&nbsp;</p>\r\n\t\t\t</td>\r\n\t\t\t<td>\r\n\t\t\t<p>Star Wars: The Rise of Skywalker</p>\r\n\t\t\t</td>\r\n\t\t</tr>\r\n\t</tbody>\r\n</table>\r\n",
+        "Photo": "https://www.metro.istanbul/Content/assets/uploaded/11026508-4e02-486a-9e48-fe4f8fa7f8d7.jpg",
+        "StartDate": "2022-07-19T00:00:00.000",
+        "Language": "TR",
+        "Media": {
+          "Video": null,
+          "Images": [
+            "https://www.metro.istanbul/Content/assets/uploaded/7191ba1f-be11-47a7-b954-686622d27d55.jpg"
+          ]
+        }
+      },
+      {
+        "Id": 28,
+        "Title": "30 Ağustos Zafer Bayramımız Kutlu Olsun",
+        "Content": "<p>Bug&uuml;n, T&uuml;rk milletinin bağımsızlık ve &ouml;zg&uuml;rl&uuml;ğe kavuştuğu g&uuml;nd&uuml;r!</p>\r\n\r\n<p>30 Ağustos Zafer Bayramımızın 100. yılında Başkomutan Mustafa Kemal Atat&uuml;rk başta olmak &uuml;zere bu zaferi bize armağan eden t&uuml;m kahramanlarımızı saygı ve &ouml;zlemle anıyoruz.</p>\r\n\r\n<p>30 Ağustos Zafer Bayramı&#39;mız kutlu olsun !</p>\r\n",
+        "Photo": "https://www.metro.istanbul/Content/assets/uploaded/63d43db3-e61d-47f0-8855-90158cd84b26.jpg",
+        "StartDate": "2022-08-29T00:00:00.000",
+        "Language": "TR",
+        "Media": {
+          "Video": null,
+          "Images": []
+        }
+      },
+      {
+        "Id": 29,
+        "Title": "Metro İstanbul Yaz Okulu İlk Mezunlarını Verdi !",
+        "Content": "<p><strong>İstanbul B&uuml;y&uuml;kşehir Belediyesi (İBB) iştiraklerinden Metro İstanbul, bu yaz kapılarını İstanbullu &ccedil;ocuklara ve ebeveynlerine a&ccedil;tı. Şirketin, 27 Haziran-26 Ağustos tarihleri arasında Esenler yerleşkesinde&nbsp;&ccedil;ocuklar ve anneleri i&ccedil;in d&uuml;zenlediği &ldquo;Metro İstanbul Yaz Okulu&rdquo; programına katılan 252 &ccedil;ocuk sertifikalarını aldı.</strong></p>\r\n\r\n<p>T&uuml;rkiye&rsquo;nin en b&uuml;y&uuml;k kent i&ccedil;i raylı sistem işletmecisi Metro İstanbul&rsquo;un 27 Haziran-26 Ağustos tarihleri arasında Esenler yerleşkesinde bu yıl ilkini ger&ccedil;ekleştirdiği &ldquo;Metro İstanbul Yaz Okulu&rdquo; programına katılan &ccedil;ocuklar d&uuml;zenlenen t&ouml;ren ile sertifikalarını aldı.</p>\r\n\r\n<p>252 &ccedil;ocuğun ve ailelerinin ağırlandığı t&ouml;rende Metro İstanbul Genel M&uuml;d&uuml;r&uuml; ve genel m&uuml;d&uuml;r yardımcıları, İBB iştirak şirketleri ve kurumlarının temsilcileri &ccedil;ocuklara sertifikalarını ve yeni okul d&ouml;nemi i&ccedil;in destek paketleri i&ccedil;eren hediyelerini dağıttılar.</p>\r\n\r\n<p><strong>&ldquo;Metro İstanbul, İstanbullulara ait&rdquo;</strong></p>\r\n\r\n<p>Metro İstanbul Genel M&uuml;d&uuml;r&uuml; &Ouml;zg&uuml;r Soy, g&ouml;reve geldiklerinden bu yana d&uuml;zenledikleri etkinlikler ile yerleşkelerinin kapılarını İstanbullulara a&ccedil;tıklarını hatırlatarak, &ldquo;İstanbul B&uuml;y&uuml;kşehir Belediyesi, İstanbullulara ait&hellip; Metro İstanbul, İstanbullulara ait&hellip; Bu raylar, trenler, istasyonlar hepimizin. Dahası; biz bulunduğumuz b&ouml;lgenin, il&ccedil;emizin, mahallenin bir par&ccedil;asıyız. Biz dedik ki; burası insanların &ouml;n&uuml;nden gelip ge&ccedil;tiği, duvarlarının arkasını bilmediği, g&ouml;rmediği yasaklı bir b&ouml;lge olmasın. Bu anlayışla kapılarımızı &ccedil;eşitli etkinliklerle sizlere a&ccedil;tık. Son iki yıldır yaz aylarında d&uuml;zenlediğimiz A&ccedil;ık Hava Sinema G&uuml;nleri, yarıyıl tatillerinde d&uuml;zenlediğimiz s&ouml;mestr etkinlikleri gibi organizasyonlarla sizleri burada misafir etmekten b&uuml;y&uuml;k mutluluk duyuyoruz&rdquo; dedi.</p>\r\n\r\n<p><strong>&ldquo;30 il&ccedil;eden 252 &ccedil;ocuk katıldı&rdquo;</strong></p>\r\n\r\n<p>Metro İstanbul olarak &ouml;nceliği her zaman i&ccedil;in &ccedil;ocuklara verdiklerini ifade eden Genel M&uuml;d&uuml;r &Ouml;zg&uuml;r Soy, &ldquo;Bu yıl &ccedil;ocuklar i&ccedil;in daha fazla ne yapabiliriz diye d&uuml;ş&uuml;nd&uuml;k ve yoğun bir &ccedil;alışmanın ardından yaz okulu programımız ortaya &ccedil;ıktı. 7-10 ve 11-14 yaş grupları ile 4&rsquo;er d&ouml;nemden oluşan eğlenceli ve &ouml;ğretici etkinliklerde yaz boyunca &ccedil;ocuklarımızla bir araya geldik. Her bir grubumuzda 25&rsquo;er kişi olmasını planlamıştık ancak daha duyuru yapar yapmaz ilk grubumuzun kontenjanı doldu. Sizlerden gelen yoğun ilgi sonrası bazı d&ouml;nemlerimizde bu sayıyı 47&rsquo;ye kadar &ccedil;ıkardık. Yaz okulu programımızı d&uuml;zenlerken anneleri de unutmadık. &Ccedil;ocukları eğlenceli ve eğitici faaliyetlere katılırken, isteyen anneler de bizimle kalarak sanatsal ve eğitici etkinliklerde vakit ge&ccedil;irme imkanı buldular. Bu yıl İstanbul&rsquo;un 30 il&ccedil;esinden toplam 252 &ccedil;ocuğumuz ve anneleri ile Esenler yerleşkemizde &ccedil;ok keyifli bir yaz ge&ccedil;irdik&rdquo; diye konuştu.</p>\r\n\r\n<p><strong>Annelere &ouml;zel etkinlikler de d&uuml;zenlendi</strong></p>\r\n\r\n<p>Yoğun ilgi g&ouml;ren ve 2&rsquo;şer haftalık 4 d&ouml;nemden oluşan &ldquo;Metro İstanbul Yaz Okulu&rdquo; programında &ccedil;ocuklara; İSTA&Ccedil; ile ger&ccedil;ekleştirilen atık malzemelerin değerlendirildiği Geri D&ouml;n&uuml;ş&uuml;m At&ouml;lyesi, İstanbul İtfaiyesi tarafından verilen yangın g&uuml;venlik eğitimi ve K9 k&ouml;pekleri ile arama-kurtarma sim&uuml;lasyonu, Spor İstanbul&rsquo;un ekipman desteği ile Aikido, basketbol, voleybol, atletizm, badminton eğitiminin yanı sıra satran&ccedil;, karikat&uuml;r ve &ccedil;izgi roman &ccedil;izimi gibi eğitimler verildi. Ayrıca bah&ccedil;emizde kendi imkanlarımız ile oluşturduğumuz bostanımızda hazırladığımız M-&Ccedil;ift&ccedil;i programı ile &ccedil;ocukların toprakla temas etmelerini sağladık.</p>\r\n\r\n<p>&Ccedil;ocukların yanı sıra anneler de y&uuml;z yogası, toprak saksı yapımı, ebru sanatı gibi etkinliklere ve Enstit&uuml; İstanbul İSMEK iş birliği ile Herkes İ&ccedil;in G&uuml;venli İnternet ve Sağlıklı Beslenme konularında d&uuml;zenlenen seminerlere &uuml;cretsiz katılma imkanı buldu.</p>\r\n",
+        "Photo": "https://www.metro.istanbul/Content/assets/uploaded/789ad4c8-752f-4659-abbc-0aa690b4fe5b.jpg",
+        "StartDate": "2022-09-08T00:00:00.000",
+        "Language": "TR",
+        "Media": {
+          "Video": null,
+          "Images": [
+            "https://www.metro.istanbul/Content/assets/uploaded/ba7f7c22-c8fd-42cb-bb02-fb223470d1da.JPG",
+            "https://www.metro.istanbul/Content/assets/uploaded/603c4009-6b4b-4d86-a668-b896bf3c671c.jpg"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+# hat-durak-guzergah  (veri seti 172, grup A)
+# WSDL: https://api.ibb.gov.tr/iett/UlasimAnaVeri/HatDurakGuzergah.asmx?wsdl
+# Okunma: 2026-11-06T17:20:01+0300
+# Ayrıştırma: WSDL XML (zeep reddetti)
+# 9 metot
+# zeep hatası: KeyError: 'AuthHeader'
+# SOAP auth header: AuthHeader
+
+GetDurak_XML(DurakKodu)
+GetDurak_csv(DurakKodu)
+GetDurak_json(DurakKodu)
+GetGaraj_XML()
+GetGaraj_csv()
+GetGaraj_json()
+GetHat_XML(HatKodu)
+GetHat_csv(HatKodu)
+GetHat_json(HatKodu)

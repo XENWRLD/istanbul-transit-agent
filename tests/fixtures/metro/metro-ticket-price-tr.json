@@ -1,0 +1,77 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTicketPrice/TR",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:15+0300",
+    "http_status": "200",
+    "total_records": 3,
+    "trimmed_to": null,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Type": "Anonim İstanbul Kart",
+        "TicketPrices": [
+          {
+            "Name": "Tam",
+            "Price": "46,20 ₺"
+          },
+          {
+            "Name": "Öğrenci Kartı",
+            "Price": "22,55 ₺"
+          },
+          {
+            "Name": "Sosyal",
+            "Price": "33,08 ₺"
+          }
+        ]
+      },
+      {
+        "Type": "Mavi İstanbul Kart",
+        "TicketPrices": [
+          {
+            "Name": "Tam/180 Geçiş",
+            "Price": "3.628 ₺"
+          },
+          {
+            "Name": "Öğrenci/200 Geçiş",
+            "Price": "653 ₺"
+          },
+          {
+            "Name": "Sosyal/200 Geçiş",
+            "Price": "2.256 ₺"
+          }
+        ]
+      },
+      {
+        "Type": "Elektronik İstanbul Kart",
+        "TicketPrices": [
+          {
+            "Name": "Bir Geçişlik Kart",
+            "Price": "65 ₺"
+          },
+          {
+            "Name": "İki Geçişlik Kart",
+            "Price": "120 ₺"
+          },
+          {
+            "Name": "Üç Geçişlik Kart",
+            "Price": "185 ₺"
+          },
+          {
+            "Name": "Beş Geçişlik Kart",
+            "Price": "275 ₺"
+          },
+          {
+            "Name": "On Geçişlik Kart",
+            "Price": "530 ₺"
+          }
+        ]
+      }
+    ]
+  }
+}

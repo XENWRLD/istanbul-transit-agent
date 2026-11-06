@@ -1,0 +1,10 @@
+# ibb360  (veri seti 347, grup A)
+# WSDL: https://api.ibb.gov.tr/iett/ibb/ibb360.asmx?wsdl
+# Okunma: 2026-11-06T17:20:01+0300
+# Ayrıştırma: zeep
+# 4 metot
+
+GetIettArsivGorev_XML(Tarih: xsd:string)
+GetIettArsivGorev_json(Tarih: xsd:string)
+GetIettYolculukHat_XML(Tarih: xsd:string)
+GetIettYolculukHat_json(Tarih: xsd:string)

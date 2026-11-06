@@ -1,0 +1,63 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+    "soap_action": "http://tempuri.org/GetFiloAracKonum_json",
+    "request_params": {},
+    "fetched_at": "2026-11-06T17:21:38+0300",
+    "total_records": 6940,
+    "trimmed_to": 5,
+    "auth_header_sent": false
+  },
+  "response": [
+    {
+      "Operator": "İstanbul Halk Ulaşım Tic.A.Ş",
+      "Garaj": null,
+      "KapiNo": "A-001",
+      "Saat": "17:20:52",
+      "Boylam": "29.05238",
+      "Enlem": "41.1725",
+      "Hiz": "12",
+      "Plaka": "34 HO 1000"
+    },
+    {
+      "Operator": "İstanbul Halk Ulaşım Tic.A.Ş",
+      "Garaj": null,
+      "KapiNo": "A-002",
+      "Saat": "17:20:50",
+      "Boylam": "29.0479431666667",
+      "Enlem": "41.128717",
+      "Hiz": "2",
+      "Plaka": "34 HO 1001"
+    },
+    {
+      "Operator": "İstanbul Halk Ulaşım Tic.A.Ş",
+      "Garaj": null,
+      "KapiNo": "A-003",
+      "Saat": "17:20:53",
+      "Boylam": "29.0269",
+      "Enlem": "41.04902",
+      "Hiz": "0",
+      "Plaka": "34 HO 1002"
+    },
+    {
+      "Operator": "İstanbul Halk Ulaşım Tic.A.Ş",
+      "Garaj": null,
+      "KapiNo": "A-004",
+      "Saat": "17:21:00",
+      "Boylam": "29.05188",
+      "Enlem": "41.08014",
+      "Hiz": "9",
+      "Plaka": "34 ZC 7661"
+    },
+    {
+      "Operator": "İstanbul Halk Ulaşım Tic.A.Ş",
+      "Garaj": null,
+      "KapiNo": "A-005",
+      "Saat": "17:21:00",
+      "Boylam": "29.0532761666667",
+      "Enlem": "41.0989305",
+      "Hiz": "10",
+      "Plaka": "34 GDR 01"
+    }
+  ]
+}

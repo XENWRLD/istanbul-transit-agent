@@ -1,0 +1,8 @@
+# arac-ozellik  (veri seti 352, grup A2)
+# WSDL: https://api.ibb.gov.tr/iett/AracAnaVeri/AracOzellik.asmx?wsdl
+# Okunma: 2026-11-06T17:20:01+0300
+# Ayrıştırma: zeep
+# 2 metot
+
+GetAkarYakitToplamLitre_XML(Yil: xsd:int, Ay: xsd:int, _soapheaders={AuthHeader: ns0:AuthHeader})
+GetAkarYakitToplamLitre_json(Yil: xsd:int, Ay: xsd:int, _soapheaders={AuthHeader: ns0:AuthHeader})

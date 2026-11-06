@@ -1,0 +1,58 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+    "soap_action": "http://tempuri.org/GetBozukSatih_json",
+    "request_params": {},
+    "fetched_at": "2026-11-06T17:21:39+0300",
+    "total_records": 29,
+    "trimmed_to": 5,
+    "auth_header_sent": false
+  },
+  "response": [
+    {
+      "NMESAJID": 20385649,
+      "SKAPINUMARASI": "C-1922",
+      "SSOFORSICILNO": "851236",
+      "SMESAJMETNI": "BOZUK SATIH",
+      "DTKAYITZAMANI": "/Date(1793944266312)/",
+      "NBOYLAM": 29.20308,
+      "NENLEM": 40.98509
+    },
+    {
+      "NMESAJID": 20383438,
+      "SKAPINUMARASI": "C-1017",
+      "SSOFORSICILNO": "815304",
+      "SMESAJMETNI": "BOZUK SATIH",
+      "DTKAYITZAMANI": "/Date(1793939780621)/",
+      "NBOYLAM": 29.2387648333333,
+      "NENLEM": 41.0273961666667
+    },
+    {
+      "NMESAJID": 20393761,
+      "SKAPINUMARASI": "C-1668",
+      "SSOFORSICILNO": "855023",
+      "SMESAJMETNI": "BOZUK SATIH",
+      "DTKAYITZAMANI": "/Date(1793970745313)/",
+      "NBOYLAM": 29.1421053333333,
+      "NENLEM": 40.9791128333333
+    },
+    {
+      "NMESAJID": 20393160,
+      "SKAPINUMARASI": "B4019",
+      "SSOFORSICILNO": "645321",
+      "SMESAJMETNI": "BOZUK SATIH",
+      "DTKAYITZAMANI": "/Date(1793969481391)/",
+      "NBOYLAM": 28.7175766666667,
+      "NENLEM": 41.0788421666667
+    },
+    {
+      "NMESAJID": 20382441,
+      "SKAPINUMARASI": "B4005",
+      "SSOFORSICILNO": "317625",
+      "SMESAJMETNI": "BOZUK SATIH",
+      "DTKAYITZAMANI": "/Date(1793937705831)/",
+      "NBOYLAM": 0,
+      "NENLEM": 0
+    }
+  ]
+}

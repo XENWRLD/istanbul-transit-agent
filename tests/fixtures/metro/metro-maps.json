@@ -1,0 +1,78 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetMaps",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:24+0300",
+    "http_status": "200",
+    "total_records": 7,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Id": 36,
+        "Title": "İstanbul Raylı Sistemler Haritası",
+        "ENTtitle": "Istanbul Rail Systems Map",
+        "ARTitle": "Istanbul Rail Systems Map",
+        "ImageURL": "https://www.metro.istanbul/Content/assets/uploaded/f9bc29d4-63f5-4800-b8ea-31e58d4091e9.jpg",
+        "IconURL": "https://www.metro.istanbul/Content/assets/uploaded/a5073cd4-25f0-4d04-91f3-ce8235e006e5.png",
+        "DocumentURL": "https://www.metro.istanbul/Content/assets/uploaded/İstanbul Raylı Sistemler Haritası.pdf",
+        "IsActive": false,
+        "Order": 1,
+        "Date": "2026-06-20T00:00:00.000"
+      },
+      {
+        "Id": 44,
+        "Title": "İstanbul Raylı Sistemler Haritası",
+        "ENTtitle": "Istanbul Rail Systems Map",
+        "ARTitle": "Istanbul Rail Systems Map",
+        "ImageURL": "https://www.metro.istanbul/Content/assets/uploaded/827d7aba-3c4c-4cbb-aabb-66b98f4ee272.jpg",
+        "IconURL": "https://www.metro.istanbul/Content/assets/uploaded/994735df-d532-4973-bc42-e650b659e73b.jpg",
+        "DocumentURL": "https://www.metro.istanbul/Content/assets/uploaded/İstanbul Raylı Sistemler Haritası.pdf",
+        "IsActive": true,
+        "Order": 1,
+        "Date": "2026-07-29T00:00:00.000"
+      },
+      {
+        "Id": 37,
+        "Title": "İstanbul Metro Hatları Haritası",
+        "ENTtitle": "Istanbul Metro Lines Map",
+        "ARTitle": "Istanbul Metro Lines Map",
+        "ImageURL": "https://www.metro.istanbul/Content/assets/uploaded/b7664d27-32e9-41d8-8b34-43b7a8271f43.jpg",
+        "IconURL": "https://www.metro.istanbul/Content/assets/uploaded/7421a19c-8a73-4ca9-b342-dbe228f39952.jpg",
+        "DocumentURL": "https://www.metro.istanbul/Content/assets/uploaded/İstanbul Metro Hatları Haritası.pdf",
+        "IsActive": true,
+        "Order": 2,
+        "Date": "2026-07-29T00:00:00.000"
+      },
+      {
+        "Id": 38,
+        "Title": "İstanbul Tramvay Hatları Haritası",
+        "ENTtitle": "Istanbul Tram Lines Map",
+        "ARTitle": "Istanbul Tram Lines Map",
+        "ImageURL": "https://www.metro.istanbul/Content/assets/uploaded/91685c96-b9b2-4c18-9a22-0cdd0d8b3e0b.jpg",
+        "IconURL": "https://www.metro.istanbul/Content/assets/uploaded/9df19e54-d226-4eea-ab77-394f9624c2a6.jpg",
+        "DocumentURL": "https://www.metro.istanbul/Content/assets/uploaded/İstanbul Tramvay Hatları Haritası.pdf",
+        "IsActive": true,
+        "Order": 3,
+        "Date": "2026-07-29T00:00:00.000"
+      },
+      {
+        "Id": 40,
+        "Title": "İstanbul İnşaat Halindeki Raylı Sistemler Haritası",
+        "ENTtitle": "Lines in Under Construction",
+        "ARTitle": "Lines in Under Construction",
+        "ImageURL": "https://www.metro.istanbul/Content/assets/uploaded/aa00f498-ee2a-4d39-8490-fe75df5efc74.jpg",
+        "IconURL": "https://www.metro.istanbul/Content/assets/uploaded/145baa2e-9422-4d99-a73c-3e3ceb52532c.jpg",
+        "DocumentURL": "https://www.metro.istanbul/Content/assets/uploaded/İstanbul İnşaat Halindeki Raylı Sistemler Haritası.pdf",
+        "IsActive": true,
+        "Order": 4,
+        "Date": "2026-07-29T00:00:00.000"
+      }
+    ]
+  }
+}

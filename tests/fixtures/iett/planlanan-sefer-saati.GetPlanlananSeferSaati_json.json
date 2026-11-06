@@ -1,0 +1,65 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx",
+    "soap_action": "http://tempuri.org/GetPlanlananSeferSaati_json",
+    "request_params": {
+      "HatKodu": "34"
+    },
+    "fetched_at": "2026-11-06T17:21:41+0300",
+    "total_records": 267,
+    "trimmed_to": 5,
+    "auth_header_sent": false
+  },
+  "response": [
+    {
+      "SHATKODU": "34",
+      "HATADI": "AVCILAR - SÖĞÜTLÜÇEŞME",
+      "SGUZERAH": "34_D_D9051",
+      "SYON": "D",
+      "SGUNTIPI": "C",
+      "GUZERGAH_ISARETI": null,
+      "SSERVISTIPI": "Normal",
+      "DT": "05:35"
+    },
+    {
+      "SHATKODU": "34",
+      "HATADI": "AVCILAR - SÖĞÜTLÜÇEŞME",
+      "SGUZERAH": "34_D_D9051",
+      "SYON": "D",
+      "SGUNTIPI": "C",
+      "GUZERGAH_ISARETI": null,
+      "SSERVISTIPI": "Normal",
+      "DT": "05:37"
+    },
+    {
+      "SHATKODU": "34",
+      "HATADI": "AVCILAR - SÖĞÜTLÜÇEŞME",
+      "SGUZERAH": "34_D_D9051",
+      "SYON": "D",
+      "SGUNTIPI": "C",
+      "GUZERGAH_ISARETI": null,
+      "SSERVISTIPI": "Normal",
+      "DT": "05:40"
+    },
+    {
+      "SHATKODU": "34",
+      "HATADI": "AVCILAR - SÖĞÜTLÜÇEŞME",
+      "SGUZERAH": "34_D_D9051",
+      "SYON": "D",
+      "SGUNTIPI": "C",
+      "GUZERGAH_ISARETI": null,
+      "SSERVISTIPI": "Normal",
+      "DT": "05:42"
+    },
+    {
+      "SHATKODU": "34",
+      "HATADI": "AVCILAR - SÖĞÜTLÜÇEŞME",
+      "SGUZERAH": "34_D_D9051",
+      "SYON": "D",
+      "SGUNTIPI": "C",
+      "GUZERGAH_ISARETI": null,
+      "SSERVISTIPI": "Normal",
+      "DT": "05:45"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetAddresses/TR",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:25+0300",
+    "http_status": "200",
+    "total_records": 15,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Title": "Genel Müdürlük",
+        "Description": "Yavuz Selim Mahallesi Metro Sokak No: 3 Esenler/İstanbul",
+        "Code": "34220",
+        "Phone": "+90 850 252 88 00",
+        "Email": " info@metro.istanbul   ",
+        "Fax": "+90 212 568 89 00",
+        "Coordinate": "https://harita.istanbul/2d/detail/2124?@=29.09717,41.02591,20.06346&p=0.50000&b=0.00000&suk=41.0370350,%20%0928.8873455!r&ruk=!&ms=!b241!c&o=!o1&ct=0&duk=41.03704,28.88735&dwk="
+      },
+      {
+        "Title": "M3 Olimpiyat Yerleşkesi",
+        "Description": "Ziya Gökalp Mahallesi Olimpiyat Stadı Yolu Caddesi No.2 Başakşehir/İstanbul",
+        "Code": "34306",
+        "Phone": "0850 252 83 23",
+        "Email": "info@metro.istanbul",
+        "Fax": "+90 212 568 89 00",
+        "Coordinate": "https://harita.istanbul/2d/detail/2124?@=29.09717,41.02591,20.06346&p=0.50000&b=0.00000&suk=41.0809060,%20%0928.7603781!r&ruk=!&ms=!b241!c&o=!o1&ct=0&duk=41.08091,28.76038&dwk="
+      },
+      {
+        "Title": "M5 Çarşı Yerleşkesi (İdari Ofisler)",
+        "Description": "Yamanevler Mahallesi Alemdağ Caddesi Tunaboyu Sokak Köşesi Ümraniye/İstanbul",
+        "Code": "34768",
+        "Phone": "+90 850 252 88 00",
+        "Email": "info@metro.istanbul",
+        "Fax": "+90 212 568 89 00",
+        "Coordinate": "https://harita.istanbul/2d/detail/2124?@=29.09717,41.02591,20.06346&p=0.50000&b=0.00000&suk=41.0259643,%20%0929.0972719!r&ruk=!&ms=!b241!c&o=!o1&ct=0&duk=41.02596,29.09727&dwk="
+      },
+      {
+        "Title": "M5 Dudullu Behiç Erkin Yerleşkesi (Depo ve Atölye )",
+        "Description": "Parseller Mahallesi Yurtseven Caddesi Hatip Sokak Hacı Nazım Efendi Camii Yanı Şile Otoyolu Yan Yolu Ümraniye/İstanbul",
+        "Code": "34773",
+        "Phone": "+90 850 252 88 00",
+        "Email": "info@metro.istanbul",
+        "Fax": "+90 212 568 89 00",
+        "Coordinate": "https://harita.istanbul/2d/detail/2124?@=29.09717,41.02591,20.06346&p=0.50000&b=0.00000&suk=41.0336255,%20%0929.1530007!r&ruk=!&ms=!b241!c&o=!o1&ct=0&duk=41.03363,29.15300&dwk="
+      },
+      {
+        "Title": "T1 Zeytinburnu Yerleşkesi",
+        "Description": "Osmaniye Mahallesi E-5 Çırpıcı Yan Yol Sokak No.1 Bakırköy/İstanbul ",
+        "Code": "34146",
+        "Phone": "0850 252 83 20",
+        "Email": "info@metro.istanbul",
+        "Fax": "+90 212 568 89 00",
+        "Coordinate": "https://harita.istanbul/2d/detail/2124?@=29.09717,41.02591,20.06346&p=0.50000&b=0.00000&suk=41.0015215,%20%0928.8907349!r&ruk=!&ms=!b241!c&o=!o1&ct=0&duk=41.00152,28.89073&dwk="
+      }
+    ]
+  }
+}

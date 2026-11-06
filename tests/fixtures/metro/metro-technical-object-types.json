@@ -1,0 +1,43 @@
+{
+  "_fixture_meta": {
+    "source_url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTechnicalObjectTypes",
+    "http_method": "GET",
+    "request_body": null,
+    "fetched_at": "2026-11-06T17:23:21+0300",
+    "http_status": "200",
+    "total_records": 26,
+    "trimmed_to": 5,
+    "params_used": null
+  },
+  "response": {
+    "Success": true,
+    "Error": null,
+    "Data": [
+      {
+        "Code": "YURMERDVEN_ESKI",
+        "Name": "YÜRÜYEN MERDİVEN",
+        "Group": "Yürüyen Merdiven"
+      },
+      {
+        "Code": "ASANSOR_ESKI",
+        "Name": "HİDROLİK ASANSÖR",
+        "Group": "Asansör"
+      },
+      {
+        "Code": "ELEKASANSOR_ESKI",
+        "Name": "ELEKTRİKLİ ASANSÖR",
+        "Group": "Asansör"
+      },
+      {
+        "Code": "YURYNBANT_ESKI",
+        "Name": "YÜRÜYEN BANT",
+        "Group": "Yürüyen Bant"
+      },
+      {
+        "Code": "ISTASYON_ESKI",
+        "Name": "İSTASYON",
+        "Group": "İstasyon"
+      }
+    ]
+  }
+}

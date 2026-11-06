@@ -50,7 +50,7 @@ def test_gemini_without_key_raises_actionable_error():
 def test_gemini_with_key_builds():
     llm = get_llm("gemini", settings=_settings(gemini_api_key="test-key"))
     assert type(llm).__name__ == "ChatGoogleGenerativeAI"
-    assert llm.model.endswith("gemini-2.0-flash")
+    assert llm.model.endswith("gemini-3.5-flash")
 
 
 def test_unknown_provider_raises():

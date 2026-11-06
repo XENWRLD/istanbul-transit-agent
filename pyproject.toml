@@ -1,0 +1,89 @@
+[project]
+name = "istanbul-agent"
+version = "0.1.0"
+description = "Istanbul transit agent over IBB open data: MCP tools (live APIs, local GTFS/GeoJSON, RAG) orchestrated by LangGraph"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    # Settings and models
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    # LLM providers -- only ever constructed through istanbul_agent.llm
+    "langchain-core>=0.3.0",
+    "langchain-google-genai>=2.0.0",
+    "langchain-ollama>=0.2.0",
+    # API clients
+    "httpx>=0.27",
+    "zeep>=4.3",
+]
+
+[project.optional-dependencies]
+# Kept out of the default install so `uv sync` stays small in Faz 0.
+# Faz 1 (store), Faz 3 (rag), Faz 4 (agent/mcp), Faz 5 (app) pull these in.
+store = ["duckdb>=1.1", "pandas>=2.2"]
+rag = ["qdrant-client>=1.12", "sentence-transformers>=3.3", "FlagEmbedding>=1.3"]
+agent = ["langgraph>=0.2.0", "mcp>=1.1", "langchain-mcp-adapters>=0.1"]
+app = ["fastapi>=0.115", "uvicorn>=0.32", "gradio>=5.0"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/istanbul_agent"]
+
+# ---------------------------------------------------------------- ruff
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts", "eval"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "ANN",      # flake8-annotations -- type hints are mandatory per CLAUDE.md
+    "RUF",
+]
+ignore = [
+    "ANN401",   # allow typing.Any where a payload is genuinely untyped
+    "E501",     # line length is handled by the formatter
+    # User-facing strings and docstrings are Turkish by project rule, so the
+    # "ambiguous unicode character" checks fire on every ı, ş, ğ and are noise.
+    "RUF001",   # ambiguous character in a string
+    "RUF002",   # ... in a docstring
+    "RUF003",   # ... in a comment
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests and one-off probe scripts may skip return annotations.
+"tests/**" = ["ANN201", "ANN001", "ANN003"]
+# Probe and smoke scripts deliberately catch broad exceptions: an unexpected
+# failure from one endpoint must be reported, not abort the whole run.
+"scripts/**" = ["ANN201", "BLE001"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ---------------------------------------------------------------- pytest
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-q --strict-markers"
+markers = [
+    "live: hits a real external API or LLM; excluded from the default run",
+]

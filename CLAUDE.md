@@ -39,6 +39,8 @@ Yol haritası, aşamalar ve "bitti" tanımları: `documents/PLAN.md`. Veri kayna
 uv sync                                   # bağımlılıkları kur
 uv run pytest                             # testler
 uv run ruff check . && uv run ruff format .
+uv run python scripts/smoke_llm.py        # her iki LLM sağlayıcısına gerçek istek
+uv run python scripts/download_gtfs.py    # GTFS beslemelerini data/gtfs altına indir
 uv run python -m istanbul_agent.store.ingest          # GTFS + GeoJSON → DuckDB
 uv run python -m istanbul_agent.rag.ingest            # dokümanları indeksle
 uv run python -m istanbul_agent.servers.transit_server
@@ -67,6 +69,8 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - Birim testleri gerçek LLM veya İBB API çağrısı yapmaz. Gerçek API yanıtlarından örnekleri `tests/fixtures/` altına kaydedip onları kullan.
 - Ücretsiz API kotası sınırlı: değerlendirme betikleri LLM yanıtlarını `eval/.cache/` altında önbelleğe alır, 429 hatalarında üstel geri çekilme (backoff) uygular.
 - İBB API'sinin davranışını tahmin etme; önce gerçek yanıtı incele, sonra kodu yaz.
+- Metro İstanbul REST API'si başarısızlıkta da HTTP 200 döner; gövdedeki `Success` alanına bak, durum koduna değil.
+- İBB GTFS CSV'leri **cp1254** kodlamalıdır, UTF-8 değil. `calendar.csv` penceresi dolmuştur: servis günleri yalnızca hafta günü desenine göre seçilir (karar 0002).
 - Agent ham API'leri görmez: uç noktalar `documents/PLAN.md` araç tablosundaki alan bazlı araçların arkasında birleştirilir. Yeni araç eklemeden önce mevcut bir araca parametre eklemenin yeterli olup olmadığını düşün; toplam araç sayısını ~15'te tut.
 - Her araç çıktısı `source` ve `data_as_of` alanı taşır; 2018-2020 tarihli "Public Transport GTFS" verisinden gelen sonuçlar `is_stale: true` ile işaretlenir.
 - API kapalıysa veya hata verirse araç bunu açıkça döner; asla tahmini veri üretmez.

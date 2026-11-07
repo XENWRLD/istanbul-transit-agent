@@ -7,7 +7,13 @@ not invented ones.
 
 import pytest
 
-from istanbul_agent.store.station_names import collapsed, normalize, similarity, variants
+from istanbul_agent.store.station_names import (
+    collapsed,
+    normalize,
+    similarity,
+    token_key,
+    variants,
+)
 
 
 class TestTurkishCasefold:
@@ -155,3 +161,20 @@ class TestSimilarity:
 
     def test_variants_returns_three_keys(self):
         assert len(variants("Bağcılar Meydan")) == 3
+
+
+class TestTokenKey:
+    """The sources also swap compound names around."""
+
+    def test_word_order_swap_matches(self):
+        # Real case on M7, confirmed 23 m apart.
+        assert token_key("Giyimkent-Tekstilkent") == token_key("Tekstilkent - Giyimkent")
+
+    def test_strict_key_does_not_match_swapped_order(self):
+        assert normalize("Giyimkent-Tekstilkent") != normalize("Tekstilkent - Giyimkent")
+
+    def test_single_word_is_unchanged(self):
+        assert token_key("Kadıköy") == normalize("Kadıköy")
+
+    def test_distinct_stations_still_differ(self):
+        assert token_key("Bakırköy Sahil") != token_key("Bakırköy")

@@ -1,0 +1,19 @@
+line,checked,agree,disagree,score,reliable,note
+F1,2,2,0,1.0,evet,
+F4,0,0,0,,hayır,GTFS'te hat yok
+M1A,18,18,0,1.0,evet,
+M1B,13,13,0,1.0,evet,
+M2,15,15,0,1.0,evet,
+M3,9,9,0,1.0,evet,
+M4,19,19,0,1.0,evet,
+M5,16,15,1,0.938,evet,
+M6,4,3,1,0.75,evet,
+M7,16,13,3,0.812,evet,
+M8,13,13,0,1.0,evet,
+M9,5,5,0,1.0,evet,
+T1,31,31,0,1.0,evet,
+T3,10,0,10,0.0,hayır,adlar koordinatlarla uyuşmuyor
+T4,22,22,0,1.0,evet,
+T5,0,0,0,,hayır,GTFS'te hat yok
+TF1,2,2,0,1.0,evet,
+TF2,2,2,0,1.0,evet,

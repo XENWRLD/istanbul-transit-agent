@@ -1,55 +1,249 @@
-line,api_station,api_station_raw,api_norm,gtfs_candidate,gtfs_norm,score,on_other_routes,reason,decision
-F4,Boğaziçi Ü./Hisarüstü,RUMELI HISARUSTU,bogazici universitesi hisarustu,,,,,hat GTFS'te yok,HAT YOK
-F4,Aşiyan,ASIYAN,asiyan,,,,,hat GTFS'te yok,HAT YOK
-M2,Seyrantepe,SEYRANTEPE,seyrantepe,,,0.600,"F3, M2A","GTFS'te var ama başka hatta: F3, M2A",ŞUBE HATTI
-M3,Bakırköy Sahil,BAKIRKOY SAHIL,bakirkoy sahil,,,0.483,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Özgürlük Meydanı,OZGURLUK MEYDANI,ozgurluk meydani,,,0.323,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,İncirli,INCIRLI,incirli,,,0.364,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Haznedar,HAZNEDAR,haznedar,,,0.348,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,İlkyuva,ILKYUVA,ilkyuva,,,0.286,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Yıldıztepe,YILDIZTEPE,yildiztepe,,,0.471,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Molla Gürani,MOLLA GURANI,molla gurani,,,0.444,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Onurkent,ONURKENT,onurkent,,,0.357,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Şehir Hastanesi,SEHIR HASTANESI,sehir hastanesi,,,0.457,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Toplu Konutlar,TOPLU KONUTLAR,toplu konutlar,,,0.621,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M3,Kayaşehir Merkez,KAYASEHIR MERKEZ,kayasehir merkezi,,,0.649,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M4,Fevzi Çakmak-Hastane,FEVZI CAKMAK,fevzi cakmak hastanesi,,,0.474,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M4,Yayalar-Şeyhli,YAYALAR,yayalar seyhli,,,0.400,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M4,Kurtköy,KURTKOY,kurtkoy,,,0.571,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M4,Sabiha Gökçen Havalimanı,SABIHA GOKCEN,sabiha gokcen havalimani,,,0.356,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,İmam Hatip Lisesi,IMAM HATIP LISESI,imam hatip lise,İmam Hatip,imam hatip,0.800,,"GTFS 'İmam Hatip' — aynı istasyon mu, yeniden mi adlandırıldı?",SORU
-M5,Meclis,MECLIS,meclis,,,0.375,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,Sarıgazi,SARIGAZI,sarigazi,,,0.500,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,Sancaktepe Şehir Hastanesi,SANCAKTEPE SEHIR HASTANESI,sancaktepe sehir hastanesi,,,0.389,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,Sancaktepe,SANCAKTEPE,sancaktepe,,,0.400,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,Samandıra Merkez,SAMANDIRA,samandira merkezi,,,0.444,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,Veysel Karani,VEYSELKARANI,veysel karani,,,0.435,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,Hasanpaşa,HASANPASA,hasanpasa,,,0.316,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M5,Sultanbeyli,SULTANBEYLI,sultanbeyli,,,0.476,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M6,Boğaziçi Ü.-Hisarüstü,HISARUSTU-BOGAZICI UNIVERSITESI,bogazici universitesi hisarustu,Boğaziçi Üniversitesi,bogazici universitesi,0.808,,GTFS 'Boğaziçi Üniversitesi' — aynı istasyon mu?,SORU
-M7,Giyimkent-Tekstilkent,TEKSTILKENT,giyimkent tekstilkent,,,0.524,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M7,Oruç Reis,ORUCREIS,oruc reis,Oruç Reis - Yüzyıl,oruc reis yuzyil,0.720,,"GTFS 'Oruç Reis - Yüzyıl' — aynı istasyon mu, birleşik ad mı?",SORU
-M9,Ataköy,ATAKOY,atakoy,,,0.545,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M9,Yenibosna,YENIBOSNA,yenibosna,,,0.417,M1A,GTFS'te var ama başka hatta: M1A,ŞUBE HATTI
-M9,Çobançeşme,COBANCESME,cobancesme,,,0.333,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M9,29 Ekim Cumhuriyet,29 EKIM-CUMHURIYET,29 ekim cumhuriyet,,,0.385,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M9,Doğu Sanayi,DOGU SANAYI,dogu sanayi,,,0.538,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M9,Mimar Sinan,MIMAR SINAN,mimar sinan,,,0.385,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M9,15 Temmuz,15 TEMMUZ,15 temmuz,,,0.167,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M9,Halkalı Caddesi,HALKALI CAD.,halkali caddesi,,,0.400,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-M9,Atatürk Mahallesi,ATATURK MAH.,ataturk mahallesi,,,0.632,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
-T3,Rızapaşa,RIZAPASA,rizapasa,,,0.421,,GTFS'te hiç yok; T3 ring hattında yeni istasyon mu?,SORU
-T5,Eminönü,EMINONU,eminonu,,,,T1,hat GTFS'te yok; istasyon T1 hattında var,ŞUBE HATTI
-T5,Küçükpazar,KUCUKPAZAR,kucukpazar,,,,,hat GTFS'te yok,HAT YOK
-T5,Cibali,CIBALI,cibali,,,,,hat GTFS'te yok,HAT YOK
-T5,Fener,FENER,fener,,,,,hat GTFS'te yok,HAT YOK
-T5,Balat,BALAT,balat,,,,,hat GTFS'te yok,HAT YOK
-T5,Ayvansaray,AYVANSARAY,ayvansaray,,,,,hat GTFS'te yok,HAT YOK
-T5,Feshane,FESHANE,feshane,,,,,hat GTFS'te yok,HAT YOK
-T5,Eyüpsultan Teleferik,EYUPSULTAN TELEFERIK,eyupsultan,,,,,hat GTFS'te yok,HAT YOK
-T5,Eyüpsultan Devlet Hastanesi,EYUPSULTAN DEVLET HASTANESI,eyupsultan devlet hastanesi,,,,,hat GTFS'te yok,HAT YOK
-T5,Silahtarağa Mahallesi,SILAHTARAGA MAHALLESI,silahtaraga mahallesi,,,,,hat GTFS'te yok,HAT YOK
-T5,Üniversite,UNIVERSITE,universitesi,,,,,hat GTFS'te yok,HAT YOK
-T5,Alibeyköy Merkez,ALIBEYKOY MERKEZ,alibeykoy merkezi,,,,,hat GTFS'te yok,HAT YOK
-T5,Alibeyköy Metro,ALIBEYKOY METRO ISTASYONU,alibeykoy,,,,M7,hat GTFS'te yok; istasyon M7 hattında var,ŞUBE HATTI
-T5,Alibeyköy Cep Otogarı,ALIBEYKOY CEP OTOGARI,alibeykoy cep otogari,,,,,hat GTFS'te yok,HAT YOK
+line,api_station,gtfs_station,gtfs_stop_id,name_score,distance_m,verdict,decision
+F1,Kabataş,Kabataş,18954,1.000,30.7,doğrulandı,AD EŞLEŞMESİ
+F1,Taksim,Taksim,18955,1.000,1.8,doğrulandı,AD EŞLEŞMESİ
+F4,Aşiyan,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+F4,Boğaziçi Ü./Hisarüstü,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+M1A,Aksaray,Aksaray,18957,1.000,22.0,doğrulandı,AD EŞLEŞMESİ
+M1A,Ataköy-Şirinevler,Ataköy - Şirinevler,18974,1.000,6.7,doğrulandı,AD EŞLEŞMESİ
+M1A,Atatürk Havalimanı,Atatürk Havalimanı,18962,1.000,22.6,doğrulandı,AD EŞLEŞMESİ
+M1A,Bahçelievler,Bahçelievler,18965,1.000,31.9,doğrulandı,AD EŞLEŞMESİ
+M1A,Bakırköy-İncirli,Bakırköy - İncirli,18961,1.000,2.4,doğrulandı,AD EŞLEŞMESİ
+M1A,Bayrampaşa-Maltepe,Bayrampaşa - Maltepe,18963,1.000,1.4,doğrulandı,AD EŞLEŞMESİ
+M1A,DTM-İstanbul Fuar Merkezi,DTM - İstanbul Fuar Merkezi,18969,1.000,1.7,doğrulandı,AD EŞLEŞMESİ
+M1A,Davutpaşa-YTÜ,Davutpaşa - YTÜ,18958,1.000,22.5,doğrulandı,AD EŞLEŞMESİ
+M1A,Emniyet-Fatih,Emniyet - Fatih,18964,1.000,68.8,doğrulandı,AD EŞLEŞMESİ
+M1A,Kocatepe,Kocatepe,18968,1.000,6.3,doğrulandı,AD EŞLEŞMESİ
+M1A,Merter,Merter,18960,1.000,3.0,doğrulandı,AD EŞLEŞMESİ
+M1A,Otogar,Otogar,18966,1.000,2.9,doğrulandı,AD EŞLEŞMESİ
+M1A,Sağmalcılar,Sağmalcılar,18967,1.000,1.8,doğrulandı,AD EŞLEŞMESİ
+M1A,Terazidere,Terazidere,18972,1.000,1.4,doğrulandı,AD EŞLEŞMESİ
+M1A,Topkapı-Ulubatlı,Topkapı - Ulubatlı,18971,1.000,40.0,doğrulandı,AD EŞLEŞMESİ
+M1A,Yenibosna,Yenibosna,18973,1.000,5.5,doğrulandı,AD EŞLEŞMESİ
+M1A,Yenikapı,Yenikapı,18988,1.000,197.1,doğrulandı,AD EŞLEŞMESİ
+M1A,Zeytinburnu,Zeytinburnu,18959,1.000,8.4,doğrulandı,AD EŞLEŞMESİ
+M1B,Aksaray,Aksaray,18957,1.000,22.0,doğrulandı,AD EŞLEŞMESİ
+M1B,Bayrampaşa-Maltepe,Bayrampaşa - Maltepe,18963,1.000,1.4,doğrulandı,AD EŞLEŞMESİ
+M1B,Bağcılar Meydan,Bağcılar Meydan,19000,1.000,5.7,doğrulandı,AD EŞLEŞMESİ
+M1B,Emniyet-Fatih,Emniyet - Fatih,18964,1.000,68.8,doğrulandı,AD EŞLEŞMESİ
+M1B,Esenler,Esenler,18970,1.000,11.3,doğrulandı,AD EŞLEŞMESİ
+M1B,Kirazlı-Bağcılar,Kirazlı Bağcılar,94903,1.000,33.1,doğrulandı,AD EŞLEŞMESİ
+M1B,Kocatepe,Kocatepe,18968,1.000,6.3,doğrulandı,AD EŞLEŞMESİ
+M1B,Menderes,Menderes,19013,1.000,2.6,doğrulandı,AD EŞLEŞMESİ
+M1B,Otogar,Otogar,18966,1.000,2.9,doğrulandı,AD EŞLEŞMESİ
+M1B,Sağmalcılar,Sağmalcılar,18967,1.000,1.8,doğrulandı,AD EŞLEŞMESİ
+M1B,Topkapı-Ulubatlı,Topkapı - Ulubatlı,18971,1.000,40.0,doğrulandı,AD EŞLEŞMESİ
+M1B,Yenikapı,Yenikapı,18988,1.000,197.1,doğrulandı,AD EŞLEŞMESİ
+M1B,Üçyüzlü,Üçyüzlü,19020,1.000,1.3,doğrulandı,AD EŞLEŞMESİ
+M2,4.Levent,4. Levent,19017,1.000,34.9,doğrulandı,AD EŞLEŞMESİ
+M2,Atatürk Oto Sanayi,Atatürk Oto Sanayi,94905,1.000,31.6,doğrulandı,AD EŞLEŞMESİ
+M2,Darüşşafaka,Darüşşafaka,94906,1.000,11.0,doğrulandı,AD EŞLEŞMESİ
+M2,Gayrettepe,Gayrettepe,19018,1.000,11.4,doğrulandı,AD EŞLEŞMESİ
+M2,Hacıosman,Hacıosman,19025,1.000,10.1,doğrulandı,AD EŞLEŞMESİ
+M2,Haliç,Haliç,18989,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M2,Levent,Levent,18993,1.000,57.4,doğrulandı,AD EŞLEŞMESİ
+M2,Osmanbey,Osmanbey,19002,1.000,68.2,doğrulandı,AD EŞLEŞMESİ
+M2,Sanayi Mahallesi,Sanayi Mahallesi,18983,1.000,21.8,doğrulandı,AD EŞLEŞMESİ
+M2,Seyrantepe,Sanayi Mahallesi,,0.600,961.5,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M2,Taksim,Taksim,18996,1.000,37.9,doğrulandı,AD EŞLEŞMESİ
+M2,Vezneciler-İstanbul Ü.,Vezneciler - İstanbul Ü.,94904,1.000,114.2,doğrulandı,AD EŞLEŞMESİ
+M2,Yenikapı,Yenikapı,19233,1.000,7.6,doğrulandı,AD EŞLEŞMESİ
+M2,İTÜ-Ayazağa,İTÜ - Ayazağa,94909,1.000,1.2,doğrulandı,AD EŞLEŞMESİ
+M2,Şişhane,Şişhane,19005,1.000,1.4,doğrulandı,AD EŞLEŞMESİ
+M2,Şişli-Mecidiyeköy,Şişli - Mecidiyeköy,94908,1.000,66.4,doğrulandı,AD EŞLEŞMESİ
+M3,Bakırköy Sahil,Kirazlı Bağcılar,,0.483,6866.6,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Başak Konutları,Başak Konutları,18998,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M3,Başakşehir-Metrokent,Başakşehir - Metrokent,18986,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M3,Haznedar,Kirazlı Bağcılar,,0.348,3731.8,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Kayaşehir Merkez,Başakşehir - Metrokent,,0.649,3231.5,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Kirazlı-Bağcılar,Kirazlı Bağcılar,94903,1.000,33.1,doğrulandı,AD EŞLEŞMESİ
+M3,Mahmutbey,Mahmutbey,18981,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M3,Molla Gürani,Kirazlı Bağcılar,,0.444,906.7,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Onurkent,Başakşehir - Metrokent,,0.357,1141.7,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Siteler,Siteler,18985,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M3,Toplu Konutlar,Başak Konutları,,0.621,2250.8,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Turgut Özal,Turgut Özal,19009,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M3,Yenimahalle,Yenimahalle,94910,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M3,Yıldıztepe,Kirazlı Bağcılar,,0.471,1849.9,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Özgürlük Meydanı,Kirazlı Bağcılar,,0.286,6214.8,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,İSTOÇ,İstoç,19011,1.000,0.4,doğrulandı,AD EŞLEŞMESİ
+M3,İkitelli Sanayi,İkitelli Sanayi,18999,1.000,9.9,doğrulandı,AD EŞLEŞMESİ
+M3,İlkyuva,Kirazlı Bağcılar,,0.286,3033.3,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,İncirli,Kirazlı Bağcılar,,0.364,4758.1,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M3,Şehir Hastanesi,Başak Konutları,,0.457,1296.5,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M4,Acıbadem,Acıbadem,19024,1.000,2.5,doğrulandı,AD EŞLEŞMESİ
+M4,Ayrılık Çeşmesi,Ayrılık Çeşmesi,94911,1.000,17.3,doğrulandı,AD EŞLEŞMESİ
+M4,Bostancı,Bostancı,18975,1.000,57.9,doğrulandı,AD EŞLEŞMESİ
+M4,Esenkent,Esenkent,19016,1.000,31.1,doğrulandı,AD EŞLEŞMESİ
+M4,Fevzi Çakmak-Hastane,Tavşantepe,,0.474,1373.6,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M4,Göztepe,Göztepe,18976,1.000,26.1,doğrulandı,AD EŞLEŞMESİ
+M4,Gülsuyu,Gülsuyu,19021,1.000,160.7,doğrulandı,AD EŞLEŞMESİ
+M4,Hastane-Adliye,Hastane - Adliye,19001,1.000,26.8,doğrulandı,AD EŞLEŞMESİ
+M4,Huzurevi,Huzurevi,19022,1.000,7.9,doğrulandı,AD EŞLEŞMESİ
+M4,Kadıköy,Kadıköy,19007,1.000,20.5,doğrulandı,AD EŞLEŞMESİ
+M4,Kartal,Kartal,19012,1.000,38.4,doğrulandı,AD EŞLEŞMESİ
+M4,Kozyatağı,Kozyatağı,18977,1.000,56.4,doğrulandı,AD EŞLEŞMESİ
+M4,Kurtköy,Tavşantepe,,0.571,5149.3,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M4,Küçükyalı,Küçükyalı,18991,1.000,151.5,doğrulandı,AD EŞLEŞMESİ
+M4,Maltepe,Maltepe,19015,1.000,245.2,doğrulandı,AD EŞLEŞMESİ
+M4,Pendik,Pendik,53121,1.000,71.3,doğrulandı,AD EŞLEŞMESİ
+M4,Sabiha Gökçen Havalimanı,Tavşantepe,,0.356,5837.4,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M4,Soğanlık,Soğanlık,19019,1.000,67.4,doğrulandı,AD EŞLEŞMESİ
+M4,Tavşantepe,Tavşantepe,53122,1.000,10.1,doğrulandı,AD EŞLEŞMESİ
+M4,Yakacık-Adnan Kahveci,Yakacık - Adnan Kahveci,94913,1.000,121.0,doğrulandı,AD EŞLEŞMESİ
+M4,Yayalar-Şeyhli,Tavşantepe,,0.400,3343.9,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M4,Yenisahra,Yenisahra,18997,1.000,43.6,doğrulandı,AD EŞLEŞMESİ
+M4,Ünalan,Ünalan,18995,1.000,126.6,doğrulandı,AD EŞLEŞMESİ
+M5,Altunizade,Altunizade,87259,1.000,271.2,doğrulandı,AD EŞLEŞMESİ
+M5,Altınşehir,Altınşehir,94993,1.000,165.3,doğrulandı,AD EŞLEŞMESİ
+M5,Bağlarbaşı,Bağlarbaşı,87258,1.000,98.2,doğrulandı,AD EŞLEŞMESİ
+M5,Bulgurlu,Bulgurlu,87261,1.000,10.3,doğrulandı,AD EŞLEŞMESİ
+M5,Dudullu,Dudullu,94995,1.000,22.1,doğrulandı,AD EŞLEŞMESİ
+M5,Fıstıkağacı,Fıstık Ağacı,87257,1.000,26.3,doğrulandı,AD EŞLEŞMESİ
+M5,Hasanpaşa,,,0.316,,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Ihlamurkuyu,Ihlamurkuyu,94992,1.000,83.3,doğrulandı,AD EŞLEŞMESİ
+M5,Kısıklı,Kısıklı,87260,1.000,43.0,doğrulandı,AD EŞLEŞMESİ
+M5,Meclis,Çekmeköy,,0.375,934.6,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Necip Fazıl,Necip Fazıl,94997,1.000,26.4,doğrulandı,AD EŞLEŞMESİ
+M5,Samandıra Merkez,Çekmeköy,,0.444,4884.9,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Sancaktepe,Çekmeköy,,0.400,4204.6,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Sancaktepe Şehir Hastanesi,Çekmeköy,,0.389,2653.9,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Sarıgazi,Çekmeköy,,0.500,1941.6,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Sultanbeyli,,,0.476,,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Veysel Karani,,,0.435,,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M5,Yamanevler,Yamanevler,87264,1.000,26.3,doğrulandı,AD EŞLEŞMESİ
+M5,Çakmak,Çakmak,94996,1.000,10.7,doğrulandı,AD EŞLEŞMESİ
+M5,Çarşı,Çarşı,87263,1.000,12.2,doğrulandı,AD EŞLEŞMESİ
+M5,Çekmeköy,Çekmeköy,94998,1.000,18.9,doğrulandı,AD EŞLEŞMESİ
+M5,Ümraniye,Ümraniye,87262,1.000,18.0,doğrulandı,AD EŞLEŞMESİ
+M5,Üsküdar,Üsküdar,87256,1.000,191.8,doğrulandı,AD EŞLEŞMESİ
+M5,İmam Hatip Lisesi,İmam Hatip,94994,0.800,77.8,EŞLEŞTİ (ad adayı + mesafe onayladı),ELLE EŞLEME
+M6,Boğaziçi Ü.-Hisarüstü,Boğaziçi Üniversitesi,40120,0.808,9.2,EŞLEŞTİ (ad adayı + mesafe onayladı),ELLE EŞLEME
+M6,Etiler,Etiler,40121,1.000,7.2,doğrulandı,AD EŞLEŞMESİ
+M6,Levent,Levent,40123,1.000,52.8,doğrulandı,AD EŞLEŞMESİ
+M6,Nispetiye,Nispetiye,40122,1.000,164.2,doğrulandı,AD EŞLEŞMESİ
+M7,Alibeyköy,Alibeyköy,272172,1.000,23.7,doğrulandı,AD EŞLEŞMESİ
+M7,Fulya,Fulya,272199,1.000,15.5,doğrulandı,AD EŞLEŞMESİ
+M7,Giyimkent-Tekstilkent,Tekstilkent - Giyimkent,272179,1.000,22.8,doğrulandı,AD EŞLEŞMESİ
+M7,Göztepe Mahallesi,Göztepe Mah.,272181,1.000,161.6,doğrulandı,AD EŞLEŞMESİ
+M7,Karadeniz Mahallesi,Karadeniz Mah.,272178,1.000,54.3,doğrulandı,AD EŞLEŞMESİ
+M7,Kazım Karabekir,Kazım Karabekir,272176,1.000,15.9,doğrulandı,AD EŞLEŞMESİ
+M7,Kağıthane,Kağıthane,272170,1.000,99.0,doğrulandı,AD EŞLEŞMESİ
+M7,Mahmutbey,Mahmutbey,272167,1.000,99.4,doğrulandı,AD EŞLEŞMESİ
+M7,Mecidiyeköy,Mecidiyeköy,272168,1.000,122.0,doğrulandı,AD EŞLEŞMESİ
+M7,Nurtepe,Nurtepe,272171,1.000,51.6,doğrulandı,AD EŞLEŞMESİ
+M7,Oruç Reis,Oruç Reis - Yüzyıl,272180,0.720,59.5,EŞLEŞTİ (ad adayı + mesafe onayladı),ELLE EŞLEME
+M7,Veysel Karani-Akşemsettin,Veysel Karani - Akşemsettin,272174,1.000,122.2,doğrulandı,AD EŞLEŞMESİ
+M7,Yenimahalle,Yenimahalle,272177,1.000,38.5,doğrulandı,AD EŞLEŞMESİ
+M7,Yeşilpınar,Yeşilpınar,272175,1.000,1444.4,ŞÜPHELİ,ŞÜPHELİ — KULLANMA
+M7,Yıldız,Yıldız,272200,1.000,150.1,doğrulandı,AD EŞLEŞMESİ
+M7,Çağlayan,Çağlayan,272169,1.000,87.1,doğrulandı,AD EŞLEŞMESİ
+M7,Çırçır Mahallesi,Çırçır Mah.,272173,1.000,124.2,doğrulandı,AD EŞLEŞMESİ
+M8,Ayşekadın,Ayşe Kadın,272188,1.000,12.9,doğrulandı,AD EŞLEŞMESİ
+M8,Bostancı,Bostancı,272186,1.000,54.9,doğrulandı,AD EŞLEŞMESİ
+M8,Dudullu,Dudullu,272196,1.000,75.9,doğrulandı,AD EŞLEŞMESİ
+M8,Emin Ali Paşa,Emin Ali Paşa,272187,1.000,11.9,doğrulandı,AD EŞLEŞMESİ
+M8,Huzur,Huzur,272198,1.000,17.2,doğrulandı,AD EŞLEŞMESİ
+M8,Kayışdağı,Kayışdağı,272192,1.000,99.6,doğrulandı,AD EŞLEŞMESİ
+M8,Kozyatağı,Kozyatağı,272189,1.000,266.9,doğrulandı,AD EŞLEŞMESİ
+M8,Küçükbakkalköy,Küçükbakkalköy,272190,1.000,32.2,doğrulandı,AD EŞLEŞMESİ
+M8,MODOKO-KEYAP,Modoko - Keyap,272195,1.000,55.1,doğrulandı,AD EŞLEŞMESİ
+M8,Mevlana,Mevlana,272193,1.000,28.9,doğrulandı,AD EŞLEŞMESİ
+M8,Parseller,Parseller,272197,1.000,70.7,doğrulandı,AD EŞLEŞMESİ
+M8,İMES,İmes,272194,1.000,25.3,doğrulandı,AD EŞLEŞMESİ
+M8,İçerenköy,İçerenköy,272191,1.000,25.4,doğrulandı,AD EŞLEŞMESİ
+M9,15 Temmuz,Bahariye,,0.167,2696.0,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,29 Ekim Cumhuriyet,Bahariye,,0.385,6022.2,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,Ataköy,Bahariye,,0.545,9944.6,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,Atatürk Mahallesi,Bahariye,,0.632,615.7,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,Bahariye,Bahariye,272182,1.000,35.5,doğrulandı,AD EŞLEŞMESİ
+M9,Doğu Sanayi,Bahariye,,0.538,5082.9,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,Halkalı Caddesi,Bahariye,,0.400,1545.5,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,MASKO,Masko,272183,1.000,33.8,doğrulandı,AD EŞLEŞMESİ
+M9,Mimar Sinan,Bahariye,,0.385,3974.1,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,Olimpiyat,Olimpiyat,18990,1.000,104.6,doğrulandı,AD EŞLEŞMESİ
+M9,Yenibosna,Bahariye,,0.417,8319.4,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,Ziya Gökalp Mahallesi,Ziya Gökalp Mah.,19003,1.000,24.4,doğrulandı,AD EŞLEŞMESİ
+M9,Çobançeşme,Bahariye,,0.333,6809.5,GERÇEKTEN EKSİK,GERÇEKTEN EKSİK
+M9,İkitelli Sanayi,İkitelli Sanayi,272184,1.000,144.7,doğrulandı,AD EŞLEŞMESİ
+T1,Aksaray,Aksaray,19073,1.000,7.3,doğrulandı,AD EŞLEŞMESİ
+T1,Akıncılar,Akıncılar,19072,1.000,0.9,doğrulandı,AD EŞLEŞMESİ
+T1,Bağcılar,Bağcılar,19054,1.000,2.7,doğrulandı,AD EŞLEŞMESİ
+T1,Beyazıt-Kapalıçarşı,Beyazıt - Kapalıçarşı,94901,1.000,5.5,doğrulandı,AD EŞLEŞMESİ
+T1,Cevizlibağ-AÖY,Cevizlibağ - AÖY,19065,1.000,3.2,doğrulandı,AD EŞLEŞMESİ
+T1,Eminönü,Eminönü,19092,1.000,3.0,doğrulandı,AD EŞLEŞMESİ
+T1,Fındıklı-Mimar Sinan Ü.,Fındıklı - Mimar Sinan Ü.,94902,1.000,0.7,doğrulandı,AD EŞLEŞMESİ
+T1,Fındıkzade,Fındıkzade,19089,1.000,137.5,doğrulandı,AD EŞLEŞMESİ
+T1,Gülhane,Gülhane,19062,1.000,17.3,doğrulandı,AD EŞLEŞMESİ
+T1,Güneştepe,Güneştepe,19094,1.000,2.1,doğrulandı,AD EŞLEŞMESİ
+T1,Güngören,Güngören,19053,1.000,7.9,doğrulandı,AD EŞLEŞMESİ
+T1,Haseki,Haseki,19084,1.000,110.0,doğrulandı,AD EŞLEŞMESİ
+T1,Kabataş,Kabataş,19069,1.000,27.5,doğrulandı,AD EŞLEŞMESİ
+T1,Karaköy,Karaköy,19093,1.000,2.1,doğrulandı,AD EŞLEŞMESİ
+T1,Laleli-İstanbul Ü.,Laleli - İstanbul Ü.,94900,1.000,1.0,doğrulandı,AD EŞLEŞMESİ
+T1,Mehmet Akif,Mehmet Akif,19066,1.000,4.6,doğrulandı,AD EŞLEŞMESİ
+T1,Merkezefendi,Merkezefendi,94899,1.000,3.0,doğrulandı,AD EŞLEŞMESİ
+T1,Merter Tekstil Merkezi,Merter Teks. Mrk.,94897,1.000,8.1,doğrulandı,AD EŞLEŞMESİ
+T1,Mithatpaşa,Mithatpaşa,19088,1.000,135.1,doğrulandı,AD EŞLEŞMESİ
+T1,Pazartekke,Pazartekke,19078,1.000,4.2,doğrulandı,AD EŞLEŞMESİ
+T1,Seyitnizam-Akşemsettin,Seyitnizam - Akşemsettin,94898,1.000,1.7,doğrulandı,AD EŞLEŞMESİ
+T1,Sirkeci,Sirkeci,19077,1.000,0.9,doğrulandı,AD EŞLEŞMESİ
+T1,Soğanlı,Soğanlı,19064,1.000,64.4,doğrulandı,AD EŞLEŞMESİ
+T1,Sultanahmet,Sultanahmet,19098,1.000,4.5,doğrulandı,AD EŞLEŞMESİ
+T1,Tophane,Tophane,19079,1.000,7.2,doğrulandı,AD EŞLEŞMESİ
+T1,Topkapı,Topkapı,19091,1.000,2.5,doğrulandı,AD EŞLEŞMESİ
+T1,Yavuzselim,Yavuz Selim,19086,1.000,37.5,doğrulandı,AD EŞLEŞMESİ
+T1,Yusufpaşa,Yusufpaşa,19058,1.000,11.6,doğrulandı,AD EŞLEŞMESİ
+T1,Zeytinburnu,Zeytinburnu,19080,1.000,13.0,doğrulandı,AD EŞLEŞMESİ
+T1,Çapa-Şehremini,Çapa - Şehremini,19052,1.000,40.3,doğrulandı,AD EŞLEŞMESİ
+T1,Çemberlitaş,Çemberlitaş,19074,1.000,7.7,doğrulandı,AD EŞLEŞMESİ
+T3,Altıyol,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Bahariye,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Damga Sokak,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Kadıköy İDO,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Kilise,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Moda,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Moda İlkokulu,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Mühürdar,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Rızapaşa,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,Çarşı,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T3,İskele Camii,,,0.000,,HAT GÜVENİLMEZ (adlar karışık),HAT GÜVENİLMEZ
+T4,50.Yıl-Baştabya,50. Yıl - Baştabya,19087,1.000,34.7,doğrulandı,AD EŞLEŞMESİ
+T4,Ali Fuat Başgil,Ali Fuat Başgil,19083,1.000,9.1,doğrulandı,AD EŞLEŞMESİ
+T4,Bosna Çukurçeşme,Bosna - Çukurçeşme,19047,1.000,6.6,doğrulandı,AD EŞLEŞMESİ
+T4,Cebeci,Cebeci,19082,1.000,1.0,doğrulandı,AD EŞLEŞMESİ
+T4,Cumhuriyet Mahallesi,Cumhuriyet Mahallesi,94896,1.000,19.6,doğrulandı,AD EŞLEŞMESİ
+T4,Demirkapı,Demirkapı,19056,1.000,6.2,doğrulandı,AD EŞLEŞMESİ
+T4,Edirnekapı,Edirnekapı,19076,1.000,5.9,doğrulandı,AD EŞLEŞMESİ
+T4,Fetihkapı,Fetihkapı,19071,1.000,2.9,doğrulandı,AD EŞLEŞMESİ
+T4,Hacı Şükrü,Hacı Şükrü,19049,1.000,5.5,doğrulandı,AD EŞLEŞMESİ
+T4,Karadeniz,Karadeniz,19046,1.000,10.4,doğrulandı,AD EŞLEŞMESİ
+T4,Kiptaş-Venezia,KİPTAŞ Venezia,94895,1.000,85.1,doğrulandı,AD EŞLEŞMESİ
+T4,Mescid-i Selam,Mescid-i Selam,19096,1.000,2.2,doğrulandı,AD EŞLEŞMESİ
+T4,Rami,Rami,19059,1.000,6.3,doğrulandı,AD EŞLEŞMESİ
+T4,Sağmalcılar,Sağmalcılar,19095,1.000,4.7,doğrulandı,AD EŞLEŞMESİ
+T4,Sultançiftliği,Sultançiftliği,19067,1.000,15.4,doğrulandı,AD EŞLEŞMESİ
+T4,Taşköprü,Taşköprü,19055,1.000,19.6,doğrulandı,AD EŞLEŞMESİ
+T4,Topkapı,Topkapı,19045,1.000,78.0,doğrulandı,AD EŞLEŞMESİ
+T4,Topçular,Topçular,19070,1.000,12.1,doğrulandı,AD EŞLEŞMESİ
+T4,Uluyol Bereç,Uluyol - Bereç,19075,1.000,1.3,doğrulandı,AD EŞLEŞMESİ
+T4,Vatan,Vatan,19063,1.000,18.4,doğrulandı,AD EŞLEŞMESİ
+T4,Yenimahalle,Yenimahalle,94894,1.000,0.7,doğrulandı,AD EŞLEŞMESİ
+T4,Şehitlik,Şehitlik,19050,1.000,1.1,doğrulandı,AD EŞLEŞMESİ
+T5,Alibeyköy Cep Otogarı,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Alibeyköy Merkez,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Alibeyköy Metro,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Ayvansaray,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Balat,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Cibali,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Eminönü,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Eyüpsultan Devlet Hastanesi,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Eyüpsultan Teleferik,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Fener,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Feshane,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Küçükpazar,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Silahtarağa Mahallesi,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+T5,Üniversite,,,0.000,,GERÇEKTEN EKSİK (hat GTFS'te yok),GERÇEKTEN EKSİK
+TF1,Maçka,Maçka,19041,1.000,27.1,doğrulandı,AD EŞLEŞMESİ
+TF1,Taşkışla,Taşkışla,19044,1.000,18.6,doğrulandı,AD EŞLEŞMESİ
+TF2,Eyüp,Eyüp,19042,1.000,87.2,doğrulandı,AD EŞLEŞMESİ
+TF2,Piyer Loti,Piyerloti,19043,1.000,111.1,doğrulandı,AD EŞLEŞMESİ

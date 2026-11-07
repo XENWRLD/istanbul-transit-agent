@@ -41,7 +41,7 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
-__all__ = ["collapsed", "normalize", "similarity", "variants"]
+__all__ = ["collapsed", "normalize", "similarity", "token_key", "variants"]
 
 # Turkish letters mapped before lowercasing (see rule 2).
 _TURKISH_FOLD = str.maketrans(
@@ -186,9 +186,21 @@ def collapsed(name: str | None, *, drop_square: bool = False) -> str:
     return normalize(name, drop_square=drop_square).replace(" ", "")
 
 
+def token_key(name: str | None) -> str:
+    """`normalize()` with tokens sorted, so word order stops mattering.
+
+    The sources also swap compound names around: the feed writes
+    `Tekstilkent - Giyimkent` where the API says `Giyimkent-Tekstilkent`.
+    Sorting the tokens makes those one key. Looser than the others -- two
+    stations that are anagrams of each other would collide -- so it is the
+    last key tried, and a hit on it is still worth a distance check.
+    """
+    return " ".join(sorted(normalize(name).split()))
+
+
 def variants(name: str | None) -> tuple[str, str, str]:
     """The three lookup keys for `name`, from strictest to loosest."""
-    return normalize(name), collapsed(name), collapsed(name, drop_square=True)
+    return normalize(name), collapsed(name), token_key(name)
 
 
 def similarity(left: str | None, right: str | None) -> float:

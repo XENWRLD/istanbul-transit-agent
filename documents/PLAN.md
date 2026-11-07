@@ -30,37 +30,43 @@ LangGraph agent  (LLM: Gemini Flash | yerel qwen3.5:4b)
 ### Veri tazeliği kuralı
 
 Her araç çıktısında `data_as_of` (verinin tarihi) ve `source` alanı bulunur. Eski kaynaklar açıkça işaretlenir:
-- İETT GTFS: güncel (Mart 2026)
-- "Public Transport GTFS" (minibüs, dolmuş, vapur, Marmaray, eski metro): 2018-2020 tarihli ve portal notuna göre güncellenmeyecek. Bu kaynaktan gelen saatler için `is_stale: true` döner ve agent cevabında bunu belirtir.
+- İETT GTFS: güncel (Nisan 2026)
+- "Public Transport GTFS" (minibüs, dolmuş, vapur, Marmaray, metro): 2018-2020 tarihli ve portal notuna göre güncellenmeyecek. Bu kaynaktan gelen saatler için `is_stale: true` döner ve agent cevabında bunu belirtir.
+- **Metro sefer saatleri ve istasyonlar arası süreler canlı API'de bozuk** (`GetTimeTable`, `GetStationBetweenTime`: 18 hat × tüm yönler = 43/43 deneme sunucu içi istisna). Metro saatleri GTFS'ten gelir ve `is_stale: true` taşır.
+- **GTFS `calendar.csv` penceresi dolmuş** (tüm `end_date` değerleri 2024-12-31 veya öncesi). Servis günleri yalnızca hafta günü desenine göre seçilir, tarih penceresi okunmaz; gerekçe `documents/decisions/0002-gtfs-servis-gunleri.md`. `calendar_dates.csv` olmadığı için resmî tatiller bilinmiyor, araç bunu belirtir.
+- **T3 hattı GTFS'ten çıkarıldı:** 10 durağının 10'unda da ad, o koordinattaki gerçek istasyonla uyuşmuyor (adlar konumlara ters sırada atanmış). Ad eşleştirmesi sessizce yanlış istasyonu döndüreceği için hat tamamen kullanılmaz; gerekçe `documents/decisions/0003-istasyon-eslestirme.md`.
 - İsbike servisleri portalda kapalı; erişilemezse araç bunu açıkça söyler, tahmin üretmez.
 
-### Araç tasarımı (hedef ~15 araç)
+### Araç tasarımı (14 araç)
 
-Uç noktalar alan bazlı araçların arkasında birleştirilir; agent ham API'leri görmez. Başlangıç önerisi (Faz 0'da gerçek yanıtlar görüldükten sonra revize edilir):
+Uç noktalar alan bazlı araçların arkasında birleştirilir; agent ham API'leri görmez. Aşağıdaki tablo **Faz 0'da 39 uç noktanın tamamı gerçekten çağrıldıktan sonra** revize edilmiş halidir; gerekçeler `documents/decisions/0001-veri-kaynaklari.md` içinde.
 
 | Araç | Sunucu | Kaynaklar |
 |---|---|---|
-| `geocode_place` | transit | Durak/istasyon/iskele adları (yerel), gerekirse Şehir Haritası API |
+| `geocode_place` | transit | Durak/istasyon/iskele adları (yerel GTFS + GeoJSON). Şehir Haritası API kapsamdan çıktı: 384 bir developer portal sayfası, JSON uç noktası değil. Geocoding yöntemi Faz 1'de ölçülecek. |
 | `find_nearby_stops` | transit | GTFS stops + raylı sistem istasyonları + iskeleler + dolmuş/minibüs durakları |
-| `get_lines_at_stop` | transit | GTFS routes/trips, İETT hat-durak servisi |
-| `get_line_route` | transit | GTFS + İETT hat-durak-güzergâh, Metro hat/istasyon listeleri |
-| `get_next_departures` | transit | GTFS stop_times, İETT planlanan sefer saati, Metro sefer saatleri |
-| `get_rail_travel_time` | transit | Metro istasyonlar arası süreler |
-| `get_vehicle_positions` | transit | İETT konum metotları (**önce varlığı doğrulanacak**) |
-| `get_service_alerts` | transit | İETT duyuruları, Metro duyuruları ve servis durumu |
-| `get_station_accessibility` | transit | Metro arızalı ekipman, asansör/yürüyen merdiven verileri |
-| `find_parking` | city | İSPARK liste + detay, otopark kapasite verileri |
-| `get_traffic_status` | city | Trafik indeksi, UYM trafik duyuruları |
-| `get_road_works` | city | Yol bakım çalışmaları |
-| `get_air_quality` | city | Hava kalitesi istasyonları + ölçümleri |
-| `find_mobility_options` | city | Bisiklet yolları/park alanları, İsbike, şarj istasyonları |
+| `get_lines_at_stop` | transit | GTFS routes/trips, İETT `GetDurak_json` |
+| `get_line_route` | transit | GTFS, İETT `DurakDetay_GYY` + `HatServisi_GYY`, Metro `GetStations` / `GetStationById` |
+| `get_next_departures` | transit | **Otobüs:** İETT `GetPlanlananSeferSaati_json`. **Metro:** GTFS — kaynak hat bazında seçilir (`stop_times` 12 hat, `frequencies` 7 hat; `datasets/metro_schedule_source.csv`), `is_stale: true`. Elle hazırlanan `datasets/metro_service_hours.yaml` varsa GTFS'in önüne geçer. Metro `GetTimeTable` (552) sunucu taraflı bozuk, kullanılmıyor. |
+| `get_rail_travel_time` | transit | GTFS `stop_times` ardışık istasyon süreleri + aktarma süresi sabiti (313, 409, 530, 532 aktarma veri setleri). GTFS'te olmayan istasyonlar için koordinat/ortalama hız tahmini, `estimated: true`. Metro `GetStationBetweenTime` (513) sunucu taraflı bozuk, kullanılmıyor. |
+| `get_vehicle_positions` | transit | İETT `GetHatOtoKonum_json(HatKodu)` — **doğrulandı**, hat bazlı canlı konum. Tüm filo metodu (`GetFiloAracKonum_json`, 6940 araç / 1.1 MB) agent aracı olarak sunulmaz. |
+| `get_service_alerts` | transit | İETT `GetDuyurular_json` (291 duyuru), Metro `GetAnnouncements`, Metro `GetServiceStatuses` |
+| `get_station_accessibility` | transit | Metro `GetFaultyEquipments`, `GetFaultyEquipmentDetails` (POST `EquipmentGroupName`), `GetStations.DetailInfo` (asansör/yürüyen merdiven sayısı) |
+| `find_parking` | city | İSPARK `Park` (240 otopark) + `ParkDetay`, otopark kapasite verileri |
+| `get_traffic_status` | city | Trafik indeksi (548). UYM trafik duyuruları (18) henüz kaynak değil, ileride değerlendirilecek. |
+| `get_air_quality` | city | `GetAQIStations` + `GetAQIByStationId` |
+| `find_mobility_options` | city | Bisiklet yolları (1), bisiklet/mikromobilite park alanları (16), elektrikli araç şarj istasyonları (275, 276). İsbike çıkarıldı (servis kapalı). **Düşük öncelikli:** Faz 2'nin sonuna bırakılır. |
 | `search_knowledge` | knowledge | RAG |
+
+Faz 0'da kapsamdan çıkanlar:
+- **`get_road_works`** — tek kaynağı olan 501 (`teas/api/open_data`) kalkmış (nginx 404, 6 yol varyantı denendi). Yol çalışmaları bu projenin önceliği değil; envanterde "ertelendi".
+- **İsbike** (169, 170) — servis kapalı: 169 HTTP 200 veriyor ama `dataList` boş, 170 yalnızca o boş listeden alınabilecek bir `guid` istiyor.
 
 Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil; agent'a bağlam olarak gerekmedikçe kullanılmaz, istenirse Faz 6'da analiz aracı olarak eklenir.
 
 ## Aşamalar
 
-### Faz 0 — Keşif ve iskelet
+### Faz 0 — Keşif ve iskelet ✅ bitti (7 Kasım 2026)
 - Proje iskeleti: `uv`, klasör yapısı, ruff, pytest, `.env.example`, `llm.py` sağlayıcı fabrikası.
 - `datasets/data-inventory.md` içindeki A ve A2 grubundaki **her** uç noktaya gerçek istek at: çalışıyor mu, kimlik doğrulama gerekiyor mu, yanıt formatı ne? Örnek yanıtları `tests/fixtures/` altına kaydet.
 - İETT Web Servis Kullanım Dokümanı V1.5'teki metot listesini çıkar; özellikle araç konumu veren metot var mı doğrula.
@@ -68,18 +74,26 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 **Bitti tanımı:** Tüm A/A2 uç noktalarının durumu (çalışıyor / kapalı / değişmiş) belgelenmiş; `llm.py` ile Gemini ve Ollama'ya istek atılabiliyor; araç tablosu son haline getirilmiş.
 
+**Sonuç:** 39 veri seti çağrıldı — REST 25/32 çalışıyor, İETT SOAP 7/7 WSDL okundu (28 metot), 9/9 doğrulanan çağrı. Hiçbiri kimlik doğrulama istemedi. `llm.py` ile Gemini (`gemini-3.5-flash`) ve Ollama (`qwen3.5:4b`) doğrulandı. Araç sayısı 15 → 14.
+
 ### Faz 1 — Yerel veri deposu ve statik toplu taşıma araçları
-- `ingest` betikleri: GTFS (İETT + genel), B grubundaki GeoJSON'lar → DuckDB (`data/transit.duckdb`), spatial eklentisi ile.
+- `ingest` betikleri: GTFS (İETT + genel), B grubundaki GeoJSON'lar → DuckDB (`data/transit.duckdb`), spatial eklentisi ile. GTFS CSV'leri **cp1254** kodlamalı, UTF-8 değil.
 - Her tabloya kaynak ve `data_as_of` bilgisi.
 - Araçlar: `geocode_place`, `find_nearby_stops`, `get_lines_at_stop`, `get_line_route`, `get_next_departures` (yalnızca GTFS kısmı).
+- **Metro kapsam analizi** (bitti): 2020 GTFS beslemesinin bugünkü ağa oranı hat hat ölçüldü — 8 hat tam, 8 kısmen, 2 yok (F4, T5). 248 istasyonun 187'si eşleşti, 49'u gerçekten eksik, 11'i (T3) güvenilmez. İstasyon adı normalize kuralı `store/station_names.py`, eşleme `datasets/station_name_map.csv`, hat bütünlük skorları `datasets/metro_line_integrity.csv`.
+- **`get_rail_travel_time`**: GTFS `stop_times` üzerinden aynı hat; hat değişiminde aktarma veri setlerinden aktarma noktası + sabit aktarma süresi; GTFS'te olmayan istasyonlarda koordinat mesafesi / hat tipinin ortalama hızı ile tahmin (`estimated: true`). Tahmin yöntemi GTFS'te bulunan hatlarda doğrulanır: ortalama ve maksimum hata raporlanır.
+- **`get_next_departures` (metro)**: ilk/son sefer, saat dilimine göre aralık, hafta içi/sonu farkı. Kaynak hat bazında seçilir (`datasets/metro_schedule_source.csv`); `datasets/metro_service_hours.yaml` varsa GTFS'in önüne geçer, yoksa `is_stale: true` döner. Metro duyurularında ilgili hat için tarife değişikliği varsa cevaba eklenir.
+- Her iki araç için fixture tabanlı birim testler ve en az 10 elle doğrulanmış örnek sorgu.
 - Basit ReAct agent ile ilk uçtan uca deneme.
 
-**Bitti tanımı:** "Kadıköy iskelesine en yakın otobüs durakları ve oradan geçen hatlar" gibi 5 sorunun en az 4'ü doğru araçlarla doğru cevaplanıyor; ingest tek komutla baştan çalıştırılabiliyor.
+**Bitti tanımı:** "Kadıköy iskelesine en yakın otobüs durakları ve oradan geçen hatlar" gibi 5 sorunun en az 4'ü doğru araçlarla doğru cevaplanıyor; ingest tek komutla baştan çalıştırılabiliyor; `get_rail_travel_time` tahmin hatası ölçülmüş ve raporlanmış; her iki metro aracı eski veriyi `is_stale` ile işaretliyor.
 
 ### Faz 2 — Canlı veri araçları
-- İki API istemcisi: İETT için SOAP (`zeep`), Metro ve diğerleri için REST (`httpx`). Ortak katman: zaman aşımı, yeniden deneme, kaynak bazlı TTL önbellek.
-- `transit_server` canlı araçları: `get_next_departures` (canlı kısım), `get_rail_travel_time`, `get_service_alerts`, `get_station_accessibility`, doğrulandıysa `get_vehicle_positions`.
-- `city_server` araçlarının tamamı.
+- İki API istemcisi: İETT için SOAP, Metro ve diğerleri için REST (`httpx`). Ortak katman: zaman aşımı, yeniden deneme, kaynak bazlı TTL önbellek.
+  - **Risk:** `zeep` dört İETT WSDL'ini açamıyor (350, 349, 172, 171) — `AuthHeader` bildirilmiş ama eşleşen `<message>` tanımı yok. Faz 0'da elle kurulan SOAP zarfı çalıştı. İstemci yöntemi ölçümle seçilecek; karar `documents/decisions/` altına yazılacak.
+  - **Metro REST istemcisi sağlık kontrolünü HTTP durumuna değil `Success` alanına dayandırır:** API başarısızlıkta da HTTP 200 + `Success: false` dönüyor.
+- `transit_server` canlı araçları: `get_next_departures` (canlı/otobüs kısmı), `get_service_alerts`, `get_station_accessibility`, `get_vehicle_positions`.
+- `city_server` araçları: `find_parking`, `get_traffic_status`, `get_air_quality`. `find_mobility_options` düşük öncelikli, en sona.
 
 **Bitti tanımı:** Her canlı araç fixture tabanlı birim testlerinden geçiyor; API kapalıyken araç anlamlı bir hata mesajı dönüyor; agent 10 canlı veri sorusunun en az 8'inde doğru aracı seçiyor.
 
@@ -122,8 +136,10 @@ Kota notu: RAGAS ve agent değerlendirmesi ücretsiz kotayı tüketir. Tam değe
 ## Bilinçli olarak açık bırakılan kararlar
 
 Ölçülerek verilecek; karar verildiğinde `documents/decisions/` altına yaz:
-- Araç sayısı ve gruplaması (15 araç mı, daha az mı)
-- Geocoding yöntemi (yalnızca yerel durak adları mı, Şehir Haritası API mi)
+- Aktarma süresi sabiti (`get_rail_travel_time`, hat değişiminde eklenen süre)
+- `datasets/metro_service_hours.yaml` kapsamı: hangi hatlar elle güncellenecek, hangi alanlar
+- İETT SOAP istemcisi: `zeep` yamalanabilir mi, yoksa elle SOAP zarfı mı
+- Geocoding yöntemi (yalnızca yerel durak adları mı, başka bir kaynak mı)
 - Önbellek TTL değerleri (kaynak bazında)
 - Chunk boyutu ve örtüşme (300-600 token aralığında başla)
 - Sparse arama yöntemi (BGE-M3 sparse mi, BM25 mi)

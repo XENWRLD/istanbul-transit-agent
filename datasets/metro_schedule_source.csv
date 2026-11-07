@@ -1,0 +1,21 @@
+line,source,trips,daytime_trips,trips_with_frequencies,frequencies_covers_daytime,trips_on_dayless_service,note
+F1,stop_times,393,358,4,hayır,4,358 gündüz seferi açık saatlerle kayıtlı
+F2,frequencies,6,6,6,evet,0,gündüz aralığı yalnız frequencies.csv'de
+F3,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de
+M1A,stop_times,1077,992,4,hayır,4,992 gündüz seferi açık saatlerle kayıtlı
+M1B,stop_times,1010,941,4,hayır,4,941 gündüz seferi açık saatlerle kayıtlı
+M2,stop_times,1368,1261,4,hayır,4,1261 gündüz seferi açık saatlerle kayıtlı
+M2A,stop_times,387,339,4,hayır,4,339 gündüz seferi açık saatlerle kayıtlı
+M3,stop_times,770,696,4,hayır,4,696 gündüz seferi açık saatlerle kayıtlı
+M3A,stop_times,718,659,3,evet,0,659 gündüz seferi açık saatlerle kayıtlı
+M4,stop_times,1152,1030,4,hayır,4,1030 gündüz seferi açık saatlerle kayıtlı
+M5,stop_times,762,700,4,hayır,4,700 gündüz seferi açık saatlerle kayıtlı
+M6,stop_times,723,636,4,hayır,4,636 gündüz seferi açık saatlerle kayıtlı
+M7,frequencies,20,5,3,evet,0,gündüz aralığı yalnız frequencies.csv'de
+M8,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de
+M9,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de
+T1,stop_times,1134,1058,4,hayır,4,1058 gündüz seferi açık saatlerle kayıtlı
+T3,yok,219,219,0,hayır,0,hat güvenilmez: adlar koordinatlarla uyuşmuyor (karar 0003)
+T4,stop_times,1145,1066,4,hayır,4,1066 gündüz seferi açık saatlerle kayıtlı
+TF1,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de
+TF2,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de

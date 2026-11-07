@@ -41,6 +41,9 @@ uv run pytest                             # testler
 uv run ruff check . && uv run ruff format .
 uv run python scripts/smoke_llm.py        # her iki LLM sağlayıcısına gerçek istek
 uv run python scripts/download_gtfs.py    # GTFS beslemelerini data/gtfs altına indir
+uv run python scripts/download_rail_reference.py      # 312/313 raylı sistem tabloları
+uv run python -m istanbul_agent.store.ingest_rail     # raylı sistem tabloları → DuckDB
+uv run python scripts/show_travel_examples.py         # get_rail_travel_time örnekleri
 uv run python -m istanbul_agent.store.ingest          # GTFS + GeoJSON → DuckDB
 uv run python -m istanbul_agent.rag.ingest            # dokümanları indeksle
 uv run python -m istanbul_agent.servers.transit_server

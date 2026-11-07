@@ -240,6 +240,165 @@ olabilir.
 | `source` | hangi veri setlerinin kullanıldığı |
 | `transfer_penalty_s` | aktarma varsa 360 |
 
+## Dış doğrulama
+
+Held-out test, tahminin **beslemeye** ne kadar uyduğunu ölçüyor. Beslemenin
+**gerçeğe** ne kadar uyduğu ayrı bir soru ve ancak dış kaynakla ölçülebilir.
+Kullanıcı 8 Kasım 2026'da altı yolculuk için bağımsız süre getirdi;
+`datasets/external_travel_times.csv` bunları kaynak URL'si ve tarihiyle
+tutuyor, `tests/test_external_travel_times.py` her çalıştırmada sapmayı
+raporluyor.
+
+| Hat | Yolculuk | Bizim | Dış | Fark | Not |
+|---|---|---|---|---|---|
+| M2 | Yenikapı → Hacıosman | 29.1 dk | 32 dk | **-%9.1** | |
+| M4 | Kadıköy → Tavşantepe | 38.2 dk | 38.5 dk | -%0.9 | |
+| T1 | Kabataş → Bağcılar | 67.8 dk | 63 dk | **+%7.6** | |
+| F1 | Taksim → Kabataş | 2.0 dk | 2.5 dk | -%20.0 | 30 s; yuvarlama |
+| M4 | Kadıköy → Sabiha Gökçen | 50.0 dk | 52 dk | -%3.8 | bizimki tahmin |
+| M5 | Üsküdar → Çekmeköy | 26.7 dk | 34 dk | -%21.6 | **kaynak doğrulanmadı**, kalibrasyonda kullanılmıyor |
+
+### Sapmaların nedeni — üç hipotez, biri doğru
+
+**1. Durakta bekleme hesaba girmiyor mu?** Hayır, giriyor. `stop_times`
+satırlarının **%95.7'si 15 s bekleme kaydediyor** (kalan %4.3 son duraklar,
+0 s). Bizim `DWELL_S = 15` değeri beslemenin kendi figürü.
+
+**2. Ortancaya yoğun saat / gece seferleri karışıyor mu?** Hayır, karışması
+fark etmiyor. Saat dilimine göre ayrıştırıldığında segment süreleri **her
+dilimde özdeş**:
+
+| Hat | gece | sabah zirve | gün ortası | akşam zirve | akşam |
+|---|---|---|---|---|---|
+| M2 | 104 s | 104 s | 104 s | 104 s | 104 s |
+| M4 | 107 s | 107 s | 107 s | 107 s | 107 s |
+| T1 | 118 s | 119 s | 119 s | 119 s | 117 s |
+
+Besleme tek bir idealize tarife taşıyor; zirve/zirve-dışı varyantı yok.
+Dolayısıyla T1'in +5 dk'sı sefer seçiminden gelemez.
+
+**3. Boru hattımız beslemeyi doğru okuyor mu?** Evet, birebir. Beslemenin
+kendi uçtan uca sefer süreleri ile bizim toplamımız aynı:
+
+| Hat | Beslemenin sefer süresi | Bizim sonucumuz |
+|---|---|---|
+| M2 | 29.1 dk | 29.1 dk |
+| M4 | 38.4 dk | 38.2 dk |
+| M5 | 26.6 dk | 26.7 dk |
+| T1 | 67.8 dk | 67.8 dk |
+
+**Sonuç:** Sapmalar bir hesaplama hatası değil; **2020 tarihli beslemenin
+bugünkü işletmeden ayrışması**. Ve ayrışmanın yönü hatta göre değişiyor: M2
+3 dakika iyimser, T1 5 dakika kötümser. Bu yüzden küresel bir düzeltme
+(örneğin bekleme süresini artırmak) M2'yi düzeltip T1'i bozardı.
+
+### Kalibrasyon önerisi — onay bekliyor, uygulanmadı
+
+Ayrışma hat bazında ve farklı yönlerde olduğu için düzeltme de hat bazında
+olmalı: güvenilir bir dış kaynağı olan hatta segment süreleri `dış / bizim`
+oranıyla ölçeklenir, sonuç `method: gtfs_calibrated` döner.
+
+| Hat | Oran | Şimdi | Kalibreli | Dış | Kullanılır mı |
+|---|---|---|---|---|---|
+| M2 | 1.100 | 29.1 dk | 32.0 dk | 32.0 dk | ✅ |
+| M4 | 1.009 | 38.1 dk | 38.5 dk | 38.5 dk | ✅ |
+| T1 | 0.929 | 67.8 dk | 63.0 dk | 63.0 dk | ✅ |
+| M5 | 1.276 | — | — | 34.0 dk | ❌ dış kaynak doğrulanmadı |
+| F1 | 1.250 | — | — | 2.5 dk | ❌ 1 durak, 2 dk — yuvarlamaya uyar |
+| M4 (S.Gökçen) | 1.040 | — | — | 52.0 dk | ❌ bizimki tahmin; GTFS segmentini kalibre etmez |
+
+Bir oranın kullanılabilmesi için gereken koşullar:
+
+- dış kaynak doğrulanmış olmalı,
+- bizim sonucumuz `gtfs` olmalı (tahmini kalibre etmek döngüsel olurdu),
+- yolculuk **en az 5 durak ve 10 dakika** olmalı — F1'in 2 dakikalık
+  yolculuğundaki 30 saniyelik fark üzerinden tüm hattı %25 ölçeklemek, dış
+  kaynağın yuvarlamasına uydurma olurdu,
+- oran 0.67-1.50 arasında olmalı.
+
+Dış kaynağı olmayan hatlar dokunulmaz (oran 1.0). Üç hat kalibre edilebilir
+durumda: **M2, M4, T1**.
+
+**Durum: öneri.** Kalibrasyon uygulanmadı; `scripts/propose_calibration.py`
+oranları ve etkisini hesaplıyor, karar kullanıcıya ait.
+
+### Otomatik raporlama
+
+`tests/test_external_travel_times.py` her dış kaynak satırı için sapmayı
+yazdırır ve ±%10'u aşanları uyarı olarak listeler. **Testi kırmaz:** ölçülen
+şey veriyle gerçeklik arasındaki fark, bir hata değil. Doğrulanmamış satırlar
+uyarı sayımından çıkarılır. `data/transit.duckdb` yoksa test atlanır.
+
+## Ek bulgular (8 Kasım 2026)
+
+### Marmaray ağa eklendi
+
+`Kadıköy → Taksim` cevaplanamıyordu. Sebep: M4 ile M2 arasında **tek bir raylı
+aktarma yok**; gerçek rota Marmaray'dan geçiyor ve Marmaray aynı beslemede
+**TCDD ajansı** altında duruyor, ingest'in Metro İstanbul filtresi onu
+düşürüyordu.
+
+Marmaray eklendi: 43 istasyon, 42/42 segment süreli, `data_as_of 2019-10-16`
+(metro verisinden bir yıl eski, bu yüzden Marmaray'a dokunan bir yolculuk bu
+tarihi döner). Metro ağıyla 12 ortak istasyonu var: Yenikapı (M1A/M1B/M2),
+Üsküdar (M5), Sirkeci (T1), Bostancı (M4/M8), Göztepe, Kartal, Küçükyalı,
+Maltepe, Pendik (M4), Zeytinburnu (M1A/T1), Yenimahalle (M3/M7/T4).
+
+**Tek aktarma yetmiyordu.** Rota M4 → Marmaray → M2, yani iki aktarma.
+Tek-aktarma mantığı yerine `(hat, istasyon)` düğümleri üzerinde Dijkstra
+kuruldu: kenarlar ya komşu istasyona gidiş (süre) ya da aktarma
+(`TRANSFER_PENALTY_S`). Aynı hattaki ardışık atlamalar tek bacağa
+birleştiriliyor ve her bacağın süresi `same_line_leg` ile yeniden
+hesaplanıyor, böylece raporlanan sayı doğrudan sorgununkiyle aynı oluyor.
+
+Sonuç: **Kadıköy → Taksim 48 dk** (M4 Kadıköy-Göztepe 7 dk, Marmaray
+Göztepe-Yenikapı 19 dk, M2 Yenikapı-Taksim 7 dk, 2 aktarma 12 dk).
+
+### Marmaray eklenirken çıkan çakışma
+
+Segment anahtarı yalnızca istasyon adı çiftiydi. Marmaray da M4 gibi
+`Bostancı → Küçükyalı` çalıştırıyor — ayrı hatlar, aynı adlar — ve biri
+diğerinin süresini eziyordu; M4'ün uçtan uca süresi 38.2 dk'dan 37.0 dk'ya
+düşmüştü. Anahtar `(hat, istasyon_a, istasyon_b)` oldu.
+
+### M5'in eksik koordinatları tamamlandı
+
+Canlı Metro API'si M5'in son üç istasyonu için `Latitude: null` döndürüyor
+(`GetStationById` ve `GetStations` aynı şeyi söylüyor; asansör/merdiven
+sayıları da 0 — kayıtlar yarım girilmiş görünüyor).
+
+Veri seti 6 (`Raylı Sistem İstasyon Noktaları`, haftalık güncellenen GeoJSON)
+üçünü de taşıyor ve `PROJE_ASAMA` alanıyla mevcut/inşaat halinde ayrımı
+yapıyor:
+
+| İstasyon | Koordinat |
+|---|---|
+| Veysel Karani | 40.96898, 29.23993 |
+| Hasanpaşa | 40.96867, 29.25492 |
+| Sultanbeyli | 40.96607, 29.27249 |
+
+Ingest artık eksik koordinatları bu katmandan tamamlıyor ve `coord_source`
+alanında hangi kaynaktan geldiğini kaydediyor. `Üsküdar → Sultanbeyli`
+cevaplanamıyordu, şimdi **43 dk (tahmin)**.
+
+### Tahmin sonuçlarına hata payı eklendi
+
+`estimated` dönen her sonuç artık `error_margin` taşıyor: held-out
+tablosundan, durak sayısına göre.
+
+| Durak | Ortalama | Maksimum |
+|---|---|---|
+| 11+ | ±%1.4 | ±%5.3 |
+| 7-10 | ±%2.2 | ±%8.1 |
+| 4-6 | ±%3.3 | ±%14.2 |
+| 1-3 | ±%10.9 | ±%29.1 |
+
+Agent bunu "yaklaşık 50 dk (±2 dk)" şeklinde kullanabilir. Pay hiçbir zaman
+0 dakikaya yuvarlanmaz — yuvarlanırsa yanlış bir kesinlik ima ederdi.
+
+Ayrıca `warnings` alanı eklendi; bilinen sapmalı hatlar için uyarı taşır.
+Şimdilik tek kayıt M6 (%29 düşük).
+
 ## Yeniden gözden geçirme koşulları
 
 - Metro `GetStationBetweenTime` düzelirse süreler canlı API'den alınır, bu
@@ -249,3 +408,7 @@ olabilir.
 - Yeni bir GTFS beslemesi gelirse `fit_travel_model.py` ve
   `validate_travel_estimates.py` yeniden çalıştırılmalı; katsayıların
   tamamı o betiklerin çıktısı.
+- Daha fazla dış kaynak eklenirse `propose_calibration.py` yeniden
+  çalıştırılmalı; kalibrasyon kararı o çıktıya dayanır.
+- Marmaray için daha güncel bir besleme gelirse `MARMARAY_DATA_AS_OF`
+  güncellenmeli.

@@ -11,10 +11,13 @@ import pytest
 from istanbul_agent.store.rail_travel import (
     DWELL_S,
     LINE_MODEL,
+    LINE_WARNINGS,
     MODE_MODEL,
     TRANSFER_PENALTY_S,
+    ErrorMargin,
     RailNetwork,
     RailStation,
+    estimate_error,
     model_for,
 )
 
@@ -33,11 +36,13 @@ def station(name, line, order, *, mode="metro", lat=None, lon=None, spur=False, 
     )
 
 
-def pair(left, right):
+def pair(line, left, right):
+    """Segment key. The line is part of it: Marmaray and M4 both run
+    Bostancı to Küçükyalı, so names alone would collide."""
     from istanbul_agent.store.station_names import normalize
 
     a, b = normalize(left), normalize(right)
-    return (a, b) if a <= b else (b, a)
+    return (line, a, b) if a <= b else (line, b, a)
 
 
 @pytest.fixture
@@ -49,7 +54,7 @@ def simple_line():
             station("Beta", "M9", 2),
             station("Gama", "M9", 3),
         ],
-        segment_durations={pair("Alfa", "Beta"): 100, pair("Beta", "Gama"): 200},
+        segment_durations={pair("M9", "Alfa", "Beta"): 100, pair("M9", "Beta", "Gama"): 200},
         segment_lengths={},
         transfers=[],
     )
@@ -57,17 +62,13 @@ def simple_line():
 
 class TestSameLine:
     def test_adjacent_hop_uses_feed_duration(self, simple_line):
-        leg = simple_line.same_line_leg(
-            simple_line.find("Alfa")[0], simple_line.find("Beta")[0]
-        )
+        leg = simple_line.same_line_leg(simple_line.find("Alfa")[0], simple_line.find("Beta")[0])
         assert leg.seconds == 100
         assert leg.method == "gtfs"
         assert leg.stop_count == 1
 
     def test_dwell_added_at_intermediate_stations_only(self, simple_line):
-        leg = simple_line.same_line_leg(
-            simple_line.find("Alfa")[0], simple_line.find("Gama")[0]
-        )
+        leg = simple_line.same_line_leg(simple_line.find("Alfa")[0], simple_line.find("Gama")[0])
         # 100 + 200 travelling, plus one dwell at Beta, none on arrival.
         assert leg.seconds == 100 + 200 + DWELL_S
         assert leg.stop_count == 2
@@ -94,9 +95,7 @@ class TestSameLine:
             segment_lengths={},
             transfers=[],
         )
-        assert (
-            network.same_line_leg(network.find("Alfa")[0], network.find("Beta")[0]) is None
-        )
+        assert network.same_line_leg(network.find("Alfa")[0], network.find("Beta")[0]) is None
 
 
 class TestEstimation:
@@ -104,7 +103,7 @@ class TestEstimation:
         network = RailNetwork(
             stations=[station("Alfa", "M9", 1), station("Beta", "M9", 2)],
             segment_durations={},
-            segment_lengths={pair("Alfa", "Beta"): 1200.0},
+            segment_lengths={pair("M9", "Alfa", "Beta"): 1200.0},
             transfers=[],
         )
         leg = network.same_line_leg(network.find("Alfa")[0], network.find("Beta")[0])
@@ -133,8 +132,8 @@ class TestEstimation:
                 station("Beta", "M9", 2),
                 station("Gama", "M9", 3),
             ],
-            segment_durations={pair("Alfa", "Beta"): 100},
-            segment_lengths={pair("Beta", "Gama"): 1000.0},
+            segment_durations={pair("M9", "Alfa", "Beta"): 100},
+            segment_lengths={pair("M9", "Beta", "Gama"): 1000.0},
             transfers=[],
         )
         leg = network.same_line_leg(network.find("Alfa")[0], network.find("Gama")[0])
@@ -178,7 +177,7 @@ class TestSpurStations:
                 station("Seyrantepe", "M2", 2, spur=True, in_gtfs=False),
                 station("İTÜ-Ayazağa", "M2", 3),
             ],
-            segment_durations={pair("Sanayi Mahallesi", "İTÜ-Ayazağa"): 90},
+            segment_durations={pair("M2", "Sanayi Mahallesi", "İTÜ-Ayazağa"): 90},
             segment_lengths={},
             transfers=[],
         )
@@ -195,7 +194,7 @@ class TestSpurStations:
         """Travelling *to* the branch station must still be attempted."""
         network = RailNetwork(
             stations=with_spur.stations,
-            segment_durations={pair("Sanayi Mahallesi", "Seyrantepe"): 70},
+            segment_durations={pair("M2", "Sanayi Mahallesi", "Seyrantepe"): 70},
             segment_lengths={},
             transfers=[],
         )
@@ -206,17 +205,112 @@ class TestSpurStations:
         assert leg.seconds == 70
 
 
-class TestUnreliableLines:
-    def test_refused_line_yields_no_leg(self):
-        """T3's names sit on the wrong coordinates, so it must not answer."""
+class TestUnreliableCoordinates:
+    """T3's coordinates are untrustworthy; its recorded durations are not.
+
+    The first reading of decision 0003 refused the whole line. Measuring the
+    ring showed the opposite: T3's name sequence matches the live one and its
+    nine segment durations are consistent (41-99 s). What fails is its
+    coordinates, whose 164-763 m error exceeds the line's 239 m station
+    spacing -- so only a distance-derived estimate has to be refused.
+    """
+
+    def test_recorded_duration_is_still_used(self):
         network = RailNetwork(
-            stations=[station("Moda", "T3", 1, mode="tramvay"), station("Altıyol", "T3", 2, mode="tramvay")],
-            segment_durations={pair("Moda", "Altıyol"): 60},
+            stations=[
+                station("Moda", "T3", 1, mode="tramvay"),
+                station("Altıyol", "T3", 2, mode="tramvay"),
+            ],
+            segment_durations={pair("T3", "Moda", "Altıyol"): 60},
+            segment_lengths={},
+            transfers=[],
+            unreliable_lines=frozenset({"T3"}),
+        )
+        leg = network.same_line_leg(network.find("Moda")[0], network.find("Altıyol")[0])
+        assert leg is not None
+        assert leg.seconds == 60
+        assert leg.method == "gtfs"
+
+    def test_coordinate_estimate_is_refused(self):
+        """With no recorded duration, the coordinates must not be used."""
+        network = RailNetwork(
+            stations=[
+                station("Moda", "T3", 1, mode="tramvay", lat=40.985, lon=29.025),
+                station("Altıyol", "T3", 2, mode="tramvay", lat=40.990, lon=29.028),
+            ],
+            segment_durations={},
             segment_lengths={},
             transfers=[],
             unreliable_lines=frozenset({"T3"}),
         )
         assert network.same_line_leg(network.find("Moda")[0], network.find("Altıyol")[0]) is None
+
+    def test_312_length_is_still_allowed(self):
+        """A measured track length does not come from the suspect coordinates."""
+        network = RailNetwork(
+            stations=[
+                station("Moda", "T3", 1, mode="tramvay"),
+                station("Altıyol", "T3", 2, mode="tramvay"),
+            ],
+            segment_durations={},
+            segment_lengths={pair("T3", "Moda", "Altıyol"): 400.0},
+            transfers=[],
+            unreliable_lines=frozenset({"T3"}),
+        )
+        leg = network.same_line_leg(network.find("Moda")[0], network.find("Altıyol")[0])
+        assert leg is not None
+        assert leg.method == "estimated"
+
+
+class TestRingLines:
+    """A ring has no ends, so the shorter way round has to win."""
+
+    @pytest.fixture
+    def ring(self):
+        # Five stations round a loop. Going 1->5 the long way is four hops;
+        # over the join it is one.
+        return RailNetwork(
+            stations=[
+                station(name, "T9", index, mode="tramvay")
+                for index, name in enumerate("ABCDE", start=1)
+            ],
+            segment_durations={
+                pair("T9", "A", "B"): 100,
+                pair("T9", "B", "C"): 100,
+                pair("T9", "C", "D"): 100,
+                pair("T9", "D", "E"): 100,
+                pair("T9", "E", "A"): 60,
+            },
+            segment_lengths={},
+            transfers=[],
+            ring_lines=frozenset({"T9"}),
+        )
+
+    def test_shorter_way_round_is_chosen(self, ring):
+        leg = ring.same_line_leg(ring.find("A")[0], ring.find("E")[0])
+        assert leg.seconds == 60
+        assert leg.stop_count == 1
+
+    def test_linear_line_ignores_the_join(self):
+        network = RailNetwork(
+            stations=[
+                station(name, "T9", index, mode="tramvay")
+                for index, name in enumerate("ABCDE", start=1)
+            ],
+            segment_durations={
+                pair("T9", "A", "B"): 100,
+                pair("T9", "B", "C"): 100,
+                pair("T9", "C", "D"): 100,
+                pair("T9", "D", "E"): 100,
+                pair("T9", "E", "A"): 60,
+            },
+            segment_lengths={},
+            transfers=[],
+            # ring_lines deliberately empty
+        )
+        leg = network.same_line_leg(network.find("A")[0], network.find("E")[0])
+        assert leg.stop_count == 4
+        assert leg.seconds == 400 + 3 * DWELL_S
 
 
 class TestTransfers:
@@ -231,8 +325,8 @@ class TestTransfers:
                 station("Kağıthane", "M7", 2),
             ],
             segment_durations={
-                pair("Yenikapı", "Şişli-Mecidiyeköy"): 400,
-                pair("Mecidiyeköy", "Kağıthane"): 150,
+                pair("M2", "Yenikapı", "Şişli-Mecidiyeköy"): 400,
+                pair("M7", "Mecidiyeköy", "Kağıthane"): 150,
             },
             segment_lengths={},
             transfers=[
@@ -302,3 +396,96 @@ class TestLookup:
             transfers=[],
         )
         assert network.lines_at("Kirazlı") == {"M1B", "M3"}
+
+
+class TestMultiLegPlanning:
+    """Two interchanges, because one is not enough for this network.
+
+    Kadıköy to Taksim needs M4, then Marmaray under the Bosphorus, then M2:
+    the metro lines do not meet each other across the water.
+    """
+
+    @pytest.fixture
+    def three_lines(self):
+        return RailNetwork(
+            stations=[
+                station("Kadıköy", "M4", 1),
+                station("Ayrılık Çeşmesi", "M4", 2),
+                station("Ayrılık Çeşmesi", "MR", 1),
+                station("Yenikapı", "MR", 2),
+                station("Yenikapı", "M2", 1),
+                station("Taksim", "M2", 2),
+            ],
+            segment_durations={
+                pair("M4", "Kadıköy", "Ayrılık Çeşmesi"): 120,
+                pair("MR", "Ayrılık Çeşmesi", "Yenikapı"): 600,
+                pair("M2", "Yenikapı", "Taksim"): 300,
+            },
+            segment_lengths={},
+            transfers=[],
+        )
+
+    def test_two_interchanges_are_planned(self, three_lines):
+        legs = three_lines.plan(three_lines.find("Kadıköy"), three_lines.find("Taksim"))
+        assert legs is not None
+        assert [leg.line for leg in legs] == ["M4", "MR", "M2"]
+        assert [leg.seconds for leg in legs] == [120, 600, 300]
+
+    def test_legs_are_merged_per_line(self):
+        """Riding several hops on one line is one leg, not one per hop."""
+        network = RailNetwork(
+            stations=[station(name, "M9", index) for index, name in enumerate("ABCD", start=1)],
+            segment_durations={
+                pair("M9", "A", "B"): 100,
+                pair("M9", "B", "C"): 100,
+                pair("M9", "C", "D"): 100,
+            },
+            segment_lengths={},
+            transfers=[],
+        )
+        legs = network.plan(network.find("A"), network.find("D"))
+        assert len(legs) == 1
+        assert legs[0].stop_count == 3
+
+    def test_unreachable_pair_returns_nothing(self):
+        network = RailNetwork(
+            stations=[station("Alfa", "M9", 1), station("Uzak", "T9", 1)],
+            segment_durations={},
+            segment_lengths={},
+            transfers=[],
+        )
+        assert network.plan(network.find("Alfa"), network.find("Uzak")) is None
+
+
+class TestErrorMargin:
+    def test_margin_narrows_as_the_journey_lengthens(self):
+        short_mean, _ = estimate_error(2)
+        long_mean, _ = estimate_error(15)
+        assert short_mean > long_mean
+
+    @pytest.mark.parametrize(
+        ("stops", "expected_mean"),
+        [(1, 10.9), (3, 10.9), (4, 3.3), (6, 3.3), (7, 2.2), (10, 2.2), (11, 1.4), (30, 1.4)],
+    )
+    def test_bands_match_the_validation_table(self, stops, expected_mean):
+        assert estimate_error(stops)[0] == expected_mean
+
+    def test_max_is_never_below_mean(self):
+        for stops in range(1, 40):
+            mean_error, max_error = estimate_error(stops)
+            assert max_error >= mean_error
+
+    def test_margin_phrase_is_at_least_one_minute(self):
+        """A margin must not round to zero and imply exactness."""
+        margin = ErrorMargin(mean_pct=1.4, max_pct=5.3, mean_seconds=10, max_seconds=30)
+        assert margin.mean_minutes == 1
+        assert "±1 dk" in margin.phrase()
+
+
+class TestLineWarnings:
+    def test_m6_carries_its_known_bias(self):
+        assert "M6" in LINE_WARNINGS
+        assert "%29" in LINE_WARNINGS["M6"]
+
+    def test_other_lines_have_no_warning(self):
+        assert "M2" not in LINE_WARNINGS

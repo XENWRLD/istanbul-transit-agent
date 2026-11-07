@@ -37,8 +37,12 @@ DAYTIME_TRIP_THRESHOLD = 50
 DAY_START_S = 5 * 3600
 DAY_END_S = 22 * 3600
 
-# Lines whose names do not sit on their own coordinates (decision 0003).
-UNRELIABLE_LINES = {"T3"}
+# No line is excluded here any more. T3 was, on the reading that its names
+# were scrambled; measuring the ring showed the opposite -- its name sequence
+# matches the live one and its 9 segment durations are consistent (41-99 s,
+# 8.6 min round the ring). What is unreliable on T3 is its *coordinates*,
+# which only rules out distance-based estimates, not its timetable.
+UNRELIABLE_LINES: set[str] = set()
 
 
 def read_csv(name: str) -> list[dict[str, str]]:

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import statistics
 import sys
 import time
@@ -37,10 +38,11 @@ from istanbul_agent.store.geo import haversine_m, parse_coordinate
 from istanbul_agent.store.gtfs import GtfsFeed, to_seconds
 from istanbul_agent.store.rail_reference import load_rail_reference
 from istanbul_agent.store.rail_segments import build_segment_index
-from istanbul_agent.store.rail_travel import GTFS_METRO_DATA_AS_OF
+from istanbul_agent.store.rail_travel import GTFS_METRO_DATA_AS_OF, MARMARAY_DATA_AS_OF
 from istanbul_agent.store.station_names import collapsed, normalize, token_key
 
 METRO_API = "/MetroIstanbul/api/MetroMobile/V2"
+RAIL_GEOJSON = PROJECT_ROOT / "data" / "geojson" / "rail_station_points.geojson"
 NAME_MAP = PROJECT_ROOT / "datasets" / "station_name_map.csv"
 INTEGRITY = PROJECT_ROOT / "datasets" / "metro_line_integrity.csv"
 
@@ -78,7 +80,8 @@ CREATE TABLE rail_lines (
     mode           VARCHAR NOT NULL,
     long_name      VARCHAR,
     in_gtfs        BOOLEAN NOT NULL,
-    gtfs_reliable  BOOLEAN NOT NULL,
+    coords_reliable BOOLEAN NOT NULL,
+    is_ring        BOOLEAN NOT NULL,
     station_count  INTEGER NOT NULL,
     schedule_source VARCHAR,
     source         VARCHAR NOT NULL,
@@ -98,6 +101,7 @@ CREATE TABLE rail_stations (
     in_gtfs        BOOLEAN NOT NULL,
     in_live_api    BOOLEAN NOT NULL,
     is_spur        BOOLEAN NOT NULL,
+    coord_source   VARCHAR,
     source         VARCHAR NOT NULL,
     data_as_of     VARCHAR NOT NULL,
     PRIMARY KEY (line, station_key)
@@ -153,6 +157,69 @@ def _feed_key_for(
     return None
 
 
+def load_geojson_coordinates() -> dict[str, tuple[float, float]]:
+    """Station coordinates from dataset 6, keyed by normalised name.
+
+    The live Metro API returns `Latitude: null` for M5's Veysel Karani,
+    Hasanpaşa and Sultanbeyli -- both of its endpoints agree -- which is why
+    journeys through them could not be estimated. This layer is refreshed
+    weekly and has them. Only stations it marks as existing are taken;
+    `PROJE_ASAMA` also covers lines still under construction.
+    """
+    if not RAIL_GEOJSON.exists():
+        return {}
+    data = json.loads(RAIL_GEOJSON.read_text(encoding="utf-8"))
+    coordinates: dict[str, tuple[float, float]] = {}
+    for feature in data.get("features", []):
+        properties = feature.get("properties") or {}
+        if "Mevcut" not in str(properties.get("PROJE_ASAMA", "")):
+            continue
+        name = properties.get("ISTASYON")
+        geometry = feature.get("geometry") or {}
+        if not name or geometry.get("type") != "Point":
+            continue
+        pair = geometry.get("coordinates") or []
+        if len(pair) < 2:
+            continue
+        lon, lat = parse_coordinate(pair[0]), parse_coordinate(pair[1])
+        if lat is None or lon is None:
+            continue
+        coordinates.setdefault(normalize(name), (lat, lon))
+    return coordinates
+
+
+def detect_rings(
+    station_rows: dict[tuple[str, str], dict[str, Any]],
+) -> set[str]:
+    """Lines whose first and last listed stations sit next to each other.
+
+    A ring line has no ends, so walking its station array in one direction
+    misses the shorter way round. T3 closes with 122 m between its listed
+    first and last stations against a 239 m typical spacing.
+    """
+    rings: set[str] = set()
+    for line in {line for line, _ in station_rows}:
+        ordered = sorted(
+            (row for (candidate, _), row in station_rows.items() if candidate == line),
+            key=lambda row: row["stop_order"] if row["stop_order"] is not None else 1 << 30,
+        )
+        if len(ordered) < 4:
+            continue
+        points = [
+            (row["lat"], row["lon"])
+            for row in ordered
+            if row["lat"] is not None and row["lon"] is not None
+        ]
+        if len(points) < 4:
+            continue
+        spacings = [haversine_m(a[0], a[1], b[0], b[1]) for a, b in pairwise(points)]
+        typical = statistics.median(spacings)
+        closing = haversine_m(points[0][0], points[0][1], points[-1][0], points[-1][1])
+        if typical > 0 and closing <= 2.5 * typical:
+            rings.add(line)
+    return rings
+
+
 def read_decision_csv(path: Path, key: str) -> dict[str, dict[str, str]]:
     if not path.exists():
         return {}
@@ -199,25 +266,42 @@ def main() -> int:
     base = settings.ibb_api_base_url.rstrip("/")
 
     integrity = read_decision_csv(INTEGRITY, "line")
+    # The integrity file marks a line unreliable both when its names sit on
+    # the wrong coordinates and when it simply has no feed data at all. Only
+    # the first is a coordinate problem; a line absent from the feed has
+    # perfectly good live coordinates. Distinguish them by the note.
     unreliable = {
-        line for line, row in integrity.items() if row.get("reliable", "").strip() == "hayır"
+        line
+        for line, row in integrity.items()
+        if row.get("reliable", "").strip() == "hayır"
+        and "GTFS'te hat yok" not in (row.get("note") or "")
     }
     schedule_source = read_decision_csv(
         PROJECT_ROOT / "datasets" / "metro_schedule_source.csv", "line"
     )
 
     print("GTFS okunuyor...")
+    # Marmaray lives in the same feed under TCDD, not Metro İstanbul. Without
+    # it there is no rail interchange between the two sides of the Bosphorus,
+    # so Kadıköy to Taksim -- the project's headline question -- cannot be
+    # answered at all. It carries its own, older date.
     feed = GtfsFeed.load("public_transport", agency_filter="Metro")
+    marmaray = GtfsFeed.load("public_transport", agency_filter="TCDD")
     reference = load_rail_reference()
+
+    marmaray_lines = {route["route_short_name"].strip() for route in marmaray.routes}
 
     stations_by_line: dict[str, list[dict[str, str]]] = {}
     mode_by_line: dict[str, str] = {}
     long_name_by_line: dict[str, str] = {}
-    for route in feed.routes:
+    for route in [*feed.routes, *marmaray.routes]:
         line = route["route_short_name"].strip()
-        sequence = feed.longest_trip_sequence(route["route_id"])
+        source_feed = marmaray if line in marmaray_lines else feed
+        sequence = source_feed.longest_trip_sequence(route["route_id"])
         stations_by_line[line] = [
-            feed.stops[row["stop_id"]] for row in sequence if row["stop_id"] in feed.stops
+            source_feed.stops[row["stop_id"]]
+            for row in sequence
+            if row["stop_id"] in source_feed.stops
         ]
         mode_by_line[line] = ROUTE_TYPES.get(route["route_type"], "bilinmiyor")
         long_name_by_line[line] = route.get("route_long_name", "")
@@ -257,6 +341,7 @@ def main() -> int:
                 "in_gtfs": True,
                 "in_live_api": False,
                 "is_spur": False,
+                "coord_source": "GTFS 308",
                 "source": "GTFS 308",
                 "data_as_of": GTFS_METRO_DATA_AS_OF,
             }
@@ -301,6 +386,7 @@ def main() -> int:
                 if station["lat"] is not None:
                     existing["lat"] = station["lat"]
                     existing["lon"] = station["lon"]
+                    existing["coord_source"] = "Metro API"
                 if station["order"] is not None:
                     existing["stop_order"] = station["order"]
                 continue
@@ -316,9 +402,34 @@ def main() -> int:
                 "in_gtfs": False,
                 "in_live_api": True,
                 "is_spur": False,
+                "coord_source": "Metro API" if station["lat"] is not None else None,
                 "source": "Metro API",
                 "data_as_of": today,
             }
+
+    # ---------------- coordinate gaps ----------------
+    geojson_coordinates = load_geojson_coordinates()
+    filled = 0
+    for row in station_rows.values():
+        if row["lat"] is not None:
+            continue
+        point = geojson_coordinates.get(row["station_key"])
+        if point is None:
+            continue
+        row["lat"], row["lon"] = point
+        row["coord_source"] = "Raylı Sistem İstasyon Noktaları (veri seti 6)"
+        row["source"] = f"{row['source']} + veri seti 6"
+        filled += 1
+        print(f"  koordinat tamamlandı: {row['line']} {row['name']}")
+    if geojson_coordinates:
+        print(
+            f"  GeoJSON'dan {filled} koordinat tamamlandı ({len(geojson_coordinates)} nokta okundu)"
+        )
+    still_missing = [r for r in station_rows.values() if r["lat"] is None]
+    if still_missing:
+        print(f"  UYARI: {len(still_missing)} istasyonun hâlâ koordinatı yok:")
+        for row in still_missing[:8]:
+            print(f"    {row['line']:6} {row['name']}")
 
     # ---------------- branch stations ----------------
     # The live API lists some stations mid-line that physically sit on a
@@ -366,13 +477,16 @@ def main() -> int:
         print(f"  {spur_count} şube istasyonu işaretlendi")
 
     # ---------------- segments ----------------
+    # Durations are collected for every line, including those whose
+    # coordinates are untrustworthy: T3's recorded times are consistent
+    # (41-99 s per hop, 8.6 min round the ring) and keyed to the right
+    # stations. Only distance-derived estimates are refused on such a line.
     observed: dict[tuple[str, str], list[int]] = defaultdict(list)
-    for route in feed.routes:
+    for route in [*feed.routes, *marmaray.routes]:
         line = route["route_short_name"].strip()
-        if line in unreliable:
-            continue
-        for trip in feed.trips_for_route(route["route_id"]):
-            sequence = feed.stop_times.get(trip["trip_id"], [])
+        source_feed = marmaray if line in marmaray_lines else feed
+        for trip in source_feed.trips_for_route(route["route_id"]):
+            sequence = source_feed.stop_times.get(trip["trip_id"], [])
             for left, right in pairwise(sequence):
                 depart = to_seconds(left["departure_time"]) or to_seconds(left["arrival_time"])
                 arrive = to_seconds(right["arrival_time"]) or to_seconds(right["departure_time"])
@@ -436,7 +550,11 @@ def main() -> int:
                     if track is not None
                     else ("koordinat" if straight else None),
                     "source": " + ".join(sources),
-                    "data_as_of": GTFS_METRO_DATA_AS_OF if duration is not None else today,
+                    "data_as_of": (
+                        MARMARAY_DATA_AS_OF
+                        if line in marmaray_lines
+                        else (GTFS_METRO_DATA_AS_OF if duration is not None else today)
+                    ),
                 }
             )
 
@@ -455,27 +573,45 @@ def main() -> int:
     ]
 
     # ---------------- lines ----------------
+    rings = detect_rings(station_rows)
+    if rings:
+        print(f"\n  ring hat: {', '.join(sorted(rings))}")
+
     line_rows: list[dict[str, Any]] = []
     for line in sorted({line for line, _ in station_rows}):
         count = sum(1 for candidate, _ in station_rows if candidate == line)
         in_gtfs = line in stations_by_line and bool(stations_by_line[line])
-        note = ""
+        is_marmaray = line in marmaray_lines
+        notes: list[str] = []
         if line in unreliable:
-            note = "GTFS adları koordinatlarla uyuşmuyor (karar 0003); tarife kullanılmıyor"
+            notes.append(
+                "koordinatları güvenilmez (karar 0003); süreler kullanılır, "
+                "koordinat tabanlı tahmin yapılmaz"
+            )
         elif not in_gtfs:
-            note = "GTFS'te yok; süreler tahmin edilir"
+            notes.append("GTFS'te yok; süreler tahmin edilir")
+        if line in rings:
+            notes.append("ring hat; iki yönden kısa olanı seçilir")
+        if is_marmaray:
+            notes.append("Marmaray (TCDD ajansı), beslemedeki tarihi daha eski")
+
         line_rows.append(
             {
                 "line": line,
                 "mode": mode_by_line.get(line) or mode_from_code(line),
                 "long_name": long_name_by_line.get(line, ""),
                 "in_gtfs": in_gtfs,
-                "gtfs_reliable": in_gtfs and line not in unreliable,
+                "coords_reliable": line not in unreliable,
+                "is_ring": line in rings,
                 "station_count": count,
                 "schedule_source": (schedule_source.get(line) or {}).get("source"),
-                "source": "GTFS 308 + Metro API",
-                "data_as_of": GTFS_METRO_DATA_AS_OF if in_gtfs else today,
-                "note": note or None,
+                "source": "GTFS 308 (TCDD)" if is_marmaray else "GTFS 308 + Metro API",
+                "data_as_of": (
+                    MARMARAY_DATA_AS_OF
+                    if is_marmaray
+                    else (GTFS_METRO_DATA_AS_OF if in_gtfs else today)
+                ),
+                "note": "; ".join(notes) or None,
             }
         )
 
@@ -523,13 +659,20 @@ def main() -> int:
         print("\n=== Hat durumu ===")
         for row in connection.execute(
             """
-            SELECT line, mode, station_count, in_gtfs, gtfs_reliable, schedule_source
+            SELECT line, mode, station_count, in_gtfs, coords_reliable, is_ring, schedule_source
             FROM rail_lines ORDER BY line
             """
         ).fetchall():
-            flag = "güvenilir" if row[4] else ("GTFS yok" if not row[3] else "GÜVENİLMEZ")
+            line, mode, count, in_gtfs, coords_ok, is_ring, source = row
+            if not in_gtfs:
+                flag = "GTFS yok"
+            elif not coords_ok:
+                flag = "koord. güvenilmez"
+            else:
+                flag = "güvenilir"
             print(
-                f"  {row[0]:6} {row[1]:10} {row[2]:>3} istasyon  {flag:12} tarife={row[5] or '—'}"
+                f"  {line:10} {mode:10} {count:>3} istasyon  {flag:18}"
+                f"tarife={source or '—':12}{'ring' if is_ring else ''}"
             )
     finally:
         connection.close()

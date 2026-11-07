@@ -25,6 +25,7 @@ dated 2020-07-09 and the portal will not refresh it.
 
 from __future__ import annotations
 
+import heapq
 import statistics
 from dataclasses import dataclass, field
 from itertools import pairwise
@@ -35,15 +36,20 @@ from istanbul_agent.store.rail_reference import _line_family
 
 __all__ = [
     "DWELL_S",
+    "ESTIMATE_ERROR_BY_STOPS",
     "GTFS_METRO_DATA_AS_OF",
     "LINE_MODEL",
+    "LINE_WARNINGS",
+    "MARMARAY_DATA_AS_OF",
     "MODE_MODEL",
     "TRANSFER_PENALTY_S",
+    "ErrorMargin",
     "RailNetwork",
     "RailStation",
     "SegmentModel",
     "TravelLeg",
     "TravelTimeResult",
+    "estimate_error",
     "model_for",
 ]
 
@@ -51,6 +57,9 @@ Method = Literal["gtfs", "estimated", "transfer", "unavailable"]
 
 # The feed's metro data, per the portal's own note. Reported as `data_as_of`.
 GTFS_METRO_DATA_AS_OF = "2020-07-09"
+
+# Marmaray sits in the same feed under TCDD and carries its own date.
+MARMARAY_DATA_AS_OF = "2019-10-16"
 
 
 @dataclass(frozen=True)
@@ -104,8 +113,43 @@ def model_for(line: str, mode: str) -> SegmentModel:
     return LINE_MODEL.get(line.strip().upper()) or MODE_MODEL.get(mode) or MODE_MODEL["metro"]
 
 
-# Median dwell at a station, measured over 162,871 stop_times rows.
+# Dwell at a station. The feed records 15 s on 95.7% of its stop_times rows
+# and 0 s at terminals, so this is the feed's own figure rather than ours; our
+# end-to-end sums reproduce the feed's trip times exactly because of it.
 DWELL_S = 15
+
+# Held-out error of the estimate, by how many stops the journey covers
+# (scripts/validate_travel_estimates.py). Reported so a caller can say
+# "about 50 minutes, give or take 2" instead of implying false precision.
+# Keys are the lower bound of each band.
+ESTIMATE_ERROR_BY_STOPS: tuple[tuple[int, float, float], ...] = (
+    # (minimum stops, mean |error| %, max |error| %)
+    (11, 1.4, 5.3),
+    (7, 2.2, 8.1),
+    (4, 3.3, 14.2),
+    (1, 10.9, 29.1),
+)
+
+# Lines whose estimate is known to be biased beyond the table above. M6 runs
+# 662 m hops in 125 s -- a third of the metro median -- and carries only three
+# segments, too few to fit its own model, so it falls back to the mode fit and
+# comes out about 29% low. Fitting three points is the mistake that M1A's
+# 46 m/s cruise speed already demonstrated.
+LINE_WARNINGS: dict[str, str] = {
+    "M6": (
+        "M6 segmentleri metro ortalamasının üçte biri hızında; bu hattın "
+        "tahmini yaklaşık %29 düşük çıkıyor, gerçek süre daha uzun olabilir."
+    ),
+}
+
+
+def estimate_error(stop_count: int) -> tuple[float, float]:
+    """Mean and maximum held-out error, as percentages, for a journey length."""
+    for minimum, mean_error, max_error in ESTIMATE_ERROR_BY_STOPS:
+        if stop_count >= minimum:
+            return mean_error, max_error
+    return ESTIMATE_ERROR_BY_STOPS[-1][1], ESTIMATE_ERROR_BY_STOPS[-1][2]
+
 
 # Fixed interchange penalty, 6 minutes. See
 # documents/decisions/0004-aktarma-suresi.md: 210 s is the measured median
@@ -150,6 +194,31 @@ class TravelLeg:
     detail: str
 
 
+@dataclass(frozen=True)
+class ErrorMargin:
+    """How far off an estimate is likely to be.
+
+    Taken from the held-out validation rather than invented, so a caller can
+    phrase the answer honestly: "about 50 minutes (±2)".
+    """
+
+    mean_pct: float
+    max_pct: float
+    mean_seconds: int
+    max_seconds: int
+
+    @property
+    def mean_minutes(self) -> int:
+        return max(1, round(self.mean_seconds / 60))
+
+    @property
+    def max_minutes(self) -> int:
+        return max(1, round(self.max_seconds / 60))
+
+    def phrase(self) -> str:
+        return f"±{self.mean_minutes} dk (en kötü ±{self.max_minutes} dk)"
+
+
 @dataclass
 class TravelTimeResult:
     """What `get_rail_travel_time` returns."""
@@ -165,11 +234,17 @@ class TravelTimeResult:
     legs: list[TravelLeg] = field(default_factory=list)
     transfer_station: str | None = None
     transfer_penalty_s: int = 0
+    error_margin: ErrorMargin | None = None
+    warnings: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
     @property
     def minutes(self) -> int | None:
         return round(self.seconds / 60) if self.seconds is not None else None
+
+    @property
+    def stop_count(self) -> int:
+        return sum(leg.stop_count for leg in self.legs)
 
 
 class RailNetwork:
@@ -184,27 +259,40 @@ class RailNetwork:
         self,
         *,
         stations: list[RailStation],
-        segment_durations: dict[tuple[str, str], int],
-        segment_lengths: dict[tuple[str, str], float],
+        segment_durations: dict[tuple[str, str, str], int],
+        segment_lengths: dict[tuple[str, str, str], float],
         transfers: list[tuple[str, str, str]],
         unreliable_lines: frozenset[str] = frozenset(),
+        ring_lines: frozenset[str] = frozenset(),
+        line_dates: dict[str, str] | None = None,
     ) -> None:
         """
         Args:
             stations: every known station, one entry per line it serves.
             segment_durations: seconds between adjacent stations, keyed by
-                sorted station-key pair, from GTFS stop_times.
+                `(line, station_a, station_b)` with the pair sorted, from GTFS
+                stop_times. The line has to be part of the key: Marmaray and
+                M4 both run Bostancı to Küçükyalı on separate tracks, and
+                keying on names alone let one overwrite the other.
             segment_lengths: metres between adjacent stations, same keying,
                 from dataset 312.
             transfers: `(station_key, from_line, to_line)` interchanges.
-            unreliable_lines: lines whose feed data must not be used
-                (decision 0003 excludes T3).
+            unreliable_lines: lines whose **coordinates** cannot be trusted,
+                so a distance-based estimate on them is refused. Their
+                recorded durations are still used; see decision 0003.
+            ring_lines: lines that close on themselves, where the shorter of
+                the two ways round is the answer.
+            line_dates: `data_as_of` per line. Marmaray's feed data is a year
+                older than the metro's, so a journey using it must report the
+                older of the dates rather than the metro's.
         """
         self.stations = stations
         self.segment_durations = segment_durations
         self.segment_lengths = segment_lengths
         self.transfers = transfers
         self.unreliable_lines = unreliable_lines
+        self.ring_lines = ring_lines
+        self.line_dates = line_dates or {}
 
         self._by_line: dict[str, list[RailStation]] = {}
         for station in stations:
@@ -244,31 +332,68 @@ class RailNetwork:
 
     # ------------------------------------------------------- same-line leg
 
-    def _pair_key(self, left: str, right: str) -> tuple[str, str]:
+    def _pair_key(self, line: str, left: str, right: str) -> tuple[str, str, str]:
         a, b = self.key(left), self.key(right)
-        return (a, b) if a <= b else (b, a)
+        return (line, a, b) if a <= b else (line, b, a)
 
     def _segment_seconds(self, left: RailStation, right: RailStation) -> tuple[int | None, str]:
         """Duration for one adjacent hop, and how it was obtained."""
-        observed = self.segment_durations.get(self._pair_key(left.name, right.name))
+        observed = self.segment_durations.get(self._pair_key(left.line, left.name, right.name))
         if observed is not None:
             return observed, "gtfs"
 
-        metres = self.segment_lengths.get(self._pair_key(left.name, right.name))
+        metres = self.segment_lengths.get(self._pair_key(left.line, left.name, right.name))
         detail = "312"
-        if metres is None and left.has_position and right.has_position:
-            metres = haversine_m(left.lat, left.lon, right.lat, right.lon)  # type: ignore[arg-type]
-            detail = "koordinat"
+        if metres is None:
+            # A line whose coordinates are untrustworthy must not have a
+            # distance derived from them: on T3 the error (164-763 m) exceeds
+            # the 239 m station spacing, so the result would be arbitrary.
+            if left.line in self.unreliable_lines:
+                return None, "koordinat güvenilmez"
+            if left.has_position and right.has_position:
+                metres = haversine_m(left.lat, left.lon, right.lat, right.lon)  # type: ignore[arg-type]
+                detail = "koordinat"
         if metres is None:
             return None, "yok"
 
         return model_for(left.line, left.mode).seconds(metres), detail
 
-    def same_line_leg(self, origin: RailStation, destination: RailStation) -> TravelLeg | None:
-        """Sum the hops between two stations on one line."""
-        if origin.line != destination.line:
+    def _walk(self, line: str, path: list[RailStation]) -> TravelLeg | None:
+        """Sum one ordered run of stations into a leg."""
+        if len(path) < 2:
             return None
-        if origin.line in self.unreliable_lines:
+        total = 0
+        details: list[str] = []
+        last_index = len(path) - 2
+        for index, (left, right) in enumerate(pairwise(path)):
+            seconds, how = self._segment_seconds(left, right)
+            if seconds is None:
+                return None
+            total += seconds
+            details.append(how)
+            # Dwell at every intermediate station, but not on arrival.
+            if index < last_index:
+                total += DWELL_S
+
+        method: Method = "gtfs" if all(how == "gtfs" for how in details) else "estimated"
+        counts = {how: details.count(how) for how in sorted(set(details))}
+        return TravelLeg(
+            line=line,
+            from_station=path[0].name,
+            to_station=path[-1].name,
+            seconds=total,
+            method=method,
+            stop_count=len(path) - 1,
+            detail=", ".join(f"{how}×{count}" for how, count in counts.items()),
+        )
+
+    def same_line_leg(self, origin: RailStation, destination: RailStation) -> TravelLeg | None:
+        """Shortest run between two stations on one line.
+
+        On a ring line both ways round are tried and the quicker wins; on a
+        linear line there is only one run.
+        """
+        if origin.line != destination.line:
             return None
 
         line_stations = self.stations_on(origin.line)
@@ -294,42 +419,33 @@ class RailNetwork:
                 detail="aynı istasyon",
             )
 
+        def trim_spurs(path: list[RailStation]) -> list[RailStation]:
+            """Drop branch stations merely passed over, keep them as endpoints."""
+            return [
+                station
+                for index, station in enumerate(path)
+                if not station.is_spur or index in (0, len(path) - 1)
+            ]
+
         low, high = min(start, end), max(start, end)
-        path = line_stations[low : high + 1]
-        # Skip branch stations that are merely passed over, but keep one that
-        # is itself an endpoint of this journey.
-        path = [
-            station
-            for index, station in enumerate(path)
-            if not station.is_spur or index in (0, len(path) - 1)
-        ]
+        forward = line_stations[low : high + 1]
         if start > end:
-            path = path[::-1]
+            forward = forward[::-1]
+        candidates = [trim_spurs(forward)]
 
-        total = 0
-        details: list[str] = []
-        last_index = len(path) - 2
-        for index, (left, right) in enumerate(pairwise(path)):
-            seconds, how = self._segment_seconds(left, right)
-            if seconds is None:
-                return None
-            total += seconds
-            details.append(how)
-            # Dwell at every intermediate station, but not on arrival.
-            if index < last_index:
-                total += DWELL_S
+        if origin.line in self.ring_lines:
+            # The other way round: out past the end of the list, over the join,
+            # back to the other station. T3's ring closes with 122 m between
+            # its listed first and last stations, so this run is often quicker.
+            # The slice runs high -> low, so it needs reversing exactly when
+            # the origin is the `low` end.
+            around = line_stations[high:] + line_stations[: low + 1]
+            if start <= end:
+                around = around[::-1]
+            candidates.append(trim_spurs(around))
 
-        method: Method = "gtfs" if all(how == "gtfs" for how in details) else "estimated"
-        counts = {how: details.count(how) for how in sorted(set(details))}
-        return TravelLeg(
-            line=origin.line,
-            from_station=origin.name,
-            to_station=destination.name,
-            seconds=total,
-            method=method,
-            stop_count=len(path) - 1,
-            detail=", ".join(f"{how}×{count}" for how, count in counts.items()),
-        )
+        legs = [leg for path in candidates if (leg := self._walk(origin.line, path))]
+        return min(legs, key=lambda leg: leg.seconds) if legs else None
 
     # ----------------------------------------------------------- transfers
 
@@ -394,6 +510,140 @@ class RailNetwork:
                 pairs.append((origin, destinations[0]))
 
         return pairs
+
+    # ----------------------------------------------------- whole journeys
+
+    def plan(
+        self, origins: list[RailStation], destinations: list[RailStation]
+    ) -> list[TravelLeg] | None:
+        """Quickest run of legs from any origin to any destination.
+
+        Dijkstra over `(line, station)` nodes. Edges are of two kinds: riding
+        one hop to the adjacent station on the same line, and changing line at
+        an interchange for `TRANSFER_PENALTY_S`. One interchange is not enough
+        for this network -- Kadıköy to Taksim needs M4, Marmaray and M2,
+        because the metro lines do not meet each other across the Bosphorus.
+
+        Consecutive hops on one line are merged back into a single leg, and
+        each merged leg's duration is recomputed with `same_line_leg` so the
+        reported figure is the same one a direct query would give. The search
+        cost is only used to pick the route.
+        """
+        if not origins or not destinations:
+            return None
+
+        goals = {(d.line, self.key(d.name)) for d in destinations}
+        station_of: dict[tuple[str, str], RailStation] = {}
+        for line, line_stations in self._by_line.items():
+            for station in line_stations:
+                station_of.setdefault((line, self.key(station.name)), station)
+
+        # Riding edges: adjacent pairs only, branch stations skipped.
+        rides: dict[tuple[str, str], list[tuple[tuple[str, str], int]]] = {}
+        for line, line_stations in self._by_line.items():
+            usable = [s for s in line_stations if not s.is_spur]
+            pairs = list(pairwise(usable))
+            if line in self.ring_lines and len(usable) > 2:
+                pairs.append((usable[-1], usable[0]))
+            for left, right in pairs:
+                seconds, _ = self._segment_seconds(left, right)
+                if seconds is None:
+                    continue
+                cost = seconds + DWELL_S
+                a = (line, self.key(left.name))
+                b = (line, self.key(right.name))
+                rides.setdefault(a, []).append((b, cost))
+                rides.setdefault(b, []).append((a, cost))
+
+        # Interchange edges, from dataset 313 plus shared names.
+        changes: dict[tuple[str, str], list[tuple[str, str]]] = {}
+        for line in self._by_line:
+            for other in self._by_line:
+                if line == other:
+                    continue
+                for change_from, change_to in self.transfer_options(line, other):
+                    node = (line, self.key(change_from.name))
+                    target = (other, self.key(change_to.name))
+                    changes.setdefault(node, []).append(target)
+
+        starts = {(o.line, self.key(o.name)) for o in origins}
+        best: dict[tuple[str, str], int] = dict.fromkeys(starts, 0)
+        # node -> (previous node, was this a line change?)
+        came_from: dict[tuple[str, str], tuple[tuple[str, str], bool]] = {}
+        queue: list[tuple[int, int, tuple[str, str]]] = [
+            (0, index, node) for index, node in enumerate(sorted(starts))
+        ]
+        heapq.heapify(queue)
+        counter = len(queue)
+        settled: set[tuple[str, str]] = set()
+        reached: tuple[str, str] | None = None
+
+        while queue:
+            cost, _, node = heapq.heappop(queue)
+            if node in settled:
+                continue
+            settled.add(node)
+            if node in goals:
+                reached = node
+                break
+
+            for target, edge_cost in rides.get(node, []):
+                if target in settled:
+                    continue
+                total = cost + edge_cost
+                if total < best.get(target, 1 << 60):
+                    best[target] = total
+                    came_from[target] = (node, False)
+                    counter += 1
+                    heapq.heappush(queue, (total, counter, target))
+
+            for target in changes.get(node, []):
+                if target in settled or target not in station_of:
+                    continue
+                total = cost + TRANSFER_PENALTY_S
+                if total < best.get(target, 1 << 60):
+                    best[target] = total
+                    came_from[target] = (node, True)
+                    counter += 1
+                    heapq.heappush(queue, (total, counter, target))
+
+        if reached is None:
+            return None
+
+        # Walk back to the start, then group the ride edges by line.
+        path: list[tuple[tuple[str, str], bool]] = []
+        node = reached
+        while node in came_from:
+            previous, was_change = came_from[node]
+            path.append((node, was_change))
+            node = previous
+        path.append((node, False))
+        path.reverse()
+
+        legs: list[TravelLeg] = []
+        run: list[tuple[str, str]] = [path[0][0]]
+        for current, was_change in path[1:]:
+            if was_change:
+                legs.extend(self._leg_from_run(run))
+                run = [current]
+            else:
+                run.append(current)
+        legs.extend(self._leg_from_run(run))
+        return legs or None
+
+    def _leg_from_run(self, run: list[tuple[str, str]]) -> list[TravelLeg]:
+        """Turn a run of same-line nodes into at most one leg."""
+        if len(run) < 2:
+            return []
+        line = run[0][0]
+        origin = next((s for s in self.stations_on(line) if self.key(s.name) == run[0][1]), None)
+        destination = next(
+            (s for s in self.stations_on(line) if self.key(s.name) == run[-1][1]), None
+        )
+        if origin is None or destination is None:
+            return []
+        leg = self.same_line_leg(origin, destination)
+        return [leg] if leg is not None and leg.seconds > 0 else []
 
 
 def median_or_none(values: list[int]) -> int | None:

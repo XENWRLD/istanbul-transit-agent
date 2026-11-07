@@ -15,7 +15,7 @@ M7,frequencies,20,5,3,evet,0,gündüz aralığı yalnız frequencies.csv'de
 M8,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de
 M9,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de
 T1,stop_times,1134,1058,4,hayır,4,1058 gündüz seferi açık saatlerle kayıtlı
-T3,yok,219,219,0,hayır,0,hat güvenilmez: adlar koordinatlarla uyuşmuyor (karar 0003)
+T3,stop_times,219,219,0,hayır,0,219 gündüz seferi açık saatlerle kayıtlı
 T4,stop_times,1145,1066,4,hayır,4,1066 gündüz seferi açık saatlerle kayıtlı
 TF1,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de
 TF2,frequencies,2,2,2,evet,0,gündüz aralığı yalnız frequencies.csv'de

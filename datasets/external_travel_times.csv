@@ -1,0 +1,7 @@
+from,to,line,minutes,source_url,retrieved_at,notes
+Yenikapı,Hacıosman,M2,32,<link>,2026-11-08,Kullanıcı tarafından dış kaynaktan doğrulandı
+Kadıköy,Tavşantepe,M4,38.5,<link>,2026-11-08,Kullanıcı tarafından dış kaynaktan doğrulandı
+Üsküdar,Çekmeköy,M5,34,<link>,2026-11-08,DOĞRULANMADI — M5 2024'te Sultanbeyli'ye uzatıldı; bu süre başka bir güzergâha ait olabilir. Kalibrasyonda kullanılmıyor.
+Kabataş,Bağcılar,T1,63,<link>,2026-11-08,Kullanıcı tarafından dış kaynaktan doğrulandı
+Taksim,Kabataş,F1,2.5,<link>,2026-11-08,Kullanıcı tarafından dış kaynaktan doğrulandı
+Kadıköy,Sabiha Gökçen Havalimanı,M4,52,https://en.wikipedia.org/wiki/M4_(Istanbul_Metro),2026-11-08,Tüm hat süresi; bizim sonucumuz tahmin (estimated) içeriyor

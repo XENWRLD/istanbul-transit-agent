@@ -1,10 +1,10 @@
 """The query behind `get_rail_travel_time`.
 
-Loads the station graph from data/transit.duckdb and answers A-to-B, on one
-line or across an interchange. Every answer states which method produced it
-and how old the underlying data is; when no method can answer, it says so
-rather than guessing -- M5's last three stations have no coordinates in any
-source, so a journey through them is genuinely unanswerable.
+Loads the station graph from data/transit.duckdb and answers A to B, on one
+line or across an interchange. Every answer states which method produced it,
+how old the underlying data is, and -- when the duration was estimated -- how
+far off it is likely to be, taken from the held-out validation rather than
+invented. When no method can answer, it says so instead of guessing.
 """
 
 from __future__ import annotations
@@ -15,11 +15,14 @@ from pathlib import Path
 from istanbul_agent.store.db import read_only_connection
 from istanbul_agent.store.rail_travel import (
     GTFS_METRO_DATA_AS_OF,
+    LINE_WARNINGS,
     TRANSFER_PENALTY_S,
+    ErrorMargin,
     RailNetwork,
     RailStation,
     TravelLeg,
     TravelTimeResult,
+    estimate_error,
 )
 from istanbul_agent.store.station_names import collapsed, normalize
 
@@ -50,13 +53,13 @@ def load_network(path: Path | None = None) -> RailNetwork:
             ).fetchall()
         ]
 
-        durations: dict[tuple[str, str], int] = {}
-        lengths: dict[tuple[str, str], float] = {}
-        for from_name, to_name, duration, track, straight in connection.execute(
-            "SELECT from_name, to_name, duration_s, track_m, straight_m FROM rail_segments"
+        durations: dict[tuple[str, str, str], int] = {}
+        lengths: dict[tuple[str, str, str], float] = {}
+        for line, from_name, to_name, duration, track, straight in connection.execute(
+            "SELECT line, from_name, to_name, duration_s, track_m, straight_m FROM rail_segments"
         ).fetchall():
             a, b = normalize(from_name), normalize(to_name)
-            key = (a, b) if a <= b else (b, a)
+            key = (line, a, b) if a <= b else (line, b, a)
             if duration is not None:
                 durations[key] = int(duration)
             metres = track if track is not None else straight
@@ -73,9 +76,17 @@ def load_network(path: Path | None = None) -> RailNetwork:
         unreliable = frozenset(
             row[0]
             for row in connection.execute(
-                "SELECT line FROM rail_lines WHERE in_gtfs AND NOT gtfs_reliable"
+                "SELECT line FROM rail_lines WHERE NOT coords_reliable"
             ).fetchall()
         )
+        rings = frozenset(
+            row[0]
+            for row in connection.execute("SELECT line FROM rail_lines WHERE is_ring").fetchall()
+        )
+        line_dates = {
+            row[0]: row[1]
+            for row in connection.execute("SELECT line, data_as_of FROM rail_lines").fetchall()
+        }
 
     return RailNetwork(
         stations=stations,
@@ -83,6 +94,8 @@ def load_network(path: Path | None = None) -> RailNetwork:
         segment_lengths=lengths,
         transfers=transfers,
         unreliable_lines=unreliable,
+        ring_lines=rings,
+        line_dates=line_dates,
     )
 
 
@@ -103,6 +116,35 @@ def _resolve(network: RailNetwork, name: str) -> list[RailStation]:
     prefixed = [s for s in network.stations if collapsed(s.name).startswith(wanted)]
     unique_names = {normalize(s.name) for s in prefixed}
     return prefixed if len(unique_names) == 1 else []
+
+
+def _margin_for(seconds: int, stop_count: int) -> ErrorMargin:
+    mean_pct, max_pct = estimate_error(stop_count)
+    return ErrorMargin(
+        mean_pct=mean_pct,
+        max_pct=max_pct,
+        mean_seconds=round(seconds * mean_pct / 100),
+        max_seconds=round(seconds * max_pct / 100),
+    )
+
+
+def _data_as_of(network: RailNetwork, legs: list[TravelLeg]) -> str:
+    """The oldest date among the lines used.
+
+    A journey touching Marmaray is only as current as Marmaray's own feed
+    data, which predates the metro's by a year.
+    """
+    known = [date for date in (network.line_dates.get(leg.line) for leg in legs) if date]
+    return min(known) if known else GTFS_METRO_DATA_AS_OF
+
+
+def _warnings_for(legs: list[TravelLeg]) -> list[str]:
+    seen: list[str] = []
+    for leg in legs:
+        warning = LINE_WARNINGS.get(leg.line.strip().upper())
+        if warning and warning not in seen:
+            seen.append(warning)
+    return seen
 
 
 def get_rail_travel_time(
@@ -142,17 +184,9 @@ def get_rail_travel_time(
 
     notes: list[str] = []
 
-    # ---- same line, if any line serves both ----
-    shared = {o.line for o in origins} & {d.line for d in destinations}
-    usable_shared = shared - graph.unreliable_lines
-    if shared and not usable_shared:
-        notes.append(
-            f"{', '.join(sorted(shared))} hattının GTFS verisi güvenilmez "
-            "(adlar koordinatlarla uyuşmuyor), kullanılmadı."
-        )
-
+    # ---- same line ----
     best: TravelLeg | None = None
-    for line in sorted(usable_shared):
+    for line in sorted({o.line for o in origins} & {d.line for d in destinations}):
         origin = next(o for o in origins if o.line == line)
         destination = next(d for d in destinations if d.line == line)
         leg = graph.same_line_leg(origin, destination)
@@ -161,6 +195,17 @@ def get_rail_travel_time(
 
     if best is not None:
         estimated = best.method == "estimated"
+        if best.line in graph.unreliable_lines:
+            notes.append(
+                f"{best.line} koordinatları güvenilmez (karar 0003); süre beslemenin "
+                "kayıtlı değerlerinden alındı, mesafeden türetilmedi."
+            )
+        if best.line in graph.ring_lines:
+            notes.append(f"{best.line} ring hat; iki yönden kısa olanı seçildi.")
+        if estimated:
+            notes.append(
+                "Süre tahmin edildi: bu istasyonların bir kısmı 2020 tarihli GTFS beslemesinde yok."
+            )
         return TravelTimeResult(
             from_station=origins[0].name,
             to_station=destinations[0].name,
@@ -172,67 +217,61 @@ def get_rail_travel_time(
                 "Public Transport GTFS (veri seti 308)"
                 + (" + Raylı Sistem Hat Uzunlukları (312)" if estimated else "")
             ),
-            data_as_of=GTFS_METRO_DATA_AS_OF,
+            data_as_of=_data_as_of(graph, [best]),
             legs=[best],
-            notes=notes
-            + (
-                [
-                    "Süre tahmin edildi: bu istasyonların bir kısmı 2020 tarihli "
-                    "GTFS beslemesinde yok. Ortalama hata %6.6 (karar 0004)."
-                ]
-                if estimated
-                else []
-            ),
+            error_margin=_margin_for(best.seconds, best.stop_count) if estimated else None,
+            warnings=_warnings_for([best]),
+            notes=notes,
         )
 
-    # ---- one interchange ----
-    best_pair: tuple[TravelLeg, TravelLeg, str] | None = None
-    for origin in origins:
-        for destination in destinations:
-            if origin.line == destination.line:
-                continue
-            if origin.line in graph.unreliable_lines or destination.line in graph.unreliable_lines:
-                continue
-            for change_from, change_to in graph.transfer_options(origin.line, destination.line):
-                first = graph.same_line_leg(origin, change_from)
-                second = graph.same_line_leg(change_to, destination)
-                if first is None or second is None:
-                    continue
-                total = first.seconds + second.seconds
-                if best_pair is None or total < best_pair[0].seconds + best_pair[1].seconds:
-                    label = change_from.name
-                    if graph.key(change_from.name) != graph.key(change_to.name):
-                        label = f"{change_from.name} / {change_to.name}"
-                    best_pair = (first, second, label)
+    # ---- across interchanges, however many it takes ----
+    legs = graph.plan(origins, destinations)
+    if legs:
+        changes = max(0, len(legs) - 1)
+        estimated = any(leg.method == "estimated" for leg in legs)
+        total = sum(leg.seconds for leg in legs) + changes * TRANSFER_PENALTY_S
+        stops = sum(leg.stop_count for leg in legs)
+        interchanges = [leg.to_station for leg in legs[:-1]]
 
-    if best_pair is not None:
-        first, second, interchange = best_pair
-        estimated = "estimated" in (first.method, second.method)
+        if changes:
+            notes.append(
+                f"{changes} aktarma: {', '.join(interchanges)}. Her aktarma için "
+                f"{TRANSFER_PENALTY_S // 60} dakika eklendi (210 s ölçülen ortalama "
+                "bekleme + 150 s varsayılan yürüme, karar 0004)."
+            )
+        if estimated:
+            notes.append("Bacakların en az biri tahmin edildi.")
+        for line in sorted({leg.line for leg in legs} & graph.unreliable_lines):
+            notes.append(
+                f"{line} koordinatları güvenilmez (karar 0003); o bacağın süresi "
+                "beslemenin kayıtlı değerlerinden alındı, mesafeden türetilmedi."
+            )
+
         return TravelTimeResult(
             from_station=origins[0].name,
             to_station=destinations[0].name,
-            seconds=first.seconds + second.seconds + TRANSFER_PENALTY_S,
-            method="transfer",
+            seconds=total,
+            method="transfer" if changes else legs[0].method,
             estimated=estimated,
             is_stale=True,
-            source=("Public Transport GTFS (veri seti 308) + Raylı Sistem Aktarma Bilgileri (313)"),
-            data_as_of=GTFS_METRO_DATA_AS_OF,
-            legs=[first, second],
-            transfer_station=interchange,
-            transfer_penalty_s=TRANSFER_PENALTY_S,
-            notes=notes
-            + [
-                f"{interchange} aktarmalı. Aktarma için {TRANSFER_PENALTY_S // 60} dakika "
-                "eklendi (210 s ölçülen ortalama bekleme + 150 s varsayılan yürüme, "
-                "karar 0004)."
-            ]
-            + (["Bacakların en az biri tahmin edildi."] if estimated else []),
+            source=(
+                "Public Transport GTFS (veri seti 308) + Raylı Sistem Aktarma Bilgileri (313)"
+                if changes
+                else "Public Transport GTFS (veri seti 308)"
+            ),
+            data_as_of=_data_as_of(graph, legs),
+            legs=legs,
+            transfer_station=" → ".join(interchanges) if interchanges else None,
+            transfer_penalty_s=changes * TRANSFER_PENALTY_S,
+            error_margin=_margin_for(total, stops) if estimated else None,
+            warnings=_warnings_for(legs),
+            notes=notes,
         )
 
     origin_lines = ", ".join(sorted({o.line for o in origins}))
     destination_lines = ", ".join(sorted({d.line for d in destinations}))
     return unavailable(
         f"{origins[0].name} ({origin_lines}) ile {destinations[0].name} "
-        f"({destination_lines}) arasında tek aktarmalı bir bağlantı bulunamadı "
-        "veya gereken segmentlerin mesafe verisi yok."
+        f"({destination_lines}) arasında raylı bir bağlantı bulunamadı veya "
+        "gereken segmentlerin süre/mesafe verisi yok."
     )

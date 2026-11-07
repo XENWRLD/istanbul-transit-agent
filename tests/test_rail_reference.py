@@ -153,9 +153,7 @@ class TestTransfers:
     def test_target_without_station_name_keeps_the_line(self, reference_dir):
         """'M7' alone as a target still records the line."""
         reference = load_rail_reference(reference_dir)
-        mecidiyekoy = next(
-            t for t in reference.transfers if t.from_station == "Şişli-Mecidiyeköy"
-        )
+        mecidiyekoy = next(t for t in reference.transfers if t.from_station == "Şişli-Mecidiyeköy")
         assert mecidiyekoy.to_line == "M7"
 
 

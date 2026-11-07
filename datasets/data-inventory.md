@@ -3,7 +3,12 @@
 Kaynak: `data.ibb.gov.tr/api/3/action/package_search?rows=1000`, 6 Kasım 2026 itibarıyla 565 veri seti.
 Tam liste (açıklama, kategori, format, son güncelleme, işaret) aynı klasördeki `ibb_datasets.csv` dosyasında; portalın ham kataloğu `ibb_dataset.json` içinde.
 
-> Uç noktalar henüz canlı test edilmedi. Faz 0'da her A işaretli uç noktaya gerçek istek atıp yanıtı `tests/fixtures/` altına kaydet.
+> **Uç nokta testi yapıldı: 6 Kasım 2026, 17:20–17:23 (TRT).** A ve A2 grubundaki
+> 39 veri setinin tamamına gerçek istek atıldı: REST 25/32 çalışıyor, İETT SOAP
+> 7/7 WSDL okundu (28 metot), 9/9 doğrulanan çağrı. Hiçbiri kimlik doğrulama
+> istemedi. Örnek yanıtlar `tests/fixtures/` altında, bulgular ve kararlar
+> `documents/decisions/0001-veri-kaynaklari.md` içinde. Aşağıdaki Durum kolonu
+> ölçüm sonuçlarından üretilir (`scripts/mark_inventory.py`).
 
 ## İşaretler
 
@@ -16,59 +21,57 @@ Tam liste (açıklama, kategori, format, son güncelleme, işaret) aynı klasör
 
 ## A — Canlı API → MCP aracı (öncelikli)
 
-| No | Veri seti | Ne işe yarar | Uç nokta | Son güncelleme |
-|---|---|---|---|---|
-| 502 | Ispark Parking List Web Service | İSPARK otopark listesi + anlık boş kapasite | `https://api.ibb.gov.tr/ispark/Park` | 2023-05-05 |
-| 163 | İSPARK Otopark Detay Bilgileri Web Servisi | Tek otoparkın detayı (ücret, saatler) | `https://api.ibb.gov.tr/ispark/ParkDetay?id=(PARKID)` | 2026-03-02 |
-| 548 | Traffic Index Web Service | Şehir geneli trafik indeksi | `https://api.ibb.gov.tr/tkmservices/api/TrafficData/v1/TrafficIndexHistory/1/5M` | 2022-04-04 |
-| 520 | Service Status List of Metro Istanbul Lines | Metro hatlarının anlık servis durumu | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetServiceStatuses` | 2023-04-25 |
-| 512 | Metro Istanbul Announcement List According to Different Language Options | Metro duyuruları (aksaklık, kapanma) | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetAnnouncements/%7BLanguage%7D` | 2023-04-25 |
-| 552 | Metro Istanbul Timetable Web Service | Metro sefer saatleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTimeTable` | 2022-04-04 |
-| 513 | List of Distance Times of Metro Istanbul Stations to the Start Station | İstasyonlar arası süre | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStationBetweenTime` | 2023-04-25 |
-| 168 | Metro İstanbul İstasyon Bilgi Listesi | Metro istasyonları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStations` | 2026-02-27 |
-| 514 | Metro Istanbul Station Information List by Line Id | Hatta göre istasyonlar | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStationById/%7BLineId%7D` | 2023-04-25 |
-| 508 | Metro Istanbul Line Information List | Metro hatları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetLines` | 2023-04-25 |
-| 515 | Metro Istanbul Detail Information List of Defective Equipment | Arızalı ekipman detayı (asansör/yürüyen merdiven → erişilebilirlik) | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipmentDetails` | 2023-04-25 |
-| 518 | Metro Istanbul Faulty Equipment and Technical Unit List | Arızalı ekipman listesi | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipments` | 2023-04-25 |
-| 527 | Metro Istanbul Ticket Price List Web Service | Metro bilet fiyatları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTicketPrice/TR` | 2023-03-27 |
-| 351 | IETT Announcements Web Service | İETT anlık hat duyuruları | `https://api.ibb.gov.tr/iett/UlasimDinamikVeri/Duyurular.asmx?wsdl` | 2024-11-06 |
-| 350 | IETT Planned Time Web Service | İETT planlanan sefer saatleri | `https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx?wsdl` | 2024-11-06 |
-| 349 | IETT Journey Web Service | İETT anlık sefer gerçekleşme | `https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx?wsdl` | 2024-11-06 |
-| 172 | İETT Hat-Durak-Güzergâh Web Servisi | İETT hat-durak-güzergâh | `https://api.ibb.gov.tr/iett/UlasimAnaVeri/HatDurakGuzergah.asmx?wsdl` | 2026-02-27 |
-| 171 | İETT Durak ve Hat Bilgileri Web Servisi | İETT durak ve hat bilgileri | `https://api.ibb.gov.tr/iett/ibb/ibb.asmx?wsdl` | 2026-02-27 |
-| 347 | İETT Yolculuk ve Sefer Bilgileri Web Servisi | İETT yolculuk ve sefer bilgileri | `https://api.ibb.gov.tr/iett/ibb/ibb360.asmx?wsdl` | 2024-11-15 |
-| 407 | Hava Kalitesi İstasyon Bilgileri Web Servisi | Hava kalitesi istasyonları | `https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIStations` | 2024-03-28 |
-| 408 | Hava Kalitesi İstasyon Ölçüm Sonuçları Web Servisi | Hava kalitesi ölçümleri (AQI) | `https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIByStationId` | 2024-03-28 |
-| 501 | Road Maintenance Works Web Service | Günlük yol bakım çalışmaları | `https://api.ibb.gov.tr/teas/api/open_data` | 2023-05-05 |
-
+| No | Veri seti | Ne işe yarar | Uç nokta | Son güncelleme | Durum |
+| --- | --- | --- | --- | --- | --- |
+| 502 | Ispark Parking List Web Service | İSPARK otopark listesi + anlık boş kapasite | `https://api.ibb.gov.tr/ispark/Park` | 2023-05-05 | ✅ çalışıyor (240 kayıt) |
+| 163 | İSPARK Otopark Detay Bilgileri Web Servisi | Tek otoparkın detayı (ücret, saatler) | `https://api.ibb.gov.tr/ispark/ParkDetay?id=(PARKID)` | 2026-03-02 | ✅ çalışıyor (1 kayıt) |
+| 548 | Traffic Index Web Service | Şehir geneli trafik indeksi | `https://api.ibb.gov.tr/tkmservices/api/TrafficData/v1/TrafficIndexHistory/1/5M` | 2022-04-04 | ✅ çalışıyor (288 kayıt; en yeni 2026-11-06 17:22) |
+| 520 | Service Status List of Metro Istanbul Lines | Metro hatlarının anlık servis durumu | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetServiceStatuses` | 2023-04-25 | ✅ çalışıyor (3 kayıt; en yeni 2026-11-02 08:06) |
+| 512 | Metro Istanbul Announcement List According to Different Language Options | Metro duyuruları (aksaklık, kapanma) | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetAnnouncements/%7BLanguage%7D` | 2023-04-25 | ✅ çalışıyor (8 kayıt; en yeni 2026-11-06 00:01) |
+| 552 | Metro Istanbul Timetable Web Service | Metro sefer saatleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTimeTable` | 2022-04-04 | ❌ sunucu hatası — HTTP 200 + Success=false: Index was out of range. Must be non-negative and less than the size of the collection. (Pa |
+| 513 | List of Distance Times of Metro Istanbul Stations to the Start Station | İstasyonlar arası süre | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStationBetweenTime` | 2023-04-25 | ❌ sunucu hatası — HTTP 200 + Success=false: Object reference not set to an instance of an object. |
+| 168 | Metro İstanbul İstasyon Bilgi Listesi | Metro istasyonları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStations` | 2026-02-27 | ✅ çalışıyor (248 kayıt) |
+| 514 | Metro Istanbul Station Information List by Line Id | Hatta göre istasyonlar | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStationById/%7BLineId%7D` | 2023-04-25 | ✅ çalışıyor (2 kayıt) |
+| 508 | Metro Istanbul Line Information List | Metro hatları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetLines` | 2023-04-25 | ✅ çalışıyor (18 kayıt) |
+| 515 | Metro Istanbul Detail Information List of Defective Equipment | Arızalı ekipman detayı (asansör/yürüyen merdiven → erişilebilirlik) | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipmentDetails` | 2023-04-25 | ✅ çalışıyor (POST {"EquipmentGroupName": "Yürüyen Merdiven"}; 1 kayıt; en yeni 2026-11-06 00:00) |
+| 518 | Metro Istanbul Faulty Equipment and Technical Unit List | Arızalı ekipman listesi | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipments` | 2023-04-25 | ✅ çalışıyor (1 kayıt) |
+| 527 | Metro Istanbul Ticket Price List Web Service | Metro bilet fiyatları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTicketPrice/TR` | 2023-03-27 | ✅ çalışıyor (3 kayıt) |
+| 351 | IETT Announcements Web Service | İETT anlık hat duyuruları | `https://api.ibb.gov.tr/iett/UlasimDinamikVeri/Duyurular.asmx?wsdl` | 2024-11-06 | ✅ WSDL okundu, 2 metot — doğrulanan çağrı: GetDuyurular_json |
+| 350 | IETT Planned Time Web Service | İETT planlanan sefer saatleri | `https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx?wsdl` | 2024-11-06 | ✅ WSDL okundu, 2 metot — zeep reddetti, WSDL XML ile okundu — AuthHeader bildirilmiş ama zorunlu değil — doğrulanan çağrı: GetPlanlananSeferSaati_json |
+| 349 | IETT Journey Web Service | İETT anlık sefer gerçekleşme | `https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx?wsdl` | 2024-11-06 | ✅ WSDL okundu, 6 metot — zeep reddetti, WSDL XML ile okundu — AuthHeader bildirilmiş ama zorunlu değil — doğrulanan çağrı: GetFiloAracKonum_json, GetHatOtoKonum_json, GetBozukSatih_json |
+| 172 | İETT Hat-Durak-Güzergâh Web Servisi | İETT hat-durak-güzergâh | `https://api.ibb.gov.tr/iett/UlasimAnaVeri/HatDurakGuzergah.asmx?wsdl` | 2026-02-27 | ✅ WSDL okundu, 9 metot — zeep reddetti, WSDL XML ile okundu — AuthHeader bildirilmiş ama zorunlu değil — doğrulanan çağrı: GetHat_json, GetGaraj_json |
+| 171 | İETT Durak ve Hat Bilgileri Web Servisi | İETT durak ve hat bilgileri | `https://api.ibb.gov.tr/iett/ibb/ibb.asmx?wsdl` | 2026-02-27 | ✅ WSDL okundu, 3 metot — zeep reddetti, WSDL XML ile okundu — AuthHeader bildirilmiş ama zorunlu değil — doğrulanan çağrı: DurakDetay_GYY, HatServisi_GYY |
+| 347 | İETT Yolculuk ve Sefer Bilgileri Web Servisi | İETT yolculuk ve sefer bilgileri | `https://api.ibb.gov.tr/iett/ibb/ibb360.asmx?wsdl` | 2024-11-15 | ✅ WSDL okundu, 4 metot |
+| 407 | Hava Kalitesi İstasyon Bilgileri Web Servisi | Hava kalitesi istasyonları | `https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIStations` | 2024-03-28 | ✅ çalışıyor (28 kayıt) |
+| 408 | Hava Kalitesi İstasyon Ölçüm Sonuçları Web Servisi | Hava kalitesi ölçümleri (AQI) | `https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIByStationId` | 2024-03-28 | ✅ çalışıyor (721 kayıt; en yeni 2026-11-06 17:23) |
+| 501 | Road Maintenance Works Web Service | Günlük yol bakım çalışmaları | `https://api.ibb.gov.tr/teas/api/open_data` | 2023-05-05 | ⏸️ ertelendi — uç nokta kalkmış (nginx 404), yol çalışmaları aracı kapsamdan çıktı (K3) |
 ## A2 — Canlı API → ikincil / destekleyici
 
-| No | Veri seti | Ne işe yarar | Uç nokta | Son güncelleme |
-|---|---|---|---|---|
-| 169 | Tüm İsbike İstasyonları Web Servisi | İsbike tüm istasyonlar (portal notu: geçici olarak kapalı) | `https://api.ibb.gov.tr/ispark-bike/GetAllStationStatus` | 2026-02-27 |
-| 170 | İsbike İstasyon Durumları Web Servisi | İsbike istasyon durumu (portal notu: geçici olarak kapalı) | `https://api.ibb.gov.tr/ispark-bike/GetStationStatus` | 2026-02-27 |
-| 504 | Metro Istanbul Rail System Group List | Raylı sistem grupları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetRailwayGroups` | 2023-04-25 |
-| 505 | Direction Information List by Metro Istanbul Line Id and Station Id | Hat+istasyona göre yön | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetDirectionsByLineIdAndStationId` | 2023-04-25 |
-| 506 | Direction Information List by Metro Istanbul by Line ID | Hatta göre yön | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetDirectionById/%7BLineId%7D` | 2023-04-25 |
-| 507 | Metro Istanbul Line Direction Information List | Yön listesi | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetDirections` | 2023-04-25 |
-| 516 | Metro Istanbul Fault Types List | Arıza türleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFailureTypes` | 2023-04-25 |
-| 517 | Metro Istanbul Technical Object Types List | Teknik nesne türleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTechnicalObjectTypes` | 2023-04-25 |
-| 519 | Metro Istanbul Fault Types List | Arıza türleri (2) | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFailuresTypes` | 2023-04-25 |
-| 511 | Metro Istanbul News List According to Different Language Options | Metro haberleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetNews/%7BLanguage%7D` | 2023-04-25 |
-| 510 | Metro Istanbul Event List | Metro etkinlikleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetActivities` | 2023-04-25 |
-| 549 | Metro Istanbul Network Map List Web Service | Metro ağ haritaları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetMaps` | 2022-04-04 |
-| 550 | Metro Istanbul Address List Web Service According to Different Language Options | Metro adresleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetAddresses/{Language}` | 2022-04-04 |
-| 551 | Metro Istanbul Ongoing Project List Web Service | Metro devam eden projeler | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetLineProjects` | 2022-04-04 |
-| 382 | Signalized Junction Information Web Service | Sinyalize kavşaklar | `https://api.ibb.gov.tr/web/api/junction` | 2024-08-21 |
-| 352 | IETT Vehicle Features Web Service | İETT araç özellikleri | `https://api.ibb.gov.tr/iett/AracAnaVeri/AracOzellik.asmx?wsdl` | 2024-11-06 |
-| 384 | City Map API | Şehir Haritası API (geocoding için değerlendirilebilir) | `https://sehirharitasiapi.ibb.gov.tr/developer/` | 2024-05-20 |
-
+| No | Veri seti | Ne işe yarar | Uç nokta | Son güncelleme | Durum |
+| --- | --- | --- | --- | --- | --- |
+| 169 | Tüm İsbike İstasyonları Web Servisi | İsbike tüm istasyonlar (portal notu: geçici olarak kapalı) | `https://api.ibb.gov.tr/ispark-bike/GetAllStationStatus` | 2026-02-27 | ⏸️ ertelendi — HTTP 200 ama dataList boş; servis portal notuna göre kapalı (K4) |
+| 170 | İsbike İstasyon Durumları Web Servisi | İsbike istasyon durumu (portal notu: geçici olarak kapalı) | `https://api.ibb.gov.tr/ispark-bike/GetStationStatus` | 2026-02-27 | ⏸️ ertelendi — 400, zorunlu guid yalnızca boş olan 169'dan alınabilir (K4) |
+| 504 | Metro Istanbul Rail System Group List | Raylı sistem grupları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetRailwayGroups` | 2023-04-25 | ✅ çalışıyor (4 kayıt) |
+| 505 | Direction Information List by Metro Istanbul Line Id and Station Id | Hat+istasyona göre yön | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetDirectionsByLineIdAndStationId` | 2023-04-25 | ✅ çalışıyor (POST {"LineId": 4, "StationId": 188}; 1 kayıt) |
+| 506 | Direction Information List by Metro Istanbul by Line ID | Hatta göre yön | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetDirectionById/%7BLineId%7D` | 2023-04-25 | ✅ çalışıyor (2 kayıt) |
+| 507 | Metro Istanbul Line Direction Information List | Yön listesi | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetDirections` | 2023-04-25 | ❌ çalışmıyor — HTTP 500: (boş gövde) |
+| 516 | Metro Istanbul Fault Types List | Arıza türleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFailureTypes` | 2023-04-25 | ✅ çalışıyor (4 kayıt) |
+| 517 | Metro Istanbul Technical Object Types List | Teknik nesne türleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetTechnicalObjectTypes` | 2023-04-25 | ✅ çalışıyor (26 kayıt) |
+| 519 | Metro Istanbul Fault Types List | Arıza türleri (2) | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFailuresTypes` | 2023-04-25 | ❌ sunucu hatası — HTTP 200 + Success=false: Could not find endpoint with name 'BasicHttpBinding_SI_ArizaDuyuru_Out'. |
+| 511 | Metro Istanbul News List According to Different Language Options | Metro haberleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetNews/%7BLanguage%7D` | 2023-04-25 | ✅ çalışıyor (11 kayıt; en yeni 2026-10-17 00:01) |
+| 510 | Metro Istanbul Event List | Metro etkinlikleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetActivities` | 2023-04-25 | ✅ çalışıyor (168 kayıt; en yeni 2026-02-05 00:00) |
+| 549 | Metro Istanbul Network Map List Web Service | Metro ağ haritaları | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetMaps` | 2022-04-04 | ✅ çalışıyor (7 kayıt; en yeni 2026-07-29 00:00) |
+| 550 | Metro Istanbul Address List Web Service According to Different Language Options | Metro adresleri | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetAddresses/{Language}` | 2022-04-04 | ✅ çalışıyor (15 kayıt) |
+| 551 | Metro Istanbul Ongoing Project List Web Service | Metro devam eden projeler | `https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetLineProjects` | 2022-04-04 | ✅ çalışıyor (67 kayıt; en yeni 2026-11-09 00:00) |
+| 382 | Signalized Junction Information Web Service | Sinyalize kavşaklar | `https://api.ibb.gov.tr/web/api/junction` | 2024-08-21 | ✅ çalışıyor (2590 kayıt) |
+| 352 | IETT Vehicle Features Web Service | İETT araç özellikleri | `https://api.ibb.gov.tr/iett/AracAnaVeri/AracOzellik.asmx?wsdl` | 2024-11-06 | ✅ WSDL okundu, 2 metot |
+| 384 | City Map API | Şehir Haritası API (geocoding için değerlendirilebilir) | `https://sehirharitasiapi.ibb.gov.tr/developer/` | 2024-05-20 | ℹ️ JSON uç noktası değil — developer portal sayfası; geocoding kararı Faz 1'e kaldı |
 ## B — Statik veri → yerel tablo / konum aracı
 
 | No | Veri seti | Ne işe yarar | Format | Son güncelleme |
 |---|---|---|---|---|
 | 75 | IETT GTFS Data | İETT GTFS (otobüs tarifeleri, duraklar, güzergâhlar) | CSV,ZIP | 2026-04-21 |
-| 308 | Public Transport GTFS Data | Toplu taşıma GTFS | CSV | 2025-03-12 |
+| 308 | Public Transport GTFS Data | Toplu taşıma GTFS | CSV | 2025-03-12 (metro verisi 2020-07-09, güncellenmeyecek) → `get_next_departures` (metro) ve `get_rail_travel_time` kaynağı, `is_stale: true` |
 | 6 | Raylı Sistem İstasyon Noktaları Verisi | Raylı sistem istasyon noktaları | GEOJSON | 2026-11-06 |
 | 4 | Rail System Station Areas Data | Raylı sistem istasyon alanları | GEOJSON | 2026-11-06 |
 | 7 | Raylı Sistem Hatları Vektör Verisi | Raylı sistem hatları | GEOJSON | 2026-11-04 |
@@ -95,13 +98,13 @@ Tam liste (açıklama, kategori, format, son güncelleme, işaret) aynı klasör
 | 276 | Elektrikli Araç Şarj İstasyonları Verisi | Elektrikli araç şarj istasyonları | GEOJSON | 2025-05-13 |
 | 199 | Disabled Charging Points at Metro Stations | Metro istasyonlarında engelli şarj noktaları | XLSX | 2026-02-11 |
 | 529 | NUMBER OF ELEVATORS AND ESCALATORS AT THE KIRAZLI-HALKALI STATION | Kirazlı-Halkalı asansör/yürüyen merdiven sayıları | XLSX | 2023-03-17 |
-| 313 | Information on Transfer of Rail Systems | Raylı sistem aktarma bilgileri | XLSX | 2025-03-07 |
+| 313 | Information on Transfer of Rail Systems | Raylı sistem aktarma bilgileri | XLSX | 2025-03-07 → `get_rail_travel_time` aktarma noktaları |
 | 530 | RAIL SYSTEMS KIRAZLI-HALKALI STATION CONNECTIONS WITH OTHER LINES | Kirazlı-Halkalı aktarma bağlantıları | XLSX | 2023-03-17 |
 | 532 | Raylı Sistemler İkitelli-Ataköy Hattı Diğer Hatlarla Bağlantı Noktaları | İkitelli-Ataköy aktarma bağlantıları | XLSX | 2023-03-15 |
 | 409 | Rail Systems Mahmutbey-Esenyurt Station Connection Points with Other Lines | Mahmutbey-Esenyurt aktarma noktaları | XLSX | 2024-03-27 |
 | 487 | STATION INFORMATION OF RAIL SYSTEMS | Raylı sistem istasyon bilgileri | XLSX | 2023-06-12 |
 | 312 | Line Length Information of Rail Systems | Raylı sistem hat uzunlukları | XLSX | 2025-03-07 |
-| 18 | Ulaşım Yönetim Merkezi Trafik Duyuruları Verisi | UYM trafik duyuruları (güncel CSV) | CSV | 2026-11-01 |
+| 18 | Ulaşım Yönetim Merkezi Trafik Duyuruları Verisi | UYM trafik duyuruları (güncel CSV) | CSV | 2026-11-01 → ileride `get_traffic_status` için değerlendirilecek (karar 0001, K3) |
 | 288 | Hourly Traffic Density Data Set | Saatlik trafik yoğunluğu (tarihsel) | CSV | 2025-04-16 |
 | 249 | Istanbul Traffic Index | Trafik indeksi (tarihsel) | CSV | 2025-09-04 |
 | 289 | Hourly Public Transport Data Set | Saatlik toplu taşıma (tarihsel) | CSV | 2025-04-15 |
@@ -193,9 +196,19 @@ Tam liste (açıklama, kategori, format, son güncelleme, işaret) aynı klasör
 ## Notlar
 
 - İETT servisleri SOAP (`.asmx?wsdl`); Metro İstanbul servisleri REST/JSON (`api.ibb.gov.tr/MetroIstanbul/Help` dokümantasyonu var). İki farklı istemci gerekecek.
-- İsbike servisleri portalda "geçici olarak kullanıma kapatılmıştır" notuyla duruyor.
 - Her API veri setinin yanında bir PDF kullanım dokümanı var; bunlar RAG'deki "veri seti açıklamaları" bölümü için de kaynak.
 - Portalda deniz ulaşımı (Şehir Hatları) için canlı sefer API'si yok; vapur için GTFS/sefer sayıları ve iskele konumları kullanılmalı.
+
+### Faz 0 uç nokta testinden çıkan notlar
+
+- **Kimlik doğrulama yok.** 39 uç noktanın hiçbiri anahtar istemedi (401/403 görülmedi). İETT WSDL'lerinde `AuthHeader` bildirilmiş ama başlık gönderilmeden de çağrılar çalıştı.
+- **Metro API başarısızlıkta da HTTP 200 dönüyor**, gövdede `Success: false` ve bir .NET istisnası bulunur. Sağlık kontrolü HTTP durumuna değil `Success` alanına bakmalı.
+- **Dört Metro uç noktası GET'e 405 döner, POST ister** (552, 513, 515, 505). Zorunlu alanları kendi hata mesajlarında söylüyorlar; doğrulanan gövdeler yukarıdaki Durum kolonunda.
+- **`zeep` dört İETT WSDL'ini reddediyor** (350, 349, 172, 171): `AuthHeader` bildirilmiş ama eşleşen `<message>` tanımı WSDL'de yok. Metot listeleri WSDL XML'i doğrudan ayrıştırılarak çıkarıldı; Faz 2'de bu servisler için `zeep` yerine elle kurulan SOAP zarfı gerekebilir.
+- **Metro sefer saatleri (552) ve istasyon arası süreler (513) sunucu taraflı bozuk.** 18 hat × tüm yönler = 43/43 deneme aynı istisnayı verdi. Bu iki aracın kaynağı GTFS'e taşındı (karar 0001, K1-K2).
+- **İsbike (169, 170) kullanılamaz:** 169 HTTP 200 veriyor ama `dataList` boş; 170 ise yalnızca o boş listeden alınabilecek bir `guid` istiyor.
+- **Araç konumu doğrulandı:** `sefer-gerceklesme.GetHatOtoKonum_json(HatKodu)` hat bazlı canlı konum (koordinat, yön, en yakın durak) döndürüyor; `GetFiloAracKonum_json()` ise 6940 araçla 1.1 MB — agent aracı olarak sunulmayacak.
+- **Araç konumu metotları İETT otobüsleri içindir**; metro/tramvay/füniküler için canlı araç konumu veren bir uç nokta portalda yok.
 
 ## Tüm veri setleri
 

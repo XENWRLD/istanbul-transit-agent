@@ -1,0 +1,55 @@
+line,api_station,api_station_raw,api_norm,gtfs_candidate,gtfs_norm,score,on_other_routes,reason,decision
+F4,Boğaziçi Ü./Hisarüstü,RUMELI HISARUSTU,bogazici universitesi hisarustu,,,,,hat GTFS'te yok,HAT YOK
+F4,Aşiyan,ASIYAN,asiyan,,,,,hat GTFS'te yok,HAT YOK
+M2,Seyrantepe,SEYRANTEPE,seyrantepe,,,0.600,"F3, M2A","GTFS'te var ama başka hatta: F3, M2A",ŞUBE HATTI
+M3,Bakırköy Sahil,BAKIRKOY SAHIL,bakirkoy sahil,,,0.483,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Özgürlük Meydanı,OZGURLUK MEYDANI,ozgurluk meydani,,,0.323,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,İncirli,INCIRLI,incirli,,,0.364,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Haznedar,HAZNEDAR,haznedar,,,0.348,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,İlkyuva,ILKYUVA,ilkyuva,,,0.286,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Yıldıztepe,YILDIZTEPE,yildiztepe,,,0.471,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Molla Gürani,MOLLA GURANI,molla gurani,,,0.444,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Onurkent,ONURKENT,onurkent,,,0.357,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Şehir Hastanesi,SEHIR HASTANESI,sehir hastanesi,,,0.457,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Toplu Konutlar,TOPLU KONUTLAR,toplu konutlar,,,0.621,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M3,Kayaşehir Merkez,KAYASEHIR MERKEZ,kayasehir merkezi,,,0.649,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M4,Fevzi Çakmak-Hastane,FEVZI CAKMAK,fevzi cakmak hastanesi,,,0.474,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M4,Yayalar-Şeyhli,YAYALAR,yayalar seyhli,,,0.400,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M4,Kurtköy,KURTKOY,kurtkoy,,,0.571,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M4,Sabiha Gökçen Havalimanı,SABIHA GOKCEN,sabiha gokcen havalimani,,,0.356,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,İmam Hatip Lisesi,IMAM HATIP LISESI,imam hatip lise,İmam Hatip,imam hatip,0.800,,"GTFS 'İmam Hatip' — aynı istasyon mu, yeniden mi adlandırıldı?",SORU
+M5,Meclis,MECLIS,meclis,,,0.375,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,Sarıgazi,SARIGAZI,sarigazi,,,0.500,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,Sancaktepe Şehir Hastanesi,SANCAKTEPE SEHIR HASTANESI,sancaktepe sehir hastanesi,,,0.389,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,Sancaktepe,SANCAKTEPE,sancaktepe,,,0.400,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,Samandıra Merkez,SAMANDIRA,samandira merkezi,,,0.444,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,Veysel Karani,VEYSELKARANI,veysel karani,,,0.435,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,Hasanpaşa,HASANPASA,hasanpasa,,,0.316,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M5,Sultanbeyli,SULTANBEYLI,sultanbeyli,,,0.476,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M6,Boğaziçi Ü.-Hisarüstü,HISARUSTU-BOGAZICI UNIVERSITESI,bogazici universitesi hisarustu,Boğaziçi Üniversitesi,bogazici universitesi,0.808,,GTFS 'Boğaziçi Üniversitesi' — aynı istasyon mu?,SORU
+M7,Giyimkent-Tekstilkent,TEKSTILKENT,giyimkent tekstilkent,,,0.524,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M7,Oruç Reis,ORUCREIS,oruc reis,Oruç Reis - Yüzyıl,oruc reis yuzyil,0.720,,"GTFS 'Oruç Reis - Yüzyıl' — aynı istasyon mu, birleşik ad mı?",SORU
+M9,Ataköy,ATAKOY,atakoy,,,0.545,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M9,Yenibosna,YENIBOSNA,yenibosna,,,0.417,M1A,GTFS'te var ama başka hatta: M1A,ŞUBE HATTI
+M9,Çobançeşme,COBANCESME,cobancesme,,,0.333,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M9,29 Ekim Cumhuriyet,29 EKIM-CUMHURIYET,29 ekim cumhuriyet,,,0.385,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M9,Doğu Sanayi,DOGU SANAYI,dogu sanayi,,,0.538,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M9,Mimar Sinan,MIMAR SINAN,mimar sinan,,,0.385,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M9,15 Temmuz,15 TEMMUZ,15 temmuz,,,0.167,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M9,Halkalı Caddesi,HALKALI CAD.,halkali caddesi,,,0.400,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+M9,Atatürk Mahallesi,ATATURK MAH.,ataturk mahallesi,,,0.632,,GTFS'te karşılığı yok,GERÇEKTEN EKSİK
+T3,Rızapaşa,RIZAPASA,rizapasa,,,0.421,,GTFS'te hiç yok; T3 ring hattında yeni istasyon mu?,SORU
+T5,Eminönü,EMINONU,eminonu,,,,T1,hat GTFS'te yok; istasyon T1 hattında var,ŞUBE HATTI
+T5,Küçükpazar,KUCUKPAZAR,kucukpazar,,,,,hat GTFS'te yok,HAT YOK
+T5,Cibali,CIBALI,cibali,,,,,hat GTFS'te yok,HAT YOK
+T5,Fener,FENER,fener,,,,,hat GTFS'te yok,HAT YOK
+T5,Balat,BALAT,balat,,,,,hat GTFS'te yok,HAT YOK
+T5,Ayvansaray,AYVANSARAY,ayvansaray,,,,,hat GTFS'te yok,HAT YOK
+T5,Feshane,FESHANE,feshane,,,,,hat GTFS'te yok,HAT YOK
+T5,Eyüpsultan Teleferik,EYUPSULTAN TELEFERIK,eyupsultan,,,,,hat GTFS'te yok,HAT YOK
+T5,Eyüpsultan Devlet Hastanesi,EYUPSULTAN DEVLET HASTANESI,eyupsultan devlet hastanesi,,,,,hat GTFS'te yok,HAT YOK
+T5,Silahtarağa Mahallesi,SILAHTARAGA MAHALLESI,silahtaraga mahallesi,,,,,hat GTFS'te yok,HAT YOK
+T5,Üniversite,UNIVERSITE,universitesi,,,,,hat GTFS'te yok,HAT YOK
+T5,Alibeyköy Merkez,ALIBEYKOY MERKEZ,alibeykoy merkezi,,,,,hat GTFS'te yok,HAT YOK
+T5,Alibeyköy Metro,ALIBEYKOY METRO ISTASYONU,alibeykoy,,,,M7,hat GTFS'te yok; istasyon M7 hattında var,ŞUBE HATTI
+T5,Alibeyköy Cep Otogarı,ALIBEYKOY CEP OTOGARI,alibeykoy cep otogari,,,,,hat GTFS'te yok,HAT YOK

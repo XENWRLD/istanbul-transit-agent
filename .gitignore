@@ -29,3 +29,6 @@ desktop.ini
 .DS_Store
 .idea/
 .vscode/
+
+# GTFS feeds and derived analysis: re-downloadable, too large to track
+# (scripts/download_gtfs.py + scripts/analyze_metro_*.py regenerate these)

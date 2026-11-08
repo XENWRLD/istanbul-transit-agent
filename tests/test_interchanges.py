@@ -19,8 +19,15 @@ import pytest
 
 from istanbul_agent.store.db import database_path
 from istanbul_agent.store.geo import haversine_m
-from istanbul_agent.store.ingest_rail import INTERCHANGE_RADIUS_M, build_interchanges
-from istanbul_agent.store.rail_travel import RailNetwork, RailStation
+from istanbul_agent.store.ingest_rail import build_interchanges, sanctioned_station_pairs
+from istanbul_agent.store.rail_travel import (
+    INTERCHANGE_RADIUS_M,
+    SANCTIONED_INTERCHANGE_RADIUS_M,
+    WALK_SPEED_MS,
+    RailNetwork,
+    RailStation,
+    transfer_penalty_seconds,
+)
 
 
 def row(line, name, key, lat, lon, order=1):
@@ -79,19 +86,53 @@ class TestDistanceRule:
         }
         accepted, nearby = build_interchanges(stations, sanctioned_pairs=set())
         assert accepted == []
-        assert nearby == [], "313 desteği yoksa yakın liste de boş kalmalı"
+        assert len(nearby) == 1, "sınırın hemen dışındaki çift raporlanmalı"
 
-    def test_sanctioned_pair_outside_the_radius_is_reported_not_accepted(self):
-        """F4-M6 is 463 m and dataset 313 names it: surfaced, not used."""
+    def test_sanctioned_pair_outside_the_normal_radius_is_accepted(self):
+        """F4-M6 is 463 m and dataset 313 names it, so it stands.
+
+        The operator saying a change exists outweighs our distance
+        heuristic; the extra metres are paid for in walking time instead.
+        """
         stations = {
             ("F4", "bogazici"): row("F4", "Boğaziçi Ü./Hisarüstü", "bogazici", 41.0850, 29.0450),
             ("M6", "bogazici"): row("M6", "Boğaziçi Ü.-Hisarüstü", "bogazici", 41.0892, 29.0450),
         }
-        accepted, nearby = build_interchanges(stations, sanctioned_pairs={frozenset({"F4", "M6"})})
+        accepted, nearby = build_interchanges(
+            stations,
+            sanctioned_pairs={frozenset({("F4", "bogazici"), ("M6", "bogazici")})},
+        )
+        assert nearby == []
+        assert len(accepted) == 2
+        assert accepted[0]["in_dataset_313"] is True
+        assert INTERCHANGE_RADIUS_M < accepted[0]["distance_m"] <= SANCTIONED_INTERCHANGE_RADIUS_M
+        # Walked, not strolled across a platform: 463 m at 1.2 m/s.
+        assert accepted[0]["walk_s"] == pytest.approx(
+            accepted[0]["distance_m"] / WALK_SPEED_MS, abs=1
+        )
+
+    def test_unsanctioned_pair_inside_the_wide_radius_is_still_refused(self):
+        """500 m with no 313 entry is not an interchange."""
+        stations = {
+            ("M1", "a"): row("M1", "A", "a", 41.0, 29.0),
+            ("T1", "b"): row("T1", "B", "b", 41.0 + 500 / 111_195, 29.0),
+        }
+        accepted, nearby = build_interchanges(stations, sanctioned_pairs=set())
         assert accepted == []
         assert len(nearby) == 1
-        assert nearby[0]["in_dataset_313"] is True
-        assert INTERCHANGE_RADIUS_M < nearby[0]["distance_m"] <= 1000
+        assert nearby[0]["in_dataset_313"] is False
+
+    def test_sanctioned_pair_beyond_the_wide_radius_is_refused(self):
+        """313 widens the radius; it does not remove it."""
+        stations = {
+            ("F4", "a"): row("F4", "A", "a", 41.0, 29.0),
+            ("M6", "b"): row("M6", "B", "b", 41.0 + 1500 / 111_195, 29.0),
+        }
+        accepted, nearby = build_interchanges(
+            stations, sanctioned_pairs={frozenset({("F4", "a"), ("M6", "b")})}
+        )
+        assert accepted == []
+        assert nearby == [], "1 km ötesi hiç raporlanmıyor"
 
     def test_station_without_coordinates_cannot_form_an_interchange(self):
         stations = {
@@ -100,6 +141,58 @@ class TestDistanceRule:
         }
         accepted, _ = build_interchanges(stations, sanctioned_pairs=set())
         assert accepted == []
+
+
+class TestSanctionedPairs:
+    """313 widens the radius for a named pair of stations, not of lines."""
+
+    def test_both_station_names_are_resolved_to_the_feed(self):
+        """313 writes `Vadi İstanbul`; the feed writes `Vadistanbul`."""
+        from istanbul_agent.store.rail_reference import Transfer
+
+        stations = {
+            ("F3", "vadistanbul"): row("F3", "Vadistanbul", "vadistanbul", 41.11, 28.99),
+            ("M2A", "seyrantepe"): row("M2A", "Seyrantepe", "seyrantepe", 41.105, 28.997),
+        }
+        transfers = [
+            Transfer(
+                line_family="F3",
+                from_line="F3",
+                from_station="Vadi İstanbul",
+                to_line="M2",
+                to_station="Seyrantepe",
+                to_is_rail=True,
+            )
+        ]
+        pairs = sanctioned_station_pairs(transfers, stations)
+        assert frozenset({("F3", "vadistanbul"), ("M2A", "seyrantepe")}) in pairs
+
+    def test_a_named_pair_does_not_sanction_the_whole_line_pair(self):
+        """`M4 Kadıköy -> T3` must not attach Kadıköy to all of T3.
+
+        Sanctioning line pairs instead of station pairs pulled seven T3
+        stations up to 826 m from M4 Kadıköy into the table.
+        """
+        from istanbul_agent.store.rail_reference import Transfer
+
+        stations = {
+            ("M4", "kadikoy"): row("M4", "Kadıköy", "kadikoy", 40.9926, 29.0238),
+            ("T3", "rizapasa"): row("T3", "Rızapaşa", "rizapasa", 40.9900, 29.0280),
+            ("T3", "bahariye"): row("T3", "Bahariye", "bahariye", 40.9880, 29.0310),
+        }
+        transfers = [
+            Transfer(
+                line_family="M4",
+                from_line="M4",
+                from_station="Kadıköy",
+                to_line="T3",
+                to_station="Rızapaşa",
+                to_is_rail=True,
+            )
+        ]
+        pairs = sanctioned_station_pairs(transfers, stations)
+        assert frozenset({("M4", "kadikoy"), ("T3", "rizapasa")}) in pairs
+        assert frozenset({("M4", "kadikoy"), ("T3", "bahariye")}) not in pairs
 
 
 class TestNetworkRespectsTheTable:
@@ -156,25 +249,50 @@ class TestStoreIsClean:
 
         return load_network()
 
-    def test_no_interchange_exceeds_the_radius(self, network):
+    def test_no_interchange_exceeds_its_radius(self, network):
+        """Every stored pair must respect the radius that applies to it.
+
+        400 m normally; 1 km for a pair dataset 313 names, which is the
+        only reason F4 is attached to the network at all.
+        """
+        from istanbul_agent.store.db import read_only_connection
+
+        with read_only_connection() as connection:
+            rows = connection.execute(
+                "SELECT from_line, from_name, to_line, to_name, distance_m, "
+                "in_dataset_313, walk_s FROM rail_interchanges"
+            ).fetchall()
+        assert rows, "aktarma tablosu boş"
+
         offenders: list[str] = []
-        lines = sorted({station.line for station in network.stations})
-        for from_line in lines:
-            for to_line in lines:
-                if from_line >= to_line:
-                    continue
-                for change_from, change_to in network.transfer_options(from_line, to_line):
-                    if not (change_from.has_position and change_to.has_position):
-                        continue
-                    distance = haversine_m(
-                        change_from.lat, change_from.lon, change_to.lat, change_to.lon
-                    )
-                    if distance > INTERCHANGE_RADIUS_M:
-                        offenders.append(
-                            f"{from_line} {change_from.name} ↔ {to_line} "
-                            f"{change_to.name}: {distance:.0f} m"
-                        )
-        assert not offenders, "yarıçapı aşan aktarmalar:\n  " + "\n  ".join(offenders)
+        for from_line, from_name, to_line, to_name, distance, backed, walk_s in rows:
+            limit = SANCTIONED_INTERCHANGE_RADIUS_M if backed else INTERCHANGE_RADIUS_M
+            if distance > limit:
+                offenders.append(
+                    f"{from_line} {from_name} ↔ {to_line} {to_name}: "
+                    f"{distance:.0f} m > {limit:.0f} m (313: {backed})"
+                )
+            expected = transfer_penalty_seconds(distance) - 210
+            if walk_s != expected:
+                offenders.append(
+                    f"{from_line} {from_name} ↔ {to_line} {to_name}: "
+                    f"yürüme {walk_s} s, beklenen {expected} s"
+                )
+        assert not offenders, "kuralı aşan aktarmalar:\n  " + "\n  ".join(offenders)
+
+    def test_a_far_interchange_costs_more_than_a_platform_change(self, network):
+        """F4 to M6 is a 463 m street walk, not a cross-platform change."""
+        options = network.transfer_options("F4", "M6")
+        assert options, "F4 ↔ M6 aktarması bulunamadı (313 destekli, 463 m)"
+        change_from, change_to = options[0]
+        penalty = network.transfer_penalty("F4", change_from.name, "M6", change_to.name)
+        assert penalty > 210 + 150, "uzak aktarma düz 150 s yürümeyle fiyatlanmamalı"
+        assert penalty == pytest.approx(
+            210
+            + haversine_m(change_from.lat, change_from.lon, change_to.lat, change_to.lon)
+            / WALK_SPEED_MS,
+            abs=2,
+        )
 
     def test_same_name_different_place_pairs_are_absent(self, network):
         """Spot-check the six M4/Marmaray names that are 1-2 km apart."""

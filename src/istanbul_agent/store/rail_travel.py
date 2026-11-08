@@ -41,11 +41,16 @@ __all__ = [
     "DWELL_S",
     "ESTIMATE_ERROR_BY_STOPS",
     "GTFS_METRO_DATA_AS_OF",
+    "INTERCHANGE_RADIUS_M",
     "LINE_MODEL",
     "LINE_WARNINGS",
     "MARMARAY_DATA_AS_OF",
     "MODE_MODEL",
+    "SANCTIONED_INTERCHANGE_RADIUS_M",
     "TRANSFER_PENALTY_S",
+    "TRANSFER_WAIT_S",
+    "TRANSFER_WALK_S",
+    "WALK_SPEED_MS",
     "ErrorMargin",
     "RailNetwork",
     "RailStation",
@@ -54,6 +59,8 @@ __all__ = [
     "TravelTimeResult",
     "estimate_error",
     "model_for",
+    "transfer_penalty_seconds",
+    "walk_seconds",
 ]
 
 Method = Literal["gtfs", "gtfs_calibrated", "estimated", "transfer", "unavailable"]
@@ -154,11 +161,45 @@ def estimate_error(stop_count: int) -> tuple[float, float]:
     return ESTIMATE_ERROR_BY_STOPS[-1][1], ESTIMATE_ERROR_BY_STOPS[-1][2]
 
 
-# Fixed interchange penalty, 6 minutes. See
-# documents/decisions/0004-aktarma-suresi.md: 210 s is the measured median
-# average wait across lines (half of each line's headway), and 150 s is an
-# assumed platform-to-platform walk.
-TRANSFER_PENALTY_S = 360
+# An interchange costs a wait plus a walk. The wait, 210 s, is the measured
+# median average wait across lines (half of each line's headway). The walk is
+# 150 s for a normal platform-to-platform change -- see decision 0004.
+TRANSFER_WAIT_S = 210
+TRANSFER_WALK_S = 150
+TRANSFER_PENALTY_S = TRANSFER_WAIT_S + TRANSFER_WALK_S
+
+# Two stations within this far of each other are one interchange. Pairs that
+# dataset 313 names as an interchange are allowed out to the wider radius:
+# 313 is the operator saying the change exists, which outweighs our distance
+# heuristic, and F4 -- a two-station funicular whose only link is M6, 463 m
+# away -- is otherwise cut off the network entirely.
+INTERCHANGE_RADIUS_M = 400.0
+SANCTIONED_INTERCHANGE_RADIUS_M = 1000.0
+
+# Above the normal radius, 150 s is no longer a platform change but a walk
+# along a street, so it is derived from the distance instead. 1.2 m/s is a
+# conventional pedestrian speed.
+WALK_SPEED_MS = 1.2
+
+
+def walk_seconds(distance_m: float | None) -> int:
+    """Walking time for an interchange, from its distance.
+
+    Inside `INTERCHANGE_RADIUS_M` the change is within a station complex and
+    the flat `TRANSFER_WALK_S` stands; beyond it the distance decides. The
+    two rules do not meet continuously -- 400 m at 1.2 m/s is 333 s, so the
+    first metre past the radius more than doubles the walk. That is
+    deliberate: a pair only gets past the radius by being named in 313, and
+    such a pair is a street-level change, not a corridor.
+    """
+    if distance_m is None or distance_m <= INTERCHANGE_RADIUS_M:
+        return TRANSFER_WALK_S
+    return round(distance_m / WALK_SPEED_MS)
+
+
+def transfer_penalty_seconds(distance_m: float | None) -> int:
+    """Total cost of one line change: average wait plus the walk."""
+    return TRANSFER_WAIT_S + walk_seconds(distance_m)
 
 
 @dataclass(frozen=True)
@@ -290,8 +331,9 @@ class RailNetwork:
                 older than the metro's, so a journey using it must report the
                 older of the dates rather than the metro's.
             interchanges: `(from_line, from_station_key, to_line,
-                to_station_key)` walkable pairs, built from coordinates by the
-                ingest. When omitted, stations that two lines share by exact
+                to_station_key[, distance_m])` walkable pairs, built from
+                coordinates by the ingest. The distance, when given, sets
+                that change's walking time. When omitted, stations that two lines share by exact
                 key are used -- enough for a hand-built test network, never
                 for the real one.
         """
@@ -312,14 +354,22 @@ class RailNetwork:
             line_stations.sort(key=lambda s: s.order if s.order is not None else 1 << 30)
 
         self._interchanges: dict[tuple[str, str], list[tuple[RailStation, RailStation]]] = {}
-        for from_line, from_key, to_line, to_key in (
+        # Walking distance per pair, so a change beyond the normal radius
+        # costs what it actually takes to walk rather than a flat 150 s.
+        self._interchange_distances: dict[tuple[str, str, str, str], float] = {}
+        for record in (
             interchanges if interchanges is not None else self._shared_station_interchanges()
         ):
+            from_line, from_key, to_line, to_key = record[:4]
+            distance_m = record[4] if len(record) > 4 else None
             origin = self._station(from_line, from_key)
             destination = self._station(to_line, to_key)
-            if origin is not None and destination is not None:
-                self._interchanges.setdefault((from_line, to_line), []).append(
-                    (origin, destination)
+            if origin is None or destination is None:
+                continue
+            self._interchanges.setdefault((from_line, to_line), []).append((origin, destination))
+            if distance_m is not None:
+                self._interchange_distances[(from_line, from_key, to_line, to_key)] = float(
+                    distance_m
                 )
 
     # ------------------------------------------------------------- lookup
@@ -510,6 +560,21 @@ class RailNetwork:
         """
         return self._interchanges.get((from_line, to_line), [])
 
+    def transfer_penalty(
+        self, from_line: str, from_station: str, to_line: str, to_station: str
+    ) -> int:
+        """Seconds to add for this particular change.
+
+        The walk comes from the measured distance between the two records,
+        so the 463 m F4-M6 change costs more than a cross-platform one. An
+        unmeasured pair (a hand-built test network) falls back to the flat
+        penalty.
+        """
+        distance = self._interchange_distances.get(
+            (from_line, self.key(from_station), to_line, self.key(to_station))
+        )
+        return transfer_penalty_seconds(distance)
+
     # ----------------------------------------------------- whole journeys
 
     def plan(
@@ -519,7 +584,7 @@ class RailNetwork:
 
         Dijkstra over `(line, station)` nodes. Edges are of two kinds: riding
         one hop to the adjacent station on the same line, and changing line at
-        an interchange for `TRANSFER_PENALTY_S`. One interchange is not enough
+        an interchange for its own penalty. One interchange is not enough
         for this network -- Kadıköy to Taksim needs M4, Marmaray and M2,
         because the metro lines do not meet each other across the Bosphorus.
 
@@ -554,8 +619,8 @@ class RailNetwork:
                 rides.setdefault(a, []).append((b, cost))
                 rides.setdefault(b, []).append((a, cost))
 
-        # Interchange edges, from dataset 313 plus shared names.
-        changes: dict[tuple[str, str], list[tuple[str, str]]] = {}
+        # Interchange edges, from the measured table, each with its own cost.
+        changes: dict[tuple[str, str], list[tuple[tuple[str, str], int]]] = {}
         for line in self._by_line:
             for other in self._by_line:
                 if line == other:
@@ -563,7 +628,8 @@ class RailNetwork:
                 for change_from, change_to in self.transfer_options(line, other):
                     node = (line, self.key(change_from.name))
                     target = (other, self.key(change_to.name))
-                    changes.setdefault(node, []).append(target)
+                    penalty = self.transfer_penalty(line, change_from.name, other, change_to.name)
+                    changes.setdefault(node, []).append((target, penalty))
 
         starts = {(o.line, self.key(o.name)) for o in origins}
         best: dict[tuple[str, str], int] = dict.fromkeys(starts, 0)
@@ -596,10 +662,10 @@ class RailNetwork:
                     counter += 1
                     heapq.heappush(queue, (total, counter, target))
 
-            for target in changes.get(node, []):
+            for target, penalty in changes.get(node, []):
                 if target in settled or target not in station_of:
                     continue
-                total = cost + TRANSFER_PENALTY_S
+                total = cost + penalty
                 if total < best.get(target, 1 << 60):
                     best[target] = total
                     came_from[target] = (node, True)

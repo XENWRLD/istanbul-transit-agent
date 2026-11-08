@@ -455,6 +455,9 @@ kaçırdığı, mesafenin yakaladığı gerçek aktarmalar:
 
 ### 400 m'nin dışında kalan tek kayıp: F4 ↔ M6
 
+> **GÜNCELLEME.** Bu kayıp karar 6 ile kapatıldı: 313'ün adlandırdığı
+> çiftlerde yarıçap 1000 m'ye çıktı, F4 ağa bağlandı.
+
 400-1000 m bandında 113 çift var ve 313 bunların çoğunu adlandırıyor. Ama
 hepsinin 400 m içinde bir alternatifi var — örneğin `M1A Aksaray ↔ T1 Aksaray`
 557 m ile dışarıda kalıyor, fakat `M1A Aksaray ↔ T1 Yusufpaşa` 239 m ile
@@ -535,6 +538,71 @@ dayandığı yolculuğu ve kaynak linkini taşır.
 
 Durumu görmek için: `uv run python scripts/show_calibration_gates.py`
 
+## Karar 6 — İki yarıçap: 400 m, 313'ün adlandırdığı çiftlerde 1000 m
+
+Karar 4'te tek bir 400 m yarıçapı vardı ve tek kaybı F4 ↔ M6 idi (463 m).
+Kullanıcı kararı verdi: **resmî aktarma veri setinde (313) adlandırılmış
+çiftlerde yarıçap 1000 m, diğer tüm çiftlerde 400 m.** Gerekçe: 313 işletmecinin
+"burada aktarma var" beyanıdır ve bizim mesafe sezgimizden daha iyi kanıttır.
+
+### "Adlandırılmış çift" iki istasyon demek, iki hat demek değil
+
+İlk uygulamada 313'ü **hat çifti** düzeyinde okudum ve aktarma sayısı 76'dan
+189'a çıktı. Sebep: 313 `M4 Kadıköy → T3` diyor; hat çiftini serbest bırakmak
+M4 Kadıköy'ü **1 km içindeki her T3 istasyonuna** bağlıyor — Bahariye (787 m),
+Kilise (826 m), Moda (631 m) dahil. Yani karar 4'te düzelttiğim hatanın
+mesafeyle sınırlanmış bir kopyası.
+
+Doğrusu **istasyon çifti** düzeyinde okumak: bir çift ancak 313 **iki ucu da**
+adlandırıyorsa geniş yarıçapı kullanır. 313'ün yazımı beslemeden farklı
+olduğu için iki uç, *yalnızca o satırın andığı hatlar içinde* benzerlikle
+eşleştiriliyor (`sanctioned_station_pairs`); ağ genelinde ad araması yapılmıyor
+— 33 km'lik aktarmalar o yüzden çıkmıştı.
+
+Sonuç: 400-1000 m bandındaki **113 çiftin 3'ü** kabul edildi.
+
+| Hat A | İstasyon | Hat B | İstasyon | Mesafe | Yürüme |
+|---|---|---|---|---|---|
+| M1B | Bağcılar Meydan | T1 | Bağcılar | 408 m | 340 s |
+| F4 | Boğaziçi Ü./Hisarüstü | M6 | Boğaziçi Ü.-Hisarüstü | 463 m | 386 s |
+| F3 | Vadistanbul | M2A | Seyrantepe | 949 m | 791 s |
+
+Aktarma sayısı 76 → **79 çift**; F4 artık ağa bağlı:
+`Aşiyan → Levent` = 18 dk (F4 1 dk + aktarma 10 dk + M6 6 dk).
+
+### Yürüme süresi artık mesafeden
+
+Aktarma cezası iki parçaydı: 210 s ölçülen ortalama bekleme + 150 s varsayılan
+yürüme. 150 s bir istasyon kompleksi içindeki peron geçişi için makul, ama
+463 m'lik bir sokak yürüyüşü için değil. Yeni kural:
+
+| Mesafe | Yürüme |
+|---|---|
+| ≤ 400 m | 150 s (peron geçişi, karar 0004 özgün değeri) |
+| > 400 m | mesafe / **1.2 m/s** (yaygın yürüme hızı) |
+
+Ceza artık çift başına hesaplanıyor (`RailNetwork.transfer_penalty`); tek bir
+`TRANSFER_PENALTY_S` sabiti değil. F4 ↔ M6 aktarması 596 s, Yenikapı'daki
+peron geçişi 360 s.
+
+**Kuralın sürekli olmadığını not etmek lazım:** 400 m / 1.2 = 333 s, yani
+sınırın bir metre ötesi yürümeyi 150 s'den 334 s'ye çıkarıyor. Bu kasıtlı:
+400 m'yi ancak 313'ün adlandırdığı bir çift geçebiliyor ve böyle bir çift
+koridor değil, sokak geçişidir. Alternatif `max(150, mesafe/1.2)` olurdu, ama
+o 180-400 m arasındaki peron geçişlerini de uzatır ve ölçülmüş 150 s'lik
+tabanı gerekçesiz değiştirir.
+
+### Testler
+
+`tests/test_interchanges.py`:
+
+- 313 adlandırdığı 463 m'lik çift **kabul edilir**, yürümesi mesafeden gelir;
+- 313 desteği olmayan 500 m'lik çift **reddedilir**;
+- 313 adlandırsa bile 1500 m'lik çift **reddedilir** (313 yarıçapı genişletir,
+  kaldırmaz);
+- depodaki her satır kendi yarıçapına ve kendi yürüme süresine uyar;
+- `M4 Kadıköy → T3 Rızapaşa` satırı T3 Bahariye'yi **yetkilendirmez**.
+
 ## Yeniden gözden geçirme koşulları
 
 - Metro `GetStationBetweenTime` düzelirse süreler canlı API'den alınır, bu
@@ -550,4 +618,6 @@ Durumu görmek için: `uv run python scripts/show_calibration_gates.py`
   güncellenmeli.
 - Kaynak linkleri gelince `show_calibration_gates.py` çalıştırılıp hangi
   hatların aktifleştiği doğrulanmalı.
-- F4 ↔ M6 kararı verilince aktarma yarıçapı kuralı güncellenmeli.
+- 313'ün yeni bir sürümü gelirse `sanctioned_station_pairs` eşiği (0.80
+  benzerlik) yeniden gözden geçirilmeli; geniş yarıçapa giren çiftler o
+  eşleşmeye dayanıyor.

@@ -11,14 +11,17 @@ from __future__ import annotations
 
 from dataclasses import replace
 from functools import lru_cache
+from itertools import pairwise
 from pathlib import Path
 
 from istanbul_agent.store.calibration import Calibration, load_calibrations
 from istanbul_agent.store.db import read_only_connection
 from istanbul_agent.store.rail_travel import (
     GTFS_METRO_DATA_AS_OF,
+    INTERCHANGE_RADIUS_M,
     LINE_WARNINGS,
-    TRANSFER_PENALTY_S,
+    TRANSFER_WAIT_S,
+    WALK_SPEED_MS,
     ErrorMargin,
     RailNetwork,
     RailStation,
@@ -90,9 +93,9 @@ def load_network(path: Path | None = None) -> RailNetwork:
             for row in connection.execute("SELECT line, data_as_of FROM rail_lines").fetchall()
         }
         interchanges = [
-            (row[0], row[1], row[2], row[3])
+            (row[0], row[1], row[2], row[3], row[4])
             for row in connection.execute(
-                "SELECT from_line, from_key, to_line, to_key FROM rail_interchanges"
+                "SELECT from_line, from_key, to_line, to_key, distance_m FROM rail_interchanges"
             ).fetchall()
         ]
 
@@ -284,15 +287,27 @@ def get_rail_travel_time(
         legs = calibrated
         changes = max(0, len(legs) - 1)
         estimated = any(leg.method == "estimated" for leg in legs)
-        total = sum(leg.seconds for leg in legs) + changes * TRANSFER_PENALTY_S
+        # Each change is priced on its own: the walk between two records
+        # 463 m apart is not the walk across a platform.
+        penalties = [
+            graph.transfer_penalty(before.line, before.to_station, after.line, after.from_station)
+            for before, after in pairwise(legs)
+        ]
+        penalty_total = sum(penalties)
+        total = sum(leg.seconds for leg in legs) + penalty_total
         stops = sum(leg.stop_count for leg in legs)
         interchanges = [leg.to_station for leg in legs[:-1]]
 
         if changes:
+            detail = ", ".join(
+                f"{station} (+{penalty // 60} dk)"
+                for station, penalty in zip(interchanges, penalties, strict=True)
+            )
             notes.append(
-                f"{changes} aktarma: {', '.join(interchanges)}. Her aktarma için "
-                f"{TRANSFER_PENALTY_S // 60} dakika eklendi (210 s ölçülen ortalama "
-                "bekleme + 150 s varsayılan yürüme, karar 0004)."
+                f"{changes} aktarma: {detail}. Her aktarma {TRANSFER_WAIT_S} s ölçülen "
+                "ortalama bekleme + yürüme süresi (istasyon içi geçişte 150 s, "
+                f"{INTERCHANGE_RADIUS_M:.0f} m'den uzak çiftlerde mesafe / "
+                f"{WALK_SPEED_MS} m/s, karar 0004)."
             )
         if estimated:
             notes.append("Bacakların en az biri tahmin edildi.")
@@ -317,7 +332,7 @@ def get_rail_travel_time(
             data_as_of=_data_as_of(graph, legs),
             legs=legs,
             transfer_station=" → ".join(interchanges) if interchanges else None,
-            transfer_penalty_s=changes * TRANSFER_PENALTY_S,
+            transfer_penalty_s=penalty_total,
             error_margin=_margin_for(total, stops) if estimated else None,
             warnings=_warnings_for(legs),
             notes=notes,

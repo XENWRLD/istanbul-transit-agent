@@ -36,10 +36,16 @@ from istanbul_agent.config import PROJECT_ROOT, get_settings
 from istanbul_agent.store.db import connect
 from istanbul_agent.store.geo import haversine_m, parse_coordinate
 from istanbul_agent.store.gtfs import GtfsFeed, to_seconds
-from istanbul_agent.store.rail_reference import _line_family, load_rail_reference
+from istanbul_agent.store.rail_reference import Transfer, _line_family, load_rail_reference
 from istanbul_agent.store.rail_segments import build_segment_index
-from istanbul_agent.store.rail_travel import GTFS_METRO_DATA_AS_OF, MARMARAY_DATA_AS_OF
-from istanbul_agent.store.station_names import collapsed, normalize, token_key
+from istanbul_agent.store.rail_travel import (
+    GTFS_METRO_DATA_AS_OF,
+    INTERCHANGE_RADIUS_M,
+    MARMARAY_DATA_AS_OF,
+    SANCTIONED_INTERCHANGE_RADIUS_M,
+    walk_seconds,
+)
+from istanbul_agent.store.station_names import collapsed, normalize, similarity, token_key
 
 METRO_API = "/MetroIstanbul/api/MetroMobile/V2"
 RAIL_GEOJSON = PROJECT_ROOT / "data" / "geojson" / "rail_station_points.geojson"
@@ -145,6 +151,7 @@ CREATE TABLE rail_interchanges (
     distance_m     DOUBLE NOT NULL,
     same_name      BOOLEAN NOT NULL,
     in_dataset_313 BOOLEAN NOT NULL,
+    walk_s         INTEGER NOT NULL,
     source         VARCHAR NOT NULL,
     PRIMARY KEY (from_line, from_key, to_line, to_key)
 );
@@ -242,19 +249,84 @@ def detect_rings(
 # E-5 while Marmaray follows the coast -- and missed the real M4-Marmaray
 # interchange, whose two records are 7 m apart but spelled `Ayrılık Çeşmesi`
 # and `Ayrılıkçeşme`. So names are not consulted at all here.
-INTERCHANGE_RADIUS_M = 400.0
+#
+# Two radii, because 313 is better evidence than our heuristic: a pair the
+# operator *names* as an interchange is allowed out to
+# SANCTIONED_INTERCHANGE_RADIUS_M, everything else has to be within
+# INTERCHANGE_RADIUS_M. Distance still decides the walking time, so a far
+# pair is not free (decision 0004, karar 4).
+#
+# "Names" means both stations, not just the two lines. Sanctioning whole line
+# pairs lets any station of one line pair with any station of the other: 313
+# lists `M4 Kadıköy -> T3`, which would have attached M4 Kadıköy to seven T3
+# stations up to 826 m away. Requiring both names cuts the 113 pairs in the
+# 400-1000 m band down to the three that are real.
+
+
+def sanctioned_station_pairs(
+    transfers: list[Transfer],
+    station_rows: dict[tuple[str, str], dict[str, Any]],
+    threshold: float = 0.80,
+) -> set[frozenset[tuple[str, str]]]:
+    """Resolve each 313 transfer row to the two feed stations it names.
+
+    313 spells stations its own way (`Vadi İstanbul` for the feed's
+    `Vadistanbul`), so the two ends are matched by similarity within the
+    lines the row mentions -- never across the whole network, which is how
+    name matching produced interchanges 33 km long.
+    """
+    by_family: dict[str, list[dict[str, Any]]] = {}
+    for row in station_rows.values():
+        by_family.setdefault(_line_family(row["line"]), []).append(row)
+
+    def candidates(family: str, name: str) -> list[dict[str, Any]]:
+        hits = [
+            row
+            for row in by_family.get(family, [])
+            if collapsed(row["name"]) == collapsed(name)
+            or token_key(row["name"]) == token_key(name)
+            or similarity(row["name"], name) >= threshold
+        ]
+        return hits
+
+    pairs: set[frozenset[tuple[str, str]]] = set()
+    for transfer in transfers:
+        if not (transfer.from_line and transfer.to_line):
+            continue
+        if not (transfer.from_station and transfer.to_station):
+            continue
+        left_family = _line_family(transfer.from_line)
+        right_family = _line_family(transfer.to_line)
+        for left in candidates(left_family, transfer.from_station):
+            for right in candidates(right_family, transfer.to_station):
+                if left["line"] == right["line"]:
+                    continue
+                pairs.add(
+                    frozenset(
+                        {
+                            (left["line"], left["station_key"]),
+                            (right["line"], right["station_key"]),
+                        }
+                    )
+                )
+    return pairs
 
 
 def build_interchanges(
     station_rows: dict[tuple[str, str], dict[str, Any]],
-    sanctioned_pairs: set[frozenset[str]],
+    sanctioned_pairs: set[frozenset[tuple[str, str]]],
     radius: float = INTERCHANGE_RADIUS_M,
+    sanctioned_radius: float = SANCTIONED_INTERCHANGE_RADIUS_M,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Every walkable pair of stations on different lines.
 
+    A pair dataset 313 names -- both stations, see `sanctioned_station_pairs`
+    -- may be up to `sanctioned_radius` apart; any other pair must be within
+    `radius`.
+
     Returns (accepted, rejected_nearby). The second list holds pairs between
-    `radius` and 1 km that dataset 313 names, so a human can see what the
-    radius excluded rather than having it disappear silently.
+    `radius` and `sanctioned_radius` that 313 does *not* name, so a human can
+    see what the rule excluded rather than having it disappear silently.
     """
     positioned = [
         row for row in station_rows.values() if row["lat"] is not None and row["lon"] is not None
@@ -266,11 +338,18 @@ def build_interchanges(
         if left["line"] == right["line"]:
             continue
         distance = haversine_m(left["lat"], left["lon"], right["lat"], right["lon"])
-        if distance > 1000.0:
+        if distance > max(radius, sanctioned_radius):
             continue
         backed = (
-            frozenset({_line_family(left["line"]), _line_family(right["line"])}) in sanctioned_pairs
+            frozenset(
+                {
+                    (left["line"], left["station_key"]),
+                    (right["line"], right["station_key"]),
+                }
+            )
+            in sanctioned_pairs
         )
+        limit = sanctioned_radius if backed else radius
         record = {
             "from_line": left["line"],
             "from_key": left["station_key"],
@@ -281,9 +360,12 @@ def build_interchanges(
             "distance_m": round(distance, 1),
             "same_name": left["station_key"] == right["station_key"],
             "in_dataset_313": backed,
-            "source": f"koordinat mesafesi ≤ {radius:.0f} m",
+            "walk_s": walk_seconds(distance),
+            "source": (
+                f"koordinat mesafesi ≤ {limit:.0f} m" + (" (313 aktarması)" if backed else "")
+            ),
         }
-        if distance <= radius:
+        if distance <= limit:
             accepted.append(record)
             # Interchanges work both ways.
             accepted.append(
@@ -297,7 +379,7 @@ def build_interchanges(
                     "to_name": left["name"],
                 }
             )
-        elif backed:
+        else:
             nearby.append(record)
 
     return accepted, nearby
@@ -656,37 +738,30 @@ def main() -> int:
     ]
 
     # ---------------- interchanges ----------------
-    sanctioned = {
-        frozenset({_line_family(transfer.from_line), _line_family(transfer.to_line)})
-        for transfer in reference.rail_transfers()
-        if transfer.from_line and transfer.to_line
-    }
+    sanctioned = sanctioned_station_pairs(reference.rail_transfers(), station_rows)
     interchange_rows, nearby_rows = build_interchanges(station_rows, sanctioned)
+    wide_rows = [
+        row
+        for row in interchange_rows
+        if row["in_dataset_313"] and row["distance_m"] > INTERCHANGE_RADIUS_M
+    ]
     print(
-        f"\n  aktarma: {len(interchange_rows) // 2} çift "
-        f"(≤ {INTERCHANGE_RADIUS_M:.0f} m), {len(nearby_rows)} çift sınırın dışında"
+        f"\n  aktarma: {len(interchange_rows) // 2} cift "
+        f"(<= {INTERCHANGE_RADIUS_M:.0f} m, 313 aktarmalari <= "
+        f"{SANCTIONED_INTERCHANGE_RADIUS_M:.0f} m), "
+        f"{len(nearby_rows)} cift sinirin disinda"
     )
-    if nearby_rows:
-        connected = {
-            frozenset({_line_family(row["from_line"]), _line_family(row["to_line"])})
-            for row in interchange_rows
-        }
-        orphaned = [
-            row
-            for row in nearby_rows
-            if frozenset({_line_family(row["from_line"]), _line_family(row["to_line"])})
-            not in connected
-        ]
-        if orphaned:
+    if wide_rows:
+        print(
+            f"  bunlardan {len(wide_rows) // 2} cift yalnizca 313 adlandirdigi icin "
+            "kabul edildi; yurume suresi mesafeden hesaplandi:"
+        )
+        for row in sorted(wide_rows, key=lambda r: r["distance_m"])[::2]:
             print(
-                f"  UYARI: {len(orphaned)} hat çiftinin 400 m içinde hiç bağlantısı yok, "
-                "ama 313 aktarma olduğunu söylüyor:"
+                f"    {row['from_line']:10} {row['from_name'][:24]:26} - "
+                f"{row['to_line']:10} {row['to_name'][:24]:26} "
+                f"{row['distance_m']:>6.0f}m  yurume {row['walk_s']:>4} s"
             )
-            for row in orphaned:
-                print(
-                    f"    {row['from_line']:10} {row['from_name'][:24]:26} ↔ "
-                    f"{row['to_line']:10} {row['to_name'][:24]:26} {row['distance_m']:>6.0f}m"
-                )
 
     # ---------------- lines ----------------
     rings = detect_rings(station_rows)

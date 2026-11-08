@@ -76,6 +76,7 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - Metro İstanbul REST API'si başarısızlıkta da HTTP 200 döner; gövdedeki `Success` alanına bak, durum koduna değil.
 - İBB GTFS CSV'leri **cp1254** kodlamalıdır, UTF-8 değil. `calendar.csv` penceresi dolmuştur: servis günleri yalnızca hafta günü desenine göre seçilir (karar 0002).
 - Marmaray aynı GTFS beslemesinde **TCDD** ajansı altındadır, Metro İstanbul'da değil; ajans filtresi onu düşürür. Metro ağı Boğaz'ın iki yakasında ancak Marmaray üzerinden bağlanır.
+- Aktarmalar koordinattan kurulur, ad eşleşmesinden değil: yarıçap 400 m, 313'ün iki ucunu da adlandırdığı çiftlerde 1000 m. Aktarma cezası = 210 s bekleme + yürüme (≤400 m için 150 s, üstünde mesafe / 1.2 m/s) (karar 0004).
 - Segment anahtarları hattı içermek zorunda: Marmaray ve M4 aynı adlı istasyonlar arasında (`Bostancı→Küçükyalı`) ayrı hatlar işletiyor.
 - Agent ham API'leri görmez: uç noktalar `documents/PLAN.md` araç tablosundaki alan bazlı araçların arkasında birleştirilir. Yeni araç eklemeden önce mevcut bir araca parametre eklemenin yeterli olup olmadığını düşün; toplam araç sayısını ~15'te tut.
 - Her araç çıktısı `source` ve `data_as_of` alanı taşır; 2018-2020 tarihli "Public Transport GTFS" verisinden gelen sonuçlar `is_stale: true` ile işaretlenir.

@@ -26,7 +26,7 @@ import statistics
 import sys
 import time
 from collections import defaultdict
-from itertools import pairwise
+from itertools import combinations, pairwise
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +36,7 @@ from istanbul_agent.config import PROJECT_ROOT, get_settings
 from istanbul_agent.store.db import connect
 from istanbul_agent.store.geo import haversine_m, parse_coordinate
 from istanbul_agent.store.gtfs import GtfsFeed, to_seconds
-from istanbul_agent.store.rail_reference import load_rail_reference
+from istanbul_agent.store.rail_reference import _line_family, load_rail_reference
 from istanbul_agent.store.rail_segments import build_segment_index
 from istanbul_agent.store.rail_travel import GTFS_METRO_DATA_AS_OF, MARMARAY_DATA_AS_OF
 from istanbul_agent.store.station_names import collapsed, normalize, token_key
@@ -71,6 +71,7 @@ MIN_SEGMENT_S, MAX_SEGMENT_S = 20, 900
 
 SCHEMA = """
 DROP TABLE IF EXISTS rail_segments;
+DROP TABLE IF EXISTS rail_interchanges;
 DROP TABLE IF EXISTS rail_transfers;
 DROP TABLE IF EXISTS rail_stations;
 DROP TABLE IF EXISTS rail_lines;
@@ -132,6 +133,20 @@ CREATE TABLE rail_transfers (
     to_is_rail     BOOLEAN NOT NULL,
     source         VARCHAR NOT NULL,
     data_as_of     VARCHAR NOT NULL
+);
+
+CREATE TABLE rail_interchanges (
+    from_line      VARCHAR NOT NULL,
+    from_key       VARCHAR NOT NULL,
+    from_name      VARCHAR NOT NULL,
+    to_line        VARCHAR NOT NULL,
+    to_key         VARCHAR NOT NULL,
+    to_name        VARCHAR NOT NULL,
+    distance_m     DOUBLE NOT NULL,
+    same_name      BOOLEAN NOT NULL,
+    in_dataset_313 BOOLEAN NOT NULL,
+    source         VARCHAR NOT NULL,
+    PRIMARY KEY (from_line, from_key, to_line, to_key)
 );
 """
 
@@ -218,6 +233,74 @@ def detect_rings(
         if typical > 0 and closing <= 2.5 * typical:
             rings.add(line)
     return rings
+
+
+# An interchange is a physical fact: two stations on different lines close
+# enough to walk between. Matching them by name instead invented 26 false
+# interchanges -- M5 and Marmaray2 both have an "Altınşehir" 33 km apart, and
+# M4 shares six names with Marmaray that are 1-2 km apart because M4 runs the
+# E-5 while Marmaray follows the coast -- and missed the real M4-Marmaray
+# interchange, whose two records are 7 m apart but spelled `Ayrılık Çeşmesi`
+# and `Ayrılıkçeşme`. So names are not consulted at all here.
+INTERCHANGE_RADIUS_M = 400.0
+
+
+def build_interchanges(
+    station_rows: dict[tuple[str, str], dict[str, Any]],
+    sanctioned_pairs: set[frozenset[str]],
+    radius: float = INTERCHANGE_RADIUS_M,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Every walkable pair of stations on different lines.
+
+    Returns (accepted, rejected_nearby). The second list holds pairs between
+    `radius` and 1 km that dataset 313 names, so a human can see what the
+    radius excluded rather than having it disappear silently.
+    """
+    positioned = [
+        row for row in station_rows.values() if row["lat"] is not None and row["lon"] is not None
+    ]
+    accepted: list[dict[str, Any]] = []
+    nearby: list[dict[str, Any]] = []
+
+    for left, right in combinations(positioned, 2):
+        if left["line"] == right["line"]:
+            continue
+        distance = haversine_m(left["lat"], left["lon"], right["lat"], right["lon"])
+        if distance > 1000.0:
+            continue
+        backed = (
+            frozenset({_line_family(left["line"]), _line_family(right["line"])}) in sanctioned_pairs
+        )
+        record = {
+            "from_line": left["line"],
+            "from_key": left["station_key"],
+            "from_name": left["name"],
+            "to_line": right["line"],
+            "to_key": right["station_key"],
+            "to_name": right["name"],
+            "distance_m": round(distance, 1),
+            "same_name": left["station_key"] == right["station_key"],
+            "in_dataset_313": backed,
+            "source": f"koordinat mesafesi ≤ {radius:.0f} m",
+        }
+        if distance <= radius:
+            accepted.append(record)
+            # Interchanges work both ways.
+            accepted.append(
+                {
+                    **record,
+                    "from_line": right["line"],
+                    "from_key": right["station_key"],
+                    "from_name": right["name"],
+                    "to_line": left["line"],
+                    "to_key": left["station_key"],
+                    "to_name": left["name"],
+                }
+            )
+        elif backed:
+            nearby.append(record)
+
+    return accepted, nearby
 
 
 def read_decision_csv(path: Path, key: str) -> dict[str, dict[str, str]]:
@@ -572,6 +655,39 @@ def main() -> int:
         for transfer in reference.transfers
     ]
 
+    # ---------------- interchanges ----------------
+    sanctioned = {
+        frozenset({_line_family(transfer.from_line), _line_family(transfer.to_line)})
+        for transfer in reference.rail_transfers()
+        if transfer.from_line and transfer.to_line
+    }
+    interchange_rows, nearby_rows = build_interchanges(station_rows, sanctioned)
+    print(
+        f"\n  aktarma: {len(interchange_rows) // 2} çift "
+        f"(≤ {INTERCHANGE_RADIUS_M:.0f} m), {len(nearby_rows)} çift sınırın dışında"
+    )
+    if nearby_rows:
+        connected = {
+            frozenset({_line_family(row["from_line"]), _line_family(row["to_line"])})
+            for row in interchange_rows
+        }
+        orphaned = [
+            row
+            for row in nearby_rows
+            if frozenset({_line_family(row["from_line"]), _line_family(row["to_line"])})
+            not in connected
+        ]
+        if orphaned:
+            print(
+                f"  UYARI: {len(orphaned)} hat çiftinin 400 m içinde hiç bağlantısı yok, "
+                "ama 313 aktarma olduğunu söylüyor:"
+            )
+            for row in orphaned:
+                print(
+                    f"    {row['from_line']:10} {row['from_name'][:24]:26} ↔ "
+                    f"{row['to_line']:10} {row['to_name'][:24]:26} {row['distance_m']:>6.0f}m"
+                )
+
     # ---------------- lines ----------------
     rings = detect_rings(station_rows)
     if rings:
@@ -634,10 +750,17 @@ def main() -> int:
         insert("rail_stations", list(station_rows.values()))
         insert("rail_segments", segment_rows)
         insert("rail_transfers", transfer_rows)
+        insert("rail_interchanges", interchange_rows)
         connection.commit()
 
         print("\n=== Yazıldı ===")
-        for table in ("rail_lines", "rail_stations", "rail_segments", "rail_transfers"):
+        for table in (
+            "rail_lines",
+            "rail_stations",
+            "rail_segments",
+            "rail_transfers",
+            "rail_interchanges",
+        ):
             count = connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
             print(f"  {table:16} {count:>5} satır")
 

@@ -399,6 +399,142 @@ Agent bunu "yaklaşık 50 dk (±2 dk)" şeklinde kullanabilir. Pay hiçbir zaman
 Ayrıca `warnings` alanı eklendi; bilinen sapmalı hatlar için uyarı taşır.
 Şimdilik tek kayıt M6 (%29 düşük).
 
+## Karar 4 — Aktarma fiziksel bir şeydir, ad eşleşmesi değil
+
+> **DÜZELTME (8 Kasım 2026).** Marmaray eklendiğinde aktarmalar ad eşleşmesiyle
+> kuruluyordu. Bu yanlıştı ve `Kadıköy → Taksim` rotasını bozdu: yolcu
+> "Göztepe"de M4'ten Marmaray'a geçiriliyordu, oysa M4'ün Göztepe'si E-5
+> üzerinde, Marmaray'ın Göztepe'si sahil hattında ve **1770 m** arada var.
+
+### Ölçüm: 82 aktarma iddiasının 26'sı yanlıştı
+
+Ad eşleştirmesinin ürettiği en uç örnekler:
+
+| Hat A | Hat B | İstasyon | Mesafe |
+|---|---|---|---|
+| M5 | Marmaray2 | Altınşehir | **32.956 m** |
+| M9 | T3 | Bahariye | **20.677 m** |
+| Marmaray | T4 | Yenimahalle | **13.218 m** |
+| M7 | Marmaray | Yenimahalle | 11.385 m |
+| M5 | T3 | Çarşı | 7.798 m |
+| M4 | Marmaray | Kartal | 2.622 m |
+| M1A | Marmaray | Zeytinburnu | 2.203 m |
+| M4 | Marmaray | Maltepe / Göztepe / Bostancı / Küçükyalı / Pendik | 1.061-1.784 m |
+
+Aynı hata **gerçek aktarmayı kaçırıyordu**: M4'ün `Ayrılık Çeşmesi` kaydı ile
+Marmaray'ın `Ayrılıkçeşme` kaydı **7 metre** arayla duruyor, ama Türkçe iyelik
+eki yüzünden anahtarlar ayrışıyor (`ayrilikcesmesi` vs `ayrilikcesme`).
+
+### Karar
+
+**Ad hiç kullanılmıyor.** Bir aktarma, farklı hatlara ait iki istasyonun
+yürüme mesafesinde olmasıdır — fiziksel bir olgu, bu yüzden fiziksel olarak
+ölçülüyor:
+
+| Kural | Değer |
+|---|---|
+| Aktarma yarıçapı | **≤ 400 m** |
+| Kaynak | `rail_interchanges` tablosu, ingest'te koordinatlardan üretilir |
+| Ad benzerliği | **gerekmiyor ve kontrol edilmiyor** |
+
+Sonuç: **76 aktarma çifti** (önce 82 iddia, 26'sı yanlış). Ad eşleştirmesinin
+kaçırdığı, mesafenin yakaladığı gerçek aktarmalar:
+
+| Hat A | İstasyon | Hat B | İstasyon | Mesafe |
+|---|---|---|---|---|
+| M4 | Ayrılık Çeşmesi | Marmaray | Ayrılıkçeşme | **7 m** |
+| T3 | Kadıköy İDO | M4 | Kadıköy | 81 m |
+| M1A | Bakırköy-İncirli | M3 | İncirli | 101 m |
+| M2 | Şişhane | F2 | Beyoğlu | 101 m |
+| TF2 | Eyüp | T5 | Eyüpsultan Teleferik | 108 m |
+| T1 | Gülhane | Marmaray | Sirkeci | 192 m |
+| M7 | Karadeniz Mahallesi | T4 | Kiptaş-Venezia | 200 m |
+| M1A | Topkapı-Ulubatlı | T4 | Vatan | 209 m |
+| M2 | Vezneciler-İstanbul Ü. | T1 | Laleli-İstanbul Ü. | 224 m |
+| M1A | Aksaray | T1 | Yusufpaşa | 239 m |
+
+### 400 m'nin dışında kalan tek kayıp: F4 ↔ M6
+
+400-1000 m bandında 113 çift var ve 313 bunların çoğunu adlandırıyor. Ama
+hepsinin 400 m içinde bir alternatifi var — örneğin `M1A Aksaray ↔ T1 Aksaray`
+557 m ile dışarıda kalıyor, fakat `M1A Aksaray ↔ T1 Yusufpaşa` 239 m ile
+içeride; M1↔T1 bağlantısı kaybolmuyor.
+
+**Tek istisna F4 ↔ M6:**
+
+| Hat A | İstasyon | Hat B | İstasyon | Mesafe | 313 |
+|---|---|---|---|---|---|
+| F4 | Boğaziçi Ü./Hisarüstü | M6 | Boğaziçi Ü.-Hisarüstü | 463 m | ✅ |
+| F4 | Aşiyan | M6 | Boğaziçi Ü.-Hisarüstü | 838 m | ✅ |
+
+F4 iki istasyonluk bir füniküler ve tek bağlantısı M6; 400 m kuralıyla ağdan
+kopuyor. Ingest bunu her çalıştırmada uyarı olarak basıyor. **Kararı
+kullanıcıya bırakıyorum**: yarıçapı F4 için genişletmek mi, yoksa 313
+tarafından adlandırılmış çiftler için ayrı (ör. 1000 m) bir yarıçap mı.
+Şimdilik kural tek: 400 m.
+
+### Regresyon testi
+
+`tests/test_interchanges.py` bu hata türünü iki yönden sabitliyor:
+
+- aynı adlı ama 400 m'den uzak iki istasyon arasında aktarma **olmamalı**
+  (M4/Marmaray Göztepe vakası),
+- farklı adlı ama yakın iki istasyon arasında aktarma **olmalı**
+  (Ayrılık Çeşmesi vakası),
+- ve depodaki hiçbir aktarma yarıçapı aşmamalı; `Kadıköy → Taksim` rotası
+  Ayrılık Çeşmesi'nden geçmeli.
+
+### Çok aktarmalı rota
+
+`Kadıköy → Taksim` iki aktarma gerektiriyor, bu yüzden tek-aktarma mantığı
+`(hat, istasyon)` düğümleri üzerinde Dijkstra ile değiştirildi. Kenarlar
+komşu istasyona gidiş (süre) veya aktarma (`TRANSFER_PENALTY_S`); aynı
+hattaki ardışık atlamalar tek bacağa birleştirilip süresi `same_line_leg` ile
+yeniden hesaplanıyor.
+
+**Düzeltilmiş sonuç: 35 dk** (yanlış rotayla 48 dk çıkıyordu):
+
+| Bacak | Hat | Durak | Süre |
+|---|---|---|---|
+| Kadıköy → Ayrılık Çeşmesi | M4 | 1 | 2 dk |
+| Ayrılıkçeşme → Yenikapı | Marmaray1 | 3 | 13 dk |
+| Yenikapı → Taksim | M2 | 4 | 7 dk |
+| 2 aktarma | | | 12 dk |
+
+## Karar 5 — Kalibrasyon: dört kapı, hepsi geçilmeli
+
+Kalibrasyon kodu yazıldı ve **kasten pasif**. Bir hattın süresi ancak dört
+kapının tamamı geçilirse ölçeklenir:
+
+| # | Kapı | Eşik | Gerekçe |
+|---|---|---|---|
+| 1 | Kaynak linki gerçek bir URL olmalı | — | Kimsenin doğrulayamadığı bir sayı kanıt değil. Link gelmeden hat kalibre edilmez; kod linkle birlikte kendiliğinden aktifleşir, değişiklik gerekmez. |
+| 2 | Sapma | **> %5** | M4'ün %0.9'u gürültü; onunla ölçeklemek dış kaynağın yuvarlamasına uydurma olur. |
+| 3 | Yolculuk uzunluğu | **≥ 5 durak ve ≥ 10 dk** | F1'in 2 dakikalık yolculuğundaki 30 saniyelik fark, tüm hattı %25 ölçeklemeye yeter. |
+| 4 | Bizim sonucumuz | **`gtfs` olmalı** | Tahmini kalibre etmek, tahminin hatasını orana katıp sonra tahmine geri uygulamak olur. |
+| — | Oran | 0.67-1.50 | Dışına çıkan iki sayı muhtemelen farklı yolculukları anlatıyor. |
+
+Ayrıca `DOĞRULANMADI` işaretli satırlar baştan dışlanır.
+
+### Şu anki durum
+
+| Hat | Sapma | Oran | Karar |
+|---|---|---|---|
+| M2 | +%10.0 | 1.100 | ⏸️ kapı 1 — kaynak linki bekleniyor |
+| T1 | -%7.1 | 0.929 | ⏸️ kapı 1 — kaynak linki bekleniyor |
+| M4 (Tavşantepe) | +%0.9 | 1.009 | ❌ kapı 2 — gürültü |
+| F1 | +%25.0 | 1.250 | ❌ kapı 3 — 1 durak, 2 dk |
+| M4 (S. Gökçen) | +%4.0 | 1.040 | ❌ kapı 4 — bizim sonucumuz tahmin |
+| M5 | +%27.6 | 1.276 | ❌ dış kaynak doğrulanmadı |
+
+**Aktif kalibrasyon: 0 hat.** `datasets/external_travel_times.csv` içindeki
+`source_url` alanını doldurmak M2 ve T1'i açar.
+
+Kalibre edilmiş bir süre `method: gtfs_calibrated` döner ve çıktıda oranı,
+dayandığı yolculuğu ve kaynak linkini taşır.
+
+Durumu görmek için: `uv run python scripts/show_calibration_gates.py`
+
 ## Yeniden gözden geçirme koşulları
 
 - Metro `GetStationBetweenTime` düzelirse süreler canlı API'den alınır, bu
@@ -412,3 +548,6 @@ Ayrıca `warnings` alanı eklendi; bilinen sapmalı hatlar için uyarı taşır.
   çalıştırılmalı; kalibrasyon kararı o çıktıya dayanır.
 - Marmaray için daha güncel bir besleme gelirse `MARMARAY_DATA_AS_OF`
   güncellenmeli.
+- Kaynak linkleri gelince `show_calibration_gates.py` çalıştırılıp hangi
+  hatların aktifleştiği doğrulanmalı.
+- F4 ↔ M6 kararı verilince aktarma yarıçapı kuralı güncellenmeli.

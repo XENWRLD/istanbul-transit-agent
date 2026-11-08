@@ -18,6 +18,9 @@ says which was used:
    factor is applied.
 3. **`transfer`** -- the two stations are on different lines; each leg is
    solved as above and a fixed interchange penalty is added.
+4. **`gtfs_calibrated`** -- a `gtfs` duration scaled by the line's measured
+   factor, where an independently checked travel time showed the 2020 feed
+   drifting from today's operation by more than 5%. See store/calibration.py.
 
 Everything derived from the feed carries `is_stale: true`: its metro data is
 dated 2020-07-09 and the portal will not refresh it.
@@ -53,7 +56,7 @@ __all__ = [
     "model_for",
 ]
 
-Method = Literal["gtfs", "estimated", "transfer", "unavailable"]
+Method = Literal["gtfs", "gtfs_calibrated", "estimated", "transfer", "unavailable"]
 
 # The feed's metro data, per the portal's own note. Reported as `data_as_of`.
 GTFS_METRO_DATA_AS_OF = "2020-07-09"
@@ -265,6 +268,7 @@ class RailNetwork:
         unreliable_lines: frozenset[str] = frozenset(),
         ring_lines: frozenset[str] = frozenset(),
         line_dates: dict[str, str] | None = None,
+        interchanges: list[tuple[str, str, str, str]] | None = None,
     ) -> None:
         """
         Args:
@@ -285,6 +289,11 @@ class RailNetwork:
             line_dates: `data_as_of` per line. Marmaray's feed data is a year
                 older than the metro's, so a journey using it must report the
                 older of the dates rather than the metro's.
+            interchanges: `(from_line, from_station_key, to_line,
+                to_station_key)` walkable pairs, built from coordinates by the
+                ingest. When omitted, stations that two lines share by exact
+                key are used -- enough for a hand-built test network, never
+                for the real one.
         """
         self.stations = stations
         self.segment_durations = segment_durations
@@ -294,13 +303,50 @@ class RailNetwork:
         self.ring_lines = ring_lines
         self.line_dates = line_dates or {}
 
+        # The per-line index has to exist before interchanges can be resolved
+        # against it.
         self._by_line: dict[str, list[RailStation]] = {}
         for station in stations:
             self._by_line.setdefault(station.line, []).append(station)
         for line_stations in self._by_line.values():
             line_stations.sort(key=lambda s: s.order if s.order is not None else 1 << 30)
 
+        self._interchanges: dict[tuple[str, str], list[tuple[RailStation, RailStation]]] = {}
+        for from_line, from_key, to_line, to_key in (
+            interchanges if interchanges is not None else self._shared_station_interchanges()
+        ):
+            origin = self._station(from_line, from_key)
+            destination = self._station(to_line, to_key)
+            if origin is not None and destination is not None:
+                self._interchanges.setdefault((from_line, to_line), []).append(
+                    (origin, destination)
+                )
+
     # ------------------------------------------------------------- lookup
+
+    def _station(self, line: str, station_key: str) -> RailStation | None:
+        for station in self._by_line.get(line, []):
+            if self.key(station.name) == station_key:
+                return station
+        return None
+
+    def _shared_station_interchanges(self) -> list[tuple[str, str, str, str]]:
+        """Fallback for a network built without an interchange table.
+
+        Pairs stations that two lines share by exact key. Only safe because a
+        hand-built test network has no same-name-different-place traps; the
+        real network always passes its measured table.
+        """
+        pairs: list[tuple[str, str, str, str]] = []
+        for from_line, line_stations in self._by_line.items():
+            for station in line_stations:
+                station_key = self.key(station.name)
+                for to_line, other_stations in self._by_line.items():
+                    if to_line == from_line:
+                        continue
+                    if any(self.key(s.name) == station_key for s in other_stations):
+                        pairs.append((from_line, station_key, to_line, station_key))
+        return pairs
 
     @staticmethod
     def key(name: str) -> str:
@@ -454,62 +500,15 @@ class RailNetwork:
     ) -> list[tuple[RailStation, RailStation]]:
         """Where a passenger can change from one line to the other.
 
-        Returns `(station_on_from_line, station_on_to_line)` pairs. They are
-        two objects rather than one because the two lines may call the
-        interchange different things: M2 has `Şişli-Mecidiyeköy` where M7 has
-        `Mecidiyeköy`. Dataset 313 records each direction as its own row, so
-        the pairing comes from matching those rows up and confirming with
-        coordinates -- never from matching the names, which do not match.
+        Reads the interchange table the ingest built from coordinates. Names
+        are deliberately not consulted: matching on them invented 26 false
+        interchanges (M5 and Marmaray2 each have an "Altınşehir", 33 km
+        apart; M4 shares six names with Marmaray that are 1-2 km apart
+        because one runs the E-5 and the other the coast) while missing the
+        real M4-Marmaray interchange, two records 7 m apart spelled
+        `Ayrılık Çeşmesi` and `Ayrılıkçeşme`.
         """
-        from_family, to_family = _line_family(from_line), _line_family(to_line)
-
-        def named_on(line: str, rows_family: str, other_family: str) -> list[RailStation]:
-            wanted = {
-                station
-                for station, left, right in self.transfers
-                if _line_family(left) == rows_family and _line_family(right) == other_family
-            }
-            return [s for s in self.stations_on(line) if self.key(s.name) in wanted]
-
-        origins = named_on(from_line, from_family, to_family)
-        destinations = named_on(to_line, to_family, from_family)
-
-        pairs: list[tuple[RailStation, RailStation]] = []
-
-        # The common case: both lines use the same name for the interchange.
-        for station in self.stations_on(from_line):
-            twin = [
-                s for s in self.stations_on(to_line) if self.key(s.name) == self.key(station.name)
-            ]
-            if twin:
-                pairs.append((station, twin[0]))
-
-        # Otherwise pair 313's two sides by proximity: an interchange is one
-        # place, so the two records sit within a few hundred metres.
-        for origin in origins:
-            if any(left is origin for left, _ in pairs):
-                continue
-            best: RailStation | None = None
-            best_distance = None
-            for destination in destinations:
-                if not (origin.has_position and destination.has_position):
-                    continue
-                distance = haversine_m(
-                    origin.lat,
-                    origin.lon,
-                    destination.lat,
-                    destination.lon,  # type: ignore[arg-type]
-                )
-                if best_distance is None or distance < best_distance:
-                    best, best_distance = destination, distance
-            if best is not None and best_distance is not None and best_distance <= 600:
-                pairs.append((origin, best))
-            elif len(destinations) == 1 and not destinations[0].has_position:
-                # No coordinates to confirm with, but 313 names exactly one
-                # station on each side, so the pairing is unambiguous.
-                pairs.append((origin, destinations[0]))
-
-        return pairs
+        return self._interchanges.get((from_line, to_line), [])
 
     # ----------------------------------------------------- whole journeys
 

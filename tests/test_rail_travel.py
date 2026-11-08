@@ -314,6 +314,15 @@ class TestRingLines:
 
 
 class TestTransfers:
+    """Interchanges come from the measured table, not from names.
+
+    `transfer_options` used to pair stations that shared a name, which
+    invented 26 false interchanges and missed the real M4-Marmaray one. The
+    distance rule and the table that carries it are covered in
+    tests/test_interchanges.py; here the point is only that the network
+    consults the table it was given.
+    """
+
     @pytest.fixture
     def two_lines(self):
         """M2 and M7 meet at a station each line names differently."""
@@ -329,25 +338,40 @@ class TestTransfers:
                 pair("M7", "Mecidiyeköy", "Kağıthane"): 150,
             },
             segment_lengths={},
-            transfers=[
-                ("sisli mecidiyekoy", "M2", "M7"),
-                ("mecidiyekoy", "M7", "M2"),
+            transfers=[],
+            interchanges=[
+                ("M2", "sisli mecidiyekoy", "M7", "mecidiyekoy"),
+                ("M7", "mecidiyekoy", "M2", "sisli mecidiyekoy"),
             ],
         )
 
-    def test_interchange_paired_across_differing_names(self, two_lines):
+    def test_interchange_from_the_table_is_offered(self, two_lines):
         options = two_lines.transfer_options("M2", "M7")
-        assert options, "aktarma noktası bulunamadı"
+        assert len(options) == 1
         from_station, to_station = options[0]
-        assert from_station.line == "M2"
-        assert to_station.line == "M7"
+        assert from_station.name == "Şişli-Mecidiyeköy"
+        assert to_station.name == "Mecidiyeköy"
 
-    def test_same_name_interchange_is_found(self):
+    def test_interchange_works_in_both_directions(self, two_lines):
+        assert two_lines.transfer_options("M7", "M2")
+
+    def test_journey_crosses_the_interchange(self, two_lines):
+        legs = two_lines.plan(two_lines.find("Yenikapı"), two_lines.find("Kağıthane"))
+        assert legs is not None
+        assert [leg.line for leg in legs] == ["M2", "M7"]
+
+    def test_unlisted_pair_has_no_interchange(self, two_lines):
+        assert two_lines.transfer_options("M2", "T1") == []
+
+    def test_fallback_pairs_shared_names_when_no_table_given(self):
+        """A hand-built network with no table may use exact-name sharing.
+
+        Only safe in a test: the real network always passes its measured
+        table, because exact-name sharing is what produced the false
+        interchanges.
+        """
         network = RailNetwork(
-            stations=[
-                station("Kirazlı", "M1B", 1),
-                station("Kirazlı", "M3", 1),
-            ],
+            stations=[station("Kirazlı", "M1B", 1), station("Kirazlı", "M3", 1)],
             segment_durations={},
             segment_lengths={},
             transfers=[],
@@ -356,19 +380,6 @@ class TestTransfers:
         assert len(options) == 1
         assert options[0][0].line == "M1B"
         assert options[0][1].line == "M3"
-
-    def test_far_apart_namesakes_are_not_paired(self):
-        """313 names a station on each side, but they are kilometres apart."""
-        network = RailNetwork(
-            stations=[
-                station("Kuzey", "M2", 1, lat=41.10, lon=29.00),
-                station("Guney", "M7", 1, lat=40.95, lon=29.00),
-            ],
-            segment_durations={},
-            segment_lengths={},
-            transfers=[("kuzey", "M2", "M7"), ("guney", "M7", "M2")],
-        )
-        assert network.transfer_options("M2", "M7") == []
 
 
 class TestConstants:

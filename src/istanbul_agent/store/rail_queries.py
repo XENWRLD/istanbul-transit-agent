@@ -9,9 +9,11 @@ invented. When no method can answer, it says so instead of guessing.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from functools import lru_cache
 from pathlib import Path
 
+from istanbul_agent.store.calibration import Calibration, load_calibrations
 from istanbul_agent.store.db import read_only_connection
 from istanbul_agent.store.rail_travel import (
     GTFS_METRO_DATA_AS_OF,
@@ -87,6 +89,12 @@ def load_network(path: Path | None = None) -> RailNetwork:
             row[0]: row[1]
             for row in connection.execute("SELECT line, data_as_of FROM rail_lines").fetchall()
         }
+        interchanges = [
+            (row[0], row[1], row[2], row[3])
+            for row in connection.execute(
+                "SELECT from_line, from_key, to_line, to_key FROM rail_interchanges"
+            ).fetchall()
+        ]
 
     return RailNetwork(
         stations=stations,
@@ -96,6 +104,7 @@ def load_network(path: Path | None = None) -> RailNetwork:
         unreliable_lines=unreliable,
         ring_lines=rings,
         line_dates=line_dates,
+        interchanges=interchanges,
     )
 
 
@@ -147,11 +156,33 @@ def _warnings_for(legs: list[TravelLeg]) -> list[str]:
     return seen
 
 
+def _calibrate(
+    leg: TravelLeg, calibrations: dict[str, Calibration]
+) -> tuple[TravelLeg, Calibration | None]:
+    """Scale a recorded duration by its line's factor, if it has one.
+
+    Only a `gtfs` leg is scaled: an estimate already carries its own error,
+    and folding a factor derived from one journey into it would compound two
+    uncertainties.
+    """
+    entry = calibrations.get(leg.line.strip())
+    if entry is None or leg.method != "gtfs":
+        return leg, None
+    scaled = replace(
+        leg,
+        seconds=round(leg.seconds * entry.factor),
+        method="gtfs_calibrated",
+        detail=f"{leg.detail}, kalibrasyon ×{entry.factor:.3f}",
+    )
+    return scaled, entry
+
+
 def get_rail_travel_time(
     from_station: str,
     to_station: str,
     *,
     network: RailNetwork | None = None,
+    calibrate: bool = True,
 ) -> TravelTimeResult:
     """Travel time between two rail stations.
 
@@ -159,8 +190,13 @@ def get_rail_travel_time(
         from_station: origin station name, any spelling the sources use.
         to_station: destination station name.
         network: graph to query; defaults to the store.
+        calibrate: apply each line's measured factor. `load_calibrations`
+            derives those factors by asking this function what we currently
+            return, so it must pass `False` -- otherwise the two call each
+            other forever.
     """
     graph = network or _cached_network()
+    calibrations = load_calibrations() if calibrate else {}
 
     def unavailable(note: str) -> TravelTimeResult:
         return TravelTimeResult(
@@ -194,6 +230,15 @@ def get_rail_travel_time(
             best = leg
 
     if best is not None:
+        best, calibration = _calibrate(best, calibrations)
+        if calibration is not None:
+            notes.append(
+                f"{best.line} süresi dış kaynakla kalibre edildi "
+                f"(×{calibration.factor:.3f}; {calibration.from_station}→"
+                f"{calibration.to_station} için bizim {calibration.ours_minutes:.1f} dk, "
+                f"dış kaynak {calibration.external_minutes:.1f} dk). "
+                f"Kaynak: {calibration.source_url}"
+            )
         estimated = best.method == "estimated"
         if best.line in graph.unreliable_lines:
             notes.append(
@@ -227,6 +272,16 @@ def get_rail_travel_time(
     # ---- across interchanges, however many it takes ----
     legs = graph.plan(origins, destinations)
     if legs:
+        calibrated: list[TravelLeg] = []
+        for leg in legs:
+            scaled, entry = _calibrate(leg, calibrations)
+            calibrated.append(scaled)
+            if entry is not None:
+                notes.append(
+                    f"{leg.line} bacağı dış kaynakla kalibre edildi "
+                    f"(×{entry.factor:.3f}). Kaynak: {entry.source_url}"
+                )
+        legs = calibrated
         changes = max(0, len(legs) - 1)
         estimated = any(leg.method == "estimated" for leg in legs)
         total = sum(leg.seconds for leg in legs) + changes * TRANSFER_PENALTY_S

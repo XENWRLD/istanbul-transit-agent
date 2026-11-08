@@ -20,6 +20,24 @@ def test_ollama_provider_uses_configured_model():
     assert llm.keep_alive == "24h"
 
 
+def test_ollama_defaults_disable_thinking_and_widen_the_context():
+    """Both are measured decisions, not preferences (decision 0006, karar 6).
+
+    With thinking on, qwen3.5:4b returned an empty completion -- no text and
+    no tool calls -- after 116 s on a question needing two tools. At the
+    default context window it answered fast but lost which line the question
+    was about.
+    """
+    llm = get_llm(settings=_settings(llm_provider="ollama"))
+    assert llm.reasoning is False
+    assert llm.num_ctx == 8192
+
+
+def test_thinking_can_still_be_turned_back_on_per_call():
+    llm = get_llm("ollama", settings=_settings(), reasoning=True)
+    assert llm.reasoning is True
+
+
 def test_default_provider_comes_from_settings():
     llm = get_llm(settings=_settings(llm_provider="ollama"))
     assert type(llm).__name__ == "ChatOllama"

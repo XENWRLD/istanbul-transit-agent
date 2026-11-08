@@ -55,6 +55,8 @@ def _build_ollama(settings: Settings, overrides: dict[str, Any]) -> BaseChatMode
         "base_url": settings.ollama_base_url,
         "temperature": settings.ollama_temperature,
         "keep_alive": settings.ollama_keep_alive,
+        "reasoning": settings.ollama_reasoning,
+        "num_ctx": settings.ollama_num_ctx,
         "client_kwargs": {"timeout": settings.llm_request_timeout},
     }
     kwargs.update(overrides)

@@ -95,6 +95,38 @@ class TestDeparturesTool:
         assert result.headway_is_stale is False
         assert {d.headway_minutes for d in result.directions} == {8}
 
+    def test_a_terminus_direction_is_flagged_as_an_arrival(self):
+        """ "Kadıköy'den son sefer" must not be answered with 00:49, which is
+        when the last train from the other end *reaches* Kadıköy."""
+        result = transit_server.get_next_departures("M4", "Kadıköy", at="2026-11-09 18:15")
+        toward_kadikoy = next(d for d in result.directions if "Kadıköy" in d.direction)
+        away = next(d for d in result.directions if "Kadıköy" not in d.direction)
+        assert toward_kadikoy.is_arrival_at_station is True
+        assert away.is_arrival_at_station is False
+        assert away.last_departure == "00:00"
+        # The arrival direction reports no departure at all: the number
+        # itself is what gets misquoted as "son kalkış".
+        assert toward_kadikoy.last_departure is None
+        assert toward_kadikoy.first_departure is None
+        assert toward_kadikoy.last_arrival == "00:49"
+
+    def test_a_mid_line_station_is_not_an_arrival_in_either_direction(self):
+        """A passenger boards at Bostancı in both directions, so both report
+        departures."""
+        result = transit_server.get_next_departures("M4", "Bostancı", at="2026-11-09 18:15")
+        assert all(not d.is_arrival_at_station for d in result.directions)
+        assert all(d.first_departure and d.last_departure for d in result.directions)
+        assert all(d.last_arrival is None for d in result.directions)
+
+    def test_a_station_on_another_line_names_that_line(self):
+        """Üsküdar is on M5 and Marmaray; asking M4 should redirect, not
+        dead-end."""
+        result = transit_server.get_next_departures("M4", "Üsküdar")
+        assert result.ok is False
+        assert result.error == "istasyon_bulunamadi"
+        assert "M5" in result.candidates
+        assert "M5" in result.message
+
     def test_an_unknown_line_lists_the_known_ones(self):
         result = transit_server.get_next_departures("M42")
         assert result.ok is False
@@ -105,7 +137,7 @@ class TestDeparturesTool:
         result = transit_server.get_next_departures("M4", "Taksim")
         assert result.ok is False
         assert result.error == "istasyon_bulunamadi"
-        assert result.candidates
+        assert result.candidates == ["M2", "F1"] or set(result.candidates) >= {"M2", "F1"}
 
     def test_a_line_without_a_timetable_is_reported(self):
         result = transit_server.get_next_departures("T5")

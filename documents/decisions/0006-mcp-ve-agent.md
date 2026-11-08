@@ -93,11 +93,90 @@ uv run python scripts/run_agent_questions.py          # 5 soru x 2 sağlayıcı
 CLI varsayılan olarak çağrılan araçları ve parametrelerini de basıyor:
 agent'ın doğru aracı seçip seçmediği cevaba bakarak anlaşılmıyor.
 
+## Karar 6 — Yerel modelde düşünme kapalı, bağlam 8192
+
+İlk uçtan uca denemede qwen3.5:4b beş sorudan dördünü doğru cevapladı ama
+**iki araç gerektiren soruda** (S5: "ne kadar sürer, şu an hangi sıklıkta
+tren var") hiç araç çağırmadı ve **boş cevap** döndü. İki denemede de aynı.
+
+Mesaj dökümü gösterdi ki hata ReAct döngüsünde değil: grafik üç mesajla
+bitiyor (sistem, kullanıcı, boş `AIMessage`) — model ilk turda 114 saniye
+sonra hiçbir şey üretmemiş, `tool_calls=[]`, içerik 0 karakter, hata yok.
+
+Dört yapılandırma aynı soruyla ölçüldü:
+
+| Yapılandırma | Süre | Araçlar | Cevap |
+|---|---|---|---|
+| varsayılan (düşünme açık) | **116 s** | **YOK** | **boş** |
+| `reasoning=False` | 21 s | ikisi de | ✗ hat karıştı ("Üsküdar M4'te bulunamıyor") |
+| `num_ctx=8192` | 93 s | ikisi de | ✓ doğru |
+| **`reasoning=False` + `num_ctx=8192`** | **28 s** | **ikisi de** | **✓ doğru** |
+
+İki ayrı sorun olduğu buradan anlaşılıyor:
+
+1. **Düşünme kipi araç çağırmayı bozuyor.** Model düşünme kanalına yazıyor
+   ve üretim oradan çıkamadan tükeniyor; dışarıya ne metin ne araç çağrısı
+   geliyor. Kapatınca süre 116 s → 21 s.
+2. **Varsayılan bağlam penceresi yetmiyor.** Sistem prompt'u (1885 karakter)
+   + iki aracın şeması ve açıklamaları (~3100 karakter) + araç çıktıları tek
+   turda pencereyi dolduruyor; model hızlı ama yanlış cevap veriyor, hangi
+   hattın sorulduğunu kaybediyor. 8192'de düzeliyor.
+
+Karar: `ollama_reasoning = False` ve `ollama_num_ctx = 8192` **varsayılan**
+oldu (`config.py`, `.env.example` ile `OLLAMA_REASONING` / `OLLAMA_NUM_CTX`).
+Düşünme tek çağrı için geri açılabiliyor (`get_llm("ollama",
+reasoning=True)`); `tests/test_llm.py` hem varsayılanları hem bu kapıyı
+sabitliyor.
+
+Gemini tarafında bir değişiklik gerekmedi; o modelin aynı soruda iki aracı
+çağırması 7.6 saniye sürüyordu.
+
+## Karar 7 — Agent denemesinin açığa çıkardığı iki araç hatası
+
+İki model aynı araçları kullanınca, modelin değil **aracın** iki kusuru
+göründü. İkisi de "cevap verebiliyorum ama yanıltıcı veriyorum" türünde.
+
+### 7a. "Bu hatta yok" çıkmaz sokaktı
+
+qwen S5'te `get_next_departures(line="M4", station="Üsküdar")` çağırdı. Araç
+"'Üsküdar' M4 hattında bulunamadı" dedi ve model orada durup kullanıcıya
+soru sorarak bitirdi — oysa Üsküdar gerçek bir istasyon, sadece M4'te değil.
+
+Artık istasyon ağ genelinde de aranıyor ve bulunursa **onu işleten hatlar**
+aday olarak dönüyor:
+
+> 'Üsküdar' M4 hattında değil; şu hatlarda var: M5, Marmaray1, Marmaray.
+> Aynı aracı bu hatlardan biriyle yeniden çağır.
+
+Sonuç: qwen aynı soruda üç çağrı yapıyor (M4 → yönlendirme → M5) ve doğru
+cevaba kendi kendine varıyor, 26 s.
+
+### 7b. Son durakta "kalkış saati" yoktu, ama araç veriyordu
+
+"Kadıköy'den son M4 kaçta" sorusunda qwen **00:49** dedi. O saat, hattın
+diğer ucundan kalkan son trenin Kadıköy'e **varış** saati; Kadıköy'den son
+kalkış 00:00. Araç o yönün saatini `last_departure` alanında veriyordu, yani
+hatayı araç davet ediyordu.
+
+Düzeltme: sorulan istasyon o yönün son durağıysa `first_departure` ve
+`last_departure` **boş** dönüyor, saatler `first_arrival` / `last_arrival`
+alanlarına geçiyor, `is_arrival_at_station: true` oluyor. Ara istasyonlarda
+(Bostancı) iki yön de kalkış veriyor, varış alanları boş.
+
+Ders: bir sayıyı yanlış adı taşıyan alana koymak, modelin onu yanlış
+kullanmasını istemek demek. Not olarak uyarmak yetmedi; alanın kendisinin
+doğru olması gerekiyordu.
+
 ## Yeniden gözden geçirme koşulları
 
 - Araç sayısı arttığında (hedef ~15) tek bir ReAct grafiği yetmeyebilir;
   araç seçimi ölçülüp gerekiyorsa yönlendirme (router) eklenmeli.
 - Araç açıklamaları değişirse senaryo betiği yeniden çalıştırılmalı.
-- Ücretsiz Gemini katmanı dakikada 5 istek: senaryo betiği beş soruyu
-  arka arkaya sorduğunda 429 alınabiliyor. Değerlendirme betiği yazılırken
-  üstel geri çekilme ve önbellek gerekecek (CLAUDE.md kuralı).
+- Ücretsiz Gemini katmanı **dakikada 5, günde 20 istek** (8 Kasım 2026'da
+  ölçüldü: gün sınırı dolunca 429 ve `retryDelay: 44784s`). Beş soruyu arka
+  arkaya sormak dakika sınırını, bir günde birkaç tur denemek gün sınırını
+  aşıyor. Değerlendirme betiği önbellek ve üstel geri çekilme olmadan
+  çalıştırılamaz (CLAUDE.md kuralı); kota dolduğunda yerel model tek
+  seçenek kalıyor.
+- Yerel model değişirse (`OLLAMA_MODEL`) düşünme ve bağlam ayarları
+  yeniden ölçülmeli: ikisi de bu modele göre seçildi.

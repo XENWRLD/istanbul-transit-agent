@@ -76,7 +76,7 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - LLM sağlayıcısı yalnızca `llm.py` üzerinden oluşturulur; başka yerde doğrudan SDK çağırma. Sağlayıcı `.env` içindeki `LLM_PROVIDER` ile seçilir.
 - Gizli anahtarlar yalnızca `.env` içinde; `.env.example` güncel tutulur, `.env` asla commit edilmez.
 - Birim testleri gerçek LLM veya İBB API çağrısı yapmaz. Gerçek API yanıtlarından örnekleri `tests/fixtures/` altına kaydedip onları kullan.
-- Ücretsiz API kotası sınırlı: değerlendirme betikleri LLM yanıtlarını `eval/.cache/` altında önbelleğe alır, 429 hatalarında üstel geri çekilme (backoff) uygular.
+- Ücretsiz API kotası sınırlı (Gemini: dakikada 5, **günde 20** istek — ölçüldü, karar 0006): değerlendirme betikleri LLM yanıtlarını `eval/.cache/` altında önbelleğe alır, 429 hatalarında üstel geri çekilme (backoff) uygular. Kota dolarsa yerel model (`--provider ollama`) ile devam edilir.
 - İBB API'sinin davranışını tahmin etme; önce gerçek yanıtı incele, sonra kodu yaz.
 - Metro İstanbul REST API'si başarısızlıkta da HTTP 200 döner; gövdedeki `Success` alanına bak, durum koduna değil.
 - İBB GTFS CSV'leri **cp1254** kodlamalıdır, UTF-8 değil. `calendar.csv` penceresi dolmuştur: servis günleri yalnızca hafta günü desenine göre seçilir (karar 0002).

@@ -25,9 +25,11 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
 from istanbul_agent.clients.metro import Announcement, fetch_announcements
+from istanbul_agent.store.departures import DepartureInfo
 from istanbul_agent.store.departures import get_next_departures as _get_next_departures
 from istanbul_agent.store.rail_queries import get_rail_travel_time as _get_rail_travel_time
 from istanbul_agent.store.rail_queries import load_network
+from istanbul_agent.store.station_names import normalize
 from istanbul_agent.store.station_search import find_station, suggest_stations
 
 # log_level: the server runs as a subprocess of the agent and its INFO
@@ -70,7 +72,12 @@ class StationNotFound(BaseModel):
     ok: Literal[False] = False
     error: Literal["istasyon_bulunamadi"] = "istasyon_bulunamadi"
     asked: str = Field(description="Kullanıcının yazdığı ad")
-    candidates: list[str] = Field(default_factory=list, description="En yakın 3 istasyon adı")
+    candidates: list[str] = Field(
+        default_factory=list,
+        description=(
+            "En yakın 3 istasyon adı; istasyon başka bir hatta varsa onun yerine o hatların kodları"
+        ),
+    )
     message: str
 
 
@@ -127,14 +134,40 @@ class DirectionOut(BaseModel):
     offset_minutes: int | None = Field(
         None, description="Uç istasyondan sorulan istasyona kadar kaydırma (dk)"
     )
-    first_departure: str | None
-    last_departure: str | None = Field(None, description="Gece boyunca çalışıyorsa null olur")
+    first_departure: str | None = Field(
+        None,
+        description=(
+            "Bu yönde sorulan istasyondan ilk kalkış. Sorulan istasyon bu yönün son "
+            "durağıysa kalkış yoktur, null olur ve saat first_arrival'a yazılır."
+        ),
+    )
+    last_departure: str | None = Field(
+        None,
+        description=(
+            "Bu yönde son kalkış. Gece boyunca çalışıyorsa veya istasyon bu yönün son "
+            "durağıysa null olur."
+        ),
+    )
+    first_arrival: str | None = Field(
+        None, description="Sorulan istasyon bu yönün son durağıysa oraya ilk varış"
+    )
+    last_arrival: str | None = Field(
+        None, description="Sorulan istasyon bu yönün son durağıysa oraya son varış"
+    )
     runs_all_night: bool = False
     headway_minutes: int | None = Field(None, description="Sorulan saatteki sefer aralığı")
     headway_hour: int | None = Field(None, description="Aralığın ait olduğu saat")
     running_now: bool
     expected_wait_minutes: int | None
     night_service: str | None = Field(None, description="Varsa gece servisi penceresi")
+    is_arrival_at_station: bool = Field(
+        False,
+        description=(
+            "Sorulan istasyon bu yönün son durağı: saatler oraya VARIŞ saatidir, "
+            "o istasyondan kalkış saati değildir. 'X'ten son sefer kaçta' sorusunda "
+            "bu yönü kullanma, diğer yönü kullan."
+        ),
+    )
 
 
 class DeparturesOut(BaseModel):
@@ -243,6 +276,36 @@ def get_rail_travel_time(from_station: str, to_station: str) -> TravelTimeOut | 
     )
 
 
+def _direction_out(info: DepartureInfo, station: str | None) -> DirectionOut:
+    """One direction of the answer, as the tool reports it.
+
+    When the queried station is this direction's last stop, the shifted
+    times are arrivals: the train terminates there, so there is no departure
+    to report. They go into `first_arrival` / `last_arrival` and the
+    departure fields stay empty -- a number in `last_departure` is a number
+    a caller will quote as "son kalkış", which is how a model answered
+    "Kadıköy'den son M4" with 00:49, the minute the last train from the
+    other end *reaches* Kadıköy.
+    """
+    arrival = bool(station and normalize(info.direction_name) == normalize(station))
+    return DirectionOut(
+        direction=info.label,
+        terminal=info.terminal,
+        offset_minutes=info.offset_minutes,
+        first_departure=None if arrival else info.first,
+        last_departure=None if arrival else info.last,
+        first_arrival=info.first if arrival else None,
+        last_arrival=info.last if arrival else None,
+        runs_all_night=info.all_night,
+        headway_minutes=info.headway_minutes,
+        headway_hour=info.headway_hour,
+        running_now=info.running_now,
+        expected_wait_minutes=info.expected_wait_minutes,
+        night_service=(f"{info.night_first}-{info.night_last}" if info.night_first else None),
+        is_arrival_at_station=arrival,
+    )
+
+
 @mcp.tool()
 def get_next_departures(
     line: str, station: str | None = None, at: str | None = None
@@ -306,6 +369,21 @@ def get_next_departures(
     if station:
         match = find_station(network, station, line=code)
         if not match.found:
+            # The station may be real but on another line -- "Üsküdar" is on
+            # M5 and Marmaray, not M4. Saying only "not found on M4" sends
+            # the caller down a dead end, so the lines that do serve it come
+            # back as the candidates to retry with.
+            elsewhere = find_station(network, station)
+            if elsewhere.found and elsewhere.lines:
+                return StationNotFound(
+                    asked=station,
+                    candidates=list(elsewhere.lines),
+                    message=(
+                        f"'{elsewhere.name}' {code} hattında değil; şu hatlarda var: "
+                        f"{', '.join(elsewhere.lines)}. Aynı aracı bu hatlardan biriyle "
+                        "yeniden çağır."
+                    ),
+                )
             return StationNotFound(
                 asked=station,
                 candidates=list(match.candidates or suggest_stations(network, station, line=code)),
@@ -331,24 +409,7 @@ def get_next_departures(
         station=result.station,
         day_type=result.day_type,
         asked_at=result.asked_at,
-        directions=[
-            DirectionOut(
-                direction=info.label,
-                terminal=info.terminal,
-                offset_minutes=info.offset_minutes,
-                first_departure=info.first,
-                last_departure=info.last,
-                runs_all_night=info.all_night,
-                headway_minutes=info.headway_minutes,
-                headway_hour=info.headway_hour,
-                running_now=info.running_now,
-                expected_wait_minutes=info.expected_wait_minutes,
-                night_service=(
-                    f"{info.night_first}-{info.night_last}" if info.night_first else None
-                ),
-            )
-            for info in result.directions
-        ],
+        directions=[_direction_out(info, result.station) for info in result.directions],
         hours_source=result.hours_source,
         hours_is_stale=result.hours_is_stale,
         hours_as_of=result.hours_as_of,

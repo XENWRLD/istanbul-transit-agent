@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3.5:4b"
     ollama_temperature: float = 0.0
     ollama_keep_alive: str = "24h"
+    # Thinking off, context wide: measured, not guessed. With thinking on,
+    # qwen3.5:4b spent 116 s on the two-tool question and returned an empty
+    # completion -- no text, no tool calls. Off, it answers the same question
+    # in 21-28 s with both tools. The 8192 context is the second half of the
+    # fix: at the default window the model answered quickly but wrongly,
+    # losing which line the question was about (decision 0006, karar 6).
+    ollama_reasoning: bool = False
+    ollama_num_ctx: int = 8192
 
     # --- Shared ---
     llm_request_timeout: float = 120.0

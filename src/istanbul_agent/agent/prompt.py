@@ -43,6 +43,11 @@ Portalı'ndaki raylı sistem verilerine dayanıyor.
   2020 verisinden".
 - `runs_all_night: true` → o gece servis kesilmiyor, son sefer yok. Gece
   sefer aralığı verilmediyse "gece aralığı bilinmiyor" de, tahmin etme.
+- `is_arrival_at_station: true` → sorulan istasyon o yönün son durağı.
+  O yönde `first_departure`/`last_departure` **boştur**, saatler
+  `first_arrival`/`last_arrival` alanlarında ve **varış** saatidir.
+  "X'ten son sefer kaçta" sorusunda diğer yönün `last_departure` değerini
+  ver; varış saatini kalkış diye sunma.
 - `warnings` ve `notes` alanlarındaki uyarıları yut; kullanıcıyı
   yanıltacak olanları cevaba taşı.
 

@@ -70,6 +70,11 @@ varış süresi eklenerek bulunuyor ve **`estimated: true`** ile işaretleniyor.
 
 ## Karar 5 — Elle doğrulanmış saatler GTFS'in önüne geçer
 
+> **GÜNCELLEME (karar 8).** Dosya 8 Kasım 2026'da 11 metro kodu ve Marmaray
+> ile dolduruldu; `source_url` yerine `source_type` + `retrieved_at`
+> taşınıyor ve `is_stale` tek bayrak olmaktan çıkıp `hours_is_stale` /
+> `headway_is_stale` olarak ikiye ayrıldı.
+
 `datasets/metro_service_hours.yaml` bir hattı tanımlıyorsa cevap oradan
 gelir ve `is_stale: false` olur; tanımlı değilse GTFS'e düşer ve
 `is_stale: true` döner. Dosya şu an **hiçbir hat içermiyor**: kaynağı
@@ -92,6 +97,10 @@ hiç pencere üretmiyor ve araç şunu diyor:
 > bu veriden türetilemez.
 
 Marmaray'ın süre hesabı (karar 0004) etkilenmiyor; yalnızca tarifesi yok.
+
+> **GÜNCELLEME (karar 8).** Marmaray'ın tarifesi artık elle doğrulanmış
+> saatlerden geliyor; bu kural beslemeden tarife üretilmeyen diğer hatlar
+> (T5, F4) için geçerli kalıyor.
 
 ## Karar 7 — Tarife duyuruları cevabın önüne geçer
 
@@ -143,13 +152,129 @@ yanlış cevap olur.
 | `tests/test_departures.py` | 16 test, override önceliği + depo sorguları |
 | `scripts/show_departure_examples.py` | 14 elle doğrulanabilir örnek |
 
+## Karar 8 — Elle doğrulanmış saatler geldi: saat ve aralık ayrı ayrı taze
+
+**Tarih:** 8 Kasım 2026. Kullanıcı metro ve Marmaray için ilk/son sefer
+saatlerini verdi (`source_type: user_provided`). Bu hatlarda **GTFS'in
+ilk/son sefer saatleri artık hiç kullanılmıyor.**
+
+### Doğrulama
+
+Bilgiler internetten bağımsız olarak doğrulandı ve birebir tutuyor:
+
+| İddia | Dış kaynak |
+|---|---|
+| Gece metrosu M1A, M1B, M2, M4, M5, M6, M7 | Metro İstanbul: "Cuma'yı Cumartesi'ye ve Cumartesi'yi Pazar'a bağlayan gecelerde 66 saat kesintisiz" |
+| M3, M8, M9'da gece metrosu yok | aynı listede yok |
+| Marmaray Halkalı 05:58-22:58, Gebze 06:05-22:50 | marmaray.istanbul, birgun.net |
+| Hafta sonu Gebze 01:20, Halkalı 01:28 | aynı kaynaklar ("30'ar dakika arayla") |
+| Marmaray aralığı 15 dk | aynı kaynaklar |
+
+İki ek bilgi bulundu ama **veriye eklenmedi** (kullanıcının verdiği
+kümeyle sınırlı kalındı): gece metrosunun aralığı 20-30 dk, Marmaray'ın
+hafta sonu gece seferleri 30 dk arayla. `metro_service_hours.yaml`
+`gece_aralik_dk` alanını destekliyor; kullanıcı onaylarsa tek satır.
+
+### Gün tipleri dörde çıktı
+
+Gece metrosu Cuma ve Cumartesi gecelerinde çalışıyor, bu yüzden Cuma kendi
+gün tipi oldu: **pzt_pers, cuma, cumartesi, pazar**. GTFS yalnızca üçünü
+ayırt edebiliyor (hafta içi / cumartesi / pazar); beslemeden gelmeye devam
+eden **sefer aralığı** için `cuma` → `hafta_ici` eşlemesi yapılıyor.
+
+### İki ayrı tazelik bayrağı
+
+Tek bir `is_stale` artık yanlış olurdu: bir cevapta saatler güncel, aralık
+2020'den olabilir. Bu yüzden:
+
+| Alan | Kaynak | Bayrak |
+|---|---|---|
+| ilk/son sefer (11 metro hattı + Marmaray) | `metro_service_hours.yaml` | `hours_is_stale: false` |
+| ilk/son sefer (T1, T3, T4, F1-F3, TF1, TF2, M2A...) | GTFS 09.07.2020 | `hours_is_stale: true` |
+| sefer aralığı (Marmaray) | `metro_service_hours.yaml` | `headway_is_stale: false` |
+| sefer aralığı (diğer hepsi) | GTFS 09.07.2020 | `headway_is_stale: true` |
+
+Her kayıt `source_type` ve `retrieved_at` taşıyor. Tipik metro cevabı: taze
+saat + eski aralık, ve bunu açıkça söylüyor.
+
+### Ara istasyonlar: uç istasyon saatinin kaydırılmışı
+
+Verilen saatler uç istasyonlara ait. Ara istasyonun saati, uç istasyondan
+oraya kadarki sefer süresi (`rail_segments`, karar 0004) kadar kaydırılarak
+bulunuyor:
+
+| Sorgu | Yön | Sonuç |
+|---|---|---|
+| M4 / Kadıköy | → Sabiha Gökçen | 06:00-00:00 (Kadıköy bu yönün ucu, kaydırma 0) |
+| M4 / Kadıköy | → Kadıköy | 06:49-00:49 (Sabiha Gökçen + 50 dk) |
+| Marmaray / Bostancı | → Gebze | 06:58-23:58 (Halkalı + 60 dk) |
+| Marmaray / Yenikapı | → Gebze, Cuma | son sefer **02:01** (Halkalı 01:28 + 33 dk) |
+
+Sorulan istasyon o yönün **son durağıysa** cevap bunu söylüyor: o saat varış
+saatidir, binme saati değil.
+
+### Gece metrosu: son sefer yok
+
+Gece metrosu olan hatlarda Cuma ve Cumartesi için `son sefer yok (gece
+boyunca)` dönüyor ve gece sefer aralığı bu veride olmadığı için
+**verilmiyor** — beslemenin gündüz aralığını geceye uygulamak uydurma olur.
+Beslemede o saatte ölçülmüş gece seferi varsa (M4 cumartesi 03:00: 20 dk)
+o kullanılıyor ve kaynağı GTFS olarak işaretleniyor.
+
+### Marmaray: hem saat hem aralık buradan
+
+Marmaray yön bazında farklı saatler veriyor, aralığı da bu dosyada:
+**varsayılan 15 dk, Ataköy-Pendik arasında ek seferlerle 8 dk.** Yoğun
+bölümün sınırları hattın istasyon sırasındaki indekslerle çözülüyor
+(Ataköy 7, Pendik 31 → aradaki her istasyon 8 dk).
+
+Beslemedeki `Marmaray1` (Zeytinburnu-Söğütlüçeşme) aynı hattın bir parçası,
+`aliases` ile aynı saatleri alıyor; kaydırmalar ana hattın istasyon sırası
+üzerinden yapılıyor, çünkü orada duran trenler Halkalı-Gebze trenleri.
+Marmaray böylece karar 6'nın "tarife verisi yok" durumundan çıktı.
+
+### GTFS saatleri ile karşılaştırma
+
+`uv run python scripts/compare_service_hours.py` hat ve gün bazında yan yana
+gösteriyor. Dikkat çeken farklar:
+
+| Hat | Gün | GTFS | Yeni |
+|---|---|---|---|
+| M2 | hafta içi | 05:57/06:00 - 23:50 | 06:00 - 00:00 |
+| M2 | cumartesi | **04:00** - 23:50 | 06:00 - gece boyunca |
+| M4 | cumartesi | 04:00 - 23:55 | 06:00 - gece boyunca |
+| M6 | pazar | 04:00 - **20:58** | 06:00 - 00:00 |
+| M8 | cumartesi | **tarife yok** | 06:00 - 00:00 |
+| Marmaray | hepsi | **tarife yok** | 05:58/06:05 - 22:58/22:50 |
+
+Beslemenin hafta sonu "04:00" başlangıcı, 2020'de hafta sonu servisinin
+gece kesilmemesinden geliyordu (karar 3'teki segment ayrımı); bugünkü
+uygulamada gece servisi Cuma ve Cumartesi gecelerine ait, bu yüzden yeni
+veri daha doğru. M6'nın pazar 20:58'i ve M8'in eksik hafta sonu verisi de
+beslemenin bilinen boşlukları.
+
+### Kod
+
+| Dosya | Ne |
+|---|---|
+| `datasets/metro_service_hours.yaml` | 12 hat (11 metro kodu + Marmaray), `source_type`/`retrieved_at` |
+| `store/service_hours.py` | dosyanın okunması, gün tipleri, aralık kuralı |
+| `store/departures.py` | iki kaynağın birleşimi, kaydırma, iki bayrak |
+| `tests/test_service_hours.py` | 15 test (dosyanın iddiaları dahil) |
+| `tests/test_departures.py` | 26 test |
+| `scripts/compare_service_hours.py` | GTFS vs yeni, önce/sonra raporu |
+
 ## Yeniden gözden geçirme koşulları
 
 - `GetTimeTable` düzelirse bu kararın tamamı yeniden değerlendirilmeli;
   canlı tarife GTFS'in önüne geçer.
 - Yeni bir GTFS beslemesi gelirse `decide_schedule_source.py` yeniden
   çalıştırılıp `metro_schedule_source.csv` güncellenmeli.
-- `metro_service_hours.yaml` doldukça `is_stale` cevapları azalır; dosya
-  bütün hatları kapsadığında GTFS yolu yalnızca yedek kalır.
+- `metro_service_hours.yaml` doldukça `hours_is_stale` cevapları azalır;
+  tramvay, füniküler ve teleferik hatları hâlâ GTFS'ten okunuyor.
+- Sefer aralıkları da elle doğrulanırsa `headway_is_stale` kapanır; şu an
+  yalnızca Marmaray'da kapalı.
+- Gece metrosu aralığı (dış kaynakta 20-30 dk) kullanıcı onaylarsa
+  `gece_aralik_dk` alanına yazılabilir.
 - Duyuru anahtar kelimeleri canlı duyurulardan seçildi; duyuru dili
   değişirse `SCHEDULE_KEYWORDS` gözden geçirilmeli.

@@ -47,7 +47,10 @@ EXAMPLES: tuple[tuple[str, str | None, datetime, str], ...] = (
     ("F1", None, MONDAY, "iki istasyonluk füniküler"),
     ("TF2", None, MONDAY, "teleferik, duyuruda kış tarifesi"),
     ("M5", "Üsküdar", MONDAY, "M5 terminali"),
-    ("Marmaray", None, MONDAY, "tarife verisi yok — açıkça söylemeli"),
+    ("Marmaray", None, MONDAY, "elle doğrulanmış saat + aralık"),
+    ("Marmaray", "Bostancı", MONDAY, "Ataköy-Pendik arası: 8 dk"),
+    ("M4", None, datetime(2026, 11, 6, 23, 30), "cuma gecesi: gece metrosu"),
+    ("T5", None, MONDAY, "tarife verisi yok — açıkça söylemeli"),
 )
 
 
@@ -71,18 +74,28 @@ def show(
             if info.expected_wait_minutes
             else "şu an servis yok"
         )
-        headway = (
-            f"her {info.headway_minutes} dk (saat {info.headway_hour:02d})"
-            if info.headway_minutes
-            else "aralık bilinmiyor"
+        if not info.headway_minutes:
+            headway = "aralık bilinmiyor"
+        elif info.headway_hour is None:
+            headway = f"her {info.headway_minutes} dk"
+        else:
+            headway = f"her {info.headway_minutes} dk (saat {info.headway_hour:02d})"
+        print(
+            f"      {info.label[:26]:28} ilk {info.first or '-':>5}  "
+            f"son {info.last_text:30} {headway:22} {wait}"
         )
-        print(f"      {info.label[:26]:28} ilk {info.first}  son {info.last}  {headway:24} {wait}")
         if info.night_first:
             print(f"      {'':28} gece servisi {info.night_first}-{info.night_last}")
+        if info.terminal and info.offset_minutes:
+            print(f"      {'':28} {info.terminal} saatinin {info.offset_minutes} dk kaydırılmışı")
         if info.estimated:
             print(f"      {'':28} istasyon saatleri tahmin")
-    print(f"    kaynak: {result.source}")
-    print(f"    data_as_of={result.data_as_of}  is_stale={str(result.is_stale).lower()}")
+    print(f"    saatler: {result.hours_source} ({result.hours_as_of})")
+    print(f"    aralık : {result.headway_source} ({result.headway_as_of})")
+    print(
+        f"    hours_is_stale={str(result.hours_is_stale).lower()}  "
+        f"headway_is_stale={str(result.headway_is_stale).lower()}"
+    )
     for note in result.notes:
         print(f"    not: {note}")
     for warning in result.warnings:

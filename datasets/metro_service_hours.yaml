@@ -1,43 +1,151 @@
-# Elle güncellenmiş raylı sistem servis saatleri.
+# Elle doğrulanmış raylı sistem servis saatleri.
 #
 # Bu dosya GTFS'in (Public Transport GTFS, veri seti 308, 09.07.2020) ÖNÜNE
-# geçer: bir hat burada tanımlıysa `get_next_departures` o hattın ilk/son
-# seferini ve sefer aralığını buradan okur ve `is_stale: false` döner.
-# Tanımlı değilse GTFS'e düşer ve `is_stale: true` döner.
+# geçer. Burada tanımlı bir hattın ilk/son sefer saatleri YALNIZCA bu
+# dosyadan okunur; o hat için GTFS'teki ilk/son sefer saatleri hiç
+# kullanılmaz ve cevap `hours_is_stale: false` döner.
 #
-# Kurallar:
-# - Her hat için `source_url` ve `retrieved_at` zorunlu; kaynağı
-#   doğrulanamayan bir saat buraya yazılmaz (karar 0005).
-# - Saatler "HH:MM" biçiminde, gün tipleri `hafta_ici`, `cumartesi`, `pazar`.
-# - `aralik_dk` o gün tipindeki tipik sefer aralığıdır; saat dilimine göre
-#   ayrıntı vermek istersen `aralik` altında saat → dakika yaz.
-# - Bir gün tipi eksikse o gün için GTFS'e düşülür.
+# Sefer aralığı ayrı bir şey: burada `aralik` tanımlı değilse aralık hâlâ
+# GTFS'ten ölçülür ve `headway_is_stale: true` döner. Çıktıda ikisi ayrı
+# gösterilir (karar 0005, karar 8).
 #
-# Şema örneği (kopyalayıp doldurmak için; bu blok yorum olduğu için etkisiz):
+# Saatler hattın UÇ İSTASYONLARI içindir. Ara istasyonların ilk/son seferi,
+# uç istasyondan o istasyona kadarki sefer süresi (`rail_segments`) kadar
+# kaydırılarak hesaplanır.
 #
-# lines:
-#   M2:
-#     source_url: https://www.metro.istanbul/YolcuHizmetleri/SeferSaatleri
-#     retrieved_at: 2026-11-08
-#     not: "Kış tarifesi"
-#     hafta_ici:
-#       ilk: "06:00"
-#       son: "00:00"
-#       aralik_dk: 4
-#       aralik:
-#         7: 3
-#         8: 3
-#         22: 8
-#     cumartesi:
-#       ilk: "06:00"
-#       son: "00:00"
-#       aralik_dk: 5
-#     pazar:
-#       ilk: "06:00"
-#       son: "00:00"
-#       aralik_dk: 6
+# Gün tipleri: pzt_pers (Pazartesi-Perşembe), cuma, cumartesi, pazar.
+# `gece_boyunca: true` o gece servisin kesilmediğini söyler; son sefer
+# verilmez, gece sefer aralığı bilinmiyorsa cevap bunu açıkça belirtir.
 #
-# Şu an hiçbir hat elle doğrulanmış saat taşımıyor: tüm hatlar GTFS'ten
-# okunuyor ve `is_stale: true` dönüyor. Bir hattın güncel saatleri resmî
-# kaynaktan doğrulandığında buraya eklenir; kod değişikliği gerekmez.
-lines: {}
+# Alanlar:
+#   source_type   kaydın nereden geldiği (user_provided | operator | ...)
+#   retrieved_at  bilginin alındığı tarih
+#   aliases       aynı fiziksel hattın beslemedeki diğer kodları
+#   yonler        yön bazında farklı saatler (Marmaray); yoksa saatler her
+#                 iki yön için de geçerlidir ve her yön kendi uç
+#                 istasyonundan ölçülür
+lines:
+  # --------------------------------------------------------------- metro
+  # Gece metrosu olan hatlar: Cuma'yı Cumartesi'ye ve Cumartesi'yi Pazar'a
+  # bağlayan gecelerde servis kesilmiyor.
+  M1A:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu var (Cuma ve Cumartesi geceleri kesintisiz)."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", gece_boyunca: true}
+      cumartesi: {ilk: "06:00", gece_boyunca: true}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M1B:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu var (Cuma ve Cumartesi geceleri kesintisiz)."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", gece_boyunca: true}
+      cumartesi: {ilk: "06:00", gece_boyunca: true}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M2:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu var (Cuma ve Cumartesi geceleri kesintisiz)."
+    aliases: [M2A]
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", gece_boyunca: true}
+      cumartesi: {ilk: "06:00", gece_boyunca: true}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M4:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu var (Cuma ve Cumartesi geceleri kesintisiz)."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", gece_boyunca: true}
+      cumartesi: {ilk: "06:00", gece_boyunca: true}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M5:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu var (Cuma ve Cumartesi geceleri kesintisiz)."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", gece_boyunca: true}
+      cumartesi: {ilk: "06:00", gece_boyunca: true}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M6:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu var (Cuma ve Cumartesi geceleri kesintisiz)."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", gece_boyunca: true}
+      cumartesi: {ilk: "06:00", gece_boyunca: true}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M7:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu var (Cuma ve Cumartesi geceleri kesintisiz)."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", gece_boyunca: true}
+      cumartesi: {ilk: "06:00", gece_boyunca: true}
+      pazar: {ilk: "06:00", son: "00:00"}
+
+  # Gece metrosu olmayan hatlar: Cuma ve Cumartesi de 00:00'da bitiyor.
+  M3:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu yok."
+    aliases: [M3A]
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", son: "00:00"}
+      cumartesi: {ilk: "06:00", son: "00:00"}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M8:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu yok."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", son: "00:00"}
+      cumartesi: {ilk: "06:00", son: "00:00"}
+      pazar: {ilk: "06:00", son: "00:00"}
+  M9:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Gece metrosu yok."
+    gunler:
+      pzt_pers: {ilk: "06:00", son: "00:00"}
+      cuma: {ilk: "06:00", son: "00:00"}
+      cumartesi: {ilk: "06:00", son: "00:00"}
+      pazar: {ilk: "06:00", son: "00:00"}
+
+  # ------------------------------------------------------------ Marmaray
+  # Saatler yön bazında farklı ve sefer aralığı da buradan geliyor, bu yüzden
+  # Marmaray'da hem saat hem aralık güncel (headway_is_stale: false).
+  # Marmaray1 beslemedeki aynı hattın bir parçası (Zeytinburnu-Söğütlüçeşme).
+  Marmaray:
+    source_type: user_provided
+    retrieved_at: 2026-11-08
+    not: "Halkalı-Gebze. Ataköy-Pendik arasında ek seferlerle aralık 8 dk."
+    aliases: [Marmaray1]
+    aralik:
+      varsayilan_dk: 15
+      ek_sefer_dk: 8
+      ek_sefer_arasi: [Ataköy, Pendik]
+    yonler:
+      - terminal: Halkalı
+        gunler:
+          pzt_pers: {ilk: "05:58", son: "22:58"}
+          cuma: {ilk: "05:58", son: "01:28"}
+          cumartesi: {ilk: "05:58", son: "01:28"}
+          pazar: {ilk: "05:58", son: "22:58"}
+      - terminal: Gebze
+        gunler:
+          pzt_pers: {ilk: "06:05", son: "22:50"}
+          cuma: {ilk: "06:05", son: "01:20"}
+          cumartesi: {ilk: "06:05", son: "01:20"}
+          pazar: {ilk: "06:05", son: "22:50"}

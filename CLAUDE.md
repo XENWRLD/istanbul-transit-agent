@@ -47,6 +47,7 @@ uv run python -m istanbul_agent.store.ingest_rail     # raylı sistem tabloları
 uv run python -m istanbul_agent.store.ingest_timetable # sefer saatleri tabloları → DuckDB
 uv run python scripts/show_travel_examples.py         # get_rail_travel_time örnekleri
 uv run python scripts/show_departure_examples.py      # get_next_departures örnekleri
+uv run python scripts/compare_service_hours.py        # GTFS vs elle doğrulanmış saatler
 uv run python -m istanbul_agent.store.ingest          # GTFS + GeoJSON → DuckDB
 uv run python -m istanbul_agent.rag.ingest            # dokümanları indeksle
 uv run python -m istanbul_agent.servers.transit_server
@@ -80,7 +81,7 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - Marmaray aynı GTFS beslemesinde **TCDD** ajansı altındadır, Metro İstanbul'da değil; ajans filtresi onu düşürür. Metro ağı Boğaz'ın iki yakasında ancak Marmaray üzerinden bağlanır.
 - Aktarmalar koordinattan kurulur, ad eşleşmesinden değil: yarıçap 400 m, 313'ün iki ucunu da adlandırdığı çiftlerde 1000 m. Aktarma cezası = 210 s bekleme + yürüme (≤400 m için 150 s, üstünde mesafe / 1.2 m/s) (karar 0004).
 - Segment anahtarları hattı içermek zorunda: Marmaray ve M4 aynı adlı istasyonlar arasında (`Bostancı→Küçükyalı`) ayrı hatlar işletiyor.
-- Sefer saatleri: kaynak hat bazında seçilir (`stop_times` ölçülür, `frequencies` beyan edilir); 04:00'ten önceki kalkışlar bir önceki günün gece servisidir; `datasets/metro_service_hours.yaml` GTFS'in önüne geçer; 4 seferden az veriden tarife üretilmez (karar 0005).
+- Sefer saatleri: `datasets/metro_service_hours.yaml` içindeki hatlarda (11 metro kodu + Marmaray) ilk/son sefer YALNIZCA o dosyadan okunur, GTFS saatleri kullanılmaz; gün tipleri pzt_pers/cuma/cumartesi/pazar; ara istasyon saati uç istasyonun sefer süresi kadar kaydırılmışıdır. Saat ve aralık ayrı bayrak taşır: `hours_is_stale` / `headway_is_stale` (aralık Marmaray dışında hâlâ GTFS'ten). Dosyada olmayan hatlarda kaynak hat bazında seçilir (`stop_times` ölçülür, `frequencies` beyan edilir), 04:00 öncesi kalkışlar gece servisidir ve 4 seferden az veriden tarife üretilmez (kararlar 0005/8).
 - Agent ham API'leri görmez: uç noktalar `documents/PLAN.md` araç tablosundaki alan bazlı araçların arkasında birleştirilir. Yeni araç eklemeden önce mevcut bir araca parametre eklemenin yeterli olup olmadığını düşün; toplam araç sayısını ~15'te tut.
 - Her araç çıktısı `source` ve `data_as_of` alanı taşır; 2018-2020 tarihli "Public Transport GTFS" verisinden gelen sonuçlar `is_stale: true` ile işaretlenir.
 - API kapalıysa veya hata verirse araç bunu açıkça döner; asla tahmini veri üretmez.

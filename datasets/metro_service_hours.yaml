@@ -1,0 +1,43 @@
+# Elle güncellenmiş raylı sistem servis saatleri.
+#
+# Bu dosya GTFS'in (Public Transport GTFS, veri seti 308, 09.07.2020) ÖNÜNE
+# geçer: bir hat burada tanımlıysa `get_next_departures` o hattın ilk/son
+# seferini ve sefer aralığını buradan okur ve `is_stale: false` döner.
+# Tanımlı değilse GTFS'e düşer ve `is_stale: true` döner.
+#
+# Kurallar:
+# - Her hat için `source_url` ve `retrieved_at` zorunlu; kaynağı
+#   doğrulanamayan bir saat buraya yazılmaz (karar 0005).
+# - Saatler "HH:MM" biçiminde, gün tipleri `hafta_ici`, `cumartesi`, `pazar`.
+# - `aralik_dk` o gün tipindeki tipik sefer aralığıdır; saat dilimine göre
+#   ayrıntı vermek istersen `aralik` altında saat → dakika yaz.
+# - Bir gün tipi eksikse o gün için GTFS'e düşülür.
+#
+# Şema örneği (kopyalayıp doldurmak için; bu blok yorum olduğu için etkisiz):
+#
+# lines:
+#   M2:
+#     source_url: https://www.metro.istanbul/YolcuHizmetleri/SeferSaatleri
+#     retrieved_at: 2026-11-08
+#     not: "Kış tarifesi"
+#     hafta_ici:
+#       ilk: "06:00"
+#       son: "00:00"
+#       aralik_dk: 4
+#       aralik:
+#         7: 3
+#         8: 3
+#         22: 8
+#     cumartesi:
+#       ilk: "06:00"
+#       son: "00:00"
+#       aralik_dk: 5
+#     pazar:
+#       ilk: "06:00"
+#       son: "00:00"
+#       aralik_dk: 6
+#
+# Şu an hiçbir hat elle doğrulanmış saat taşımıyor: tüm hatlar GTFS'ten
+# okunuyor ve `is_stale: true` dönüyor. Bir hattın güncel saatleri resmî
+# kaynaktan doğrulandığında buraya eklenir; kod değişikliği gerekmez.
+lines: {}

@@ -988,6 +988,7 @@ dependencies = [
     { name = "openpyxl" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "pyyaml" },
     { name = "zeep" },
 ]
 
@@ -1037,6 +1038,7 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'store'", specifier = ">=2.2" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.6" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "qdrant-client", marker = "extra == 'rag'", specifier = ">=1.12" },
     { name = "sentence-transformers", marker = "extra == 'rag'", specifier = ">=3.3" },
     { name = "uvicorn", marker = "extra == 'app'", specifier = ">=0.32" },

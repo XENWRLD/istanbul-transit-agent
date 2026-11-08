@@ -84,7 +84,7 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 - **`get_rail_travel_time`**: GTFS `stop_times` üzerinden aynı hat; hat değişiminde aktarma veri setlerinden aktarma noktası + sabit aktarma süresi; GTFS'te olmayan istasyonlarda koordinat mesafesi / hat tipinin ortalama hızı ile tahmin (`estimated: true`). Tahmin yöntemi GTFS'te bulunan hatlarda doğrulanır: ortalama ve maksimum hata raporlanır.
 - **`get_next_departures` (metro)** (bitti): ilk/son sefer, saat dilimine göre aralık, hafta içi/sonu farkı. Kaynak hat bazında seçilir (`datasets/metro_schedule_source.csv`); `datasets/metro_service_hours.yaml` varsa GTFS'in önüne geçer, yoksa `is_stale: true` döner. Metro duyurularında ilgili hat için tarife değişikliği varsa cevaba eklenir. Aralık aynı saat içindeki boşlukların ortancasından ölçülür; gece servisi ayrı segment; ilk/son sefer istasyon bazında da verilir; 4 seferden az veriden tarife üretilmez (Marmaray). Karar 0005.
 - Her iki araç için fixture tabanlı birim testler ve en az 10 elle doğrulanmış örnek sorgu.
-- Basit ReAct agent ile ilk uçtan uca deneme.
+- Basit ReAct agent ile ilk uçtan uca deneme (bitti): `transit_server` MCP sunucusu iki aracı stdio üzerinden sunuyor, LangGraph ReAct agent'ı `langchain-mcp-adapters` ile bağlanıyor, arayüz `uv run python -m istanbul_agent.cli "soru"`. İstasyon adı eşleştirmesi dört adım + bulunamazsa en yakın 3 aday. Karar 0006.
 
 **Bitti tanımı:** "Kadıköy iskelesine en yakın otobüs durakları ve oradan geçen hatlar" gibi 5 sorunun en az 4'ü doğru araçlarla doğru cevaplanıyor; ingest tek komutla baştan çalıştırılabiliyor; `get_rail_travel_time` tahmin hatası ölçülmüş ve raporlanmış; her iki metro aracı eski veriyi `is_stale` ile işaretliyor.
 

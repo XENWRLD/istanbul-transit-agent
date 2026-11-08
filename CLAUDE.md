@@ -50,7 +50,9 @@ uv run python scripts/show_departure_examples.py      # get_next_departures örn
 uv run python scripts/compare_service_hours.py        # GTFS vs elle doğrulanmış saatler
 uv run python -m istanbul_agent.store.ingest          # GTFS + GeoJSON → DuckDB
 uv run python -m istanbul_agent.rag.ingest            # dokümanları indeksle
-uv run python -m istanbul_agent.servers.transit_server
+uv run python -m istanbul_agent.servers.transit_server   # MCP sunucusu (stdio)
+uv run python -m istanbul_agent.cli "soru"                # agent, komut satırı
+uv run python scripts/run_agent_questions.py          # 5 senaryo x 2 sağlayıcı
 uv run python -m istanbul_agent.servers.city_server
 uv run python -m istanbul_agent.servers.knowledge_server
 uv run python -m istanbul_agent.app                   # demo arayüzü

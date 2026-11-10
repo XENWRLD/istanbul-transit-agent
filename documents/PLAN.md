@@ -37,7 +37,7 @@ Her araç çıktısında `data_as_of` (verinin tarihi) ve `source` alanı bulunu
 - **T3 hattı GTFS'ten çıkarıldı:** 10 durağının 10'unda da ad, o koordinattaki gerçek istasyonla uyuşmuyor (adlar konumlara ters sırada atanmış). Ad eşleştirmesi sessizce yanlış istasyonu döndüreceği için hat tamamen kullanılmaz; gerekçe `documents/decisions/0003-istasyon-eslestirme.md`.
 - İsbike servisleri portalda kapalı; erişilemezse araç bunu açıkça söyler, tahmin üretmez.
 
-### Araç tasarımı (14 araç)
+### Araç tasarımı (13 araç + 1 askıda)
 
 Uç noktalar alan bazlı araçların arkasında birleştirilir; agent ham API'leri görmez. Aşağıdaki tablo **Faz 0'da 39 uç noktanın tamamı gerçekten çağrıldıktan sonra** revize edilmiş halidir; gerekçeler `documents/decisions/0001-veri-kaynaklari.md` içinde.
 
@@ -49,7 +49,6 @@ Uç noktalar alan bazlı araçların arkasında birleştirilir; agent ham API'le
 | `get_line_route` | transit | GTFS, İETT `DurakDetay_GYY` + `HatServisi_GYY`, Metro `GetStations` / `GetStationById` |
 | `get_next_departures` | transit | **Otobüs:** İETT `GetPlanlananSeferSaati_json`. **Metro:** GTFS — kaynak hat bazında seçilir (`stop_times` 12 hat, `frequencies` 7 hat; `datasets/metro_schedule_source.csv`), `is_stale: true`. Elle hazırlanan `datasets/metro_service_hours.yaml` varsa GTFS'in önüne geçer. Metro `GetTimeTable` (552) sunucu taraflı bozuk, kullanılmıyor. |
 | `get_rail_travel_time` | transit | GTFS `stop_times` ardışık istasyon süreleri + aktarma süresi sabiti (313, 409, 530, 532 aktarma veri setleri). GTFS'te olmayan istasyonlar için koordinat/ortalama hız tahmini, `estimated: true`. Metro `GetStationBetweenTime` (513) sunucu taraflı bozuk, kullanılmıyor. |
-| `get_vehicle_positions` | transit | İETT `GetHatOtoKonum_json(HatKodu)` — **doğrulandı**, hat bazlı canlı konum. Tüm filo metodu (`GetFiloAracKonum_json`, 6940 araç / 1.1 MB) agent aracı olarak sunulmaz. |
 | `get_service_alerts` | transit | İETT `GetDuyurular_json` (291 duyuru), Metro `GetAnnouncements`, Metro `GetServiceStatuses` |
 | `get_station_accessibility` | transit | Metro `GetFaultyEquipments`, `GetFaultyEquipmentDetails` (POST `EquipmentGroupName`), `GetStations.DetailInfo` (asansör/yürüyen merdiven sayısı) |
 | `find_parking` | city | İSPARK `Park` (240 otopark) + `ParkDetay`, otopark kapasite verileri |
@@ -57,6 +56,9 @@ Uç noktalar alan bazlı araçların arkasında birleştirilir; agent ham API'le
 | `get_air_quality` | city | `GetAQIStations` + `GetAQIByStationId` |
 | `find_mobility_options` | city | Bisiklet yolları (1), bisiklet/mikromobilite park alanları (16), elektrikli araç şarj istasyonları (275, 276). İsbike çıkarıldı (servis kapalı). **Düşük öncelikli:** Faz 2'nin sonuna bırakılır. |
 | `search_knowledge` | knowledge | RAG |
+
+**Askıya alınanlar (10 Kasım 2026):**
+- **`get_vehicle_positions`** — İETT `GetHatOtoKonum_json(HatKodu)` Faz 0'da doğrulandı (hat bazlı canlı konum, 46 ms) ve çalışıyor; araç yine de **yazılmayacak**. Gerekçe: canlı konum tek başına bir soruyu cevaplamıyor — "otobüs nerede" sorusu ancak durağa varış tahminiyle işe yarıyor, o da bu projede olmayan bir tahmin modeli demek. Kaynak çalıştığı için istendiğinde Faz 2'den sonra eklenebilir; envanterde uç nokta "çalışıyor" işaretli kalıyor.
 
 Faz 0'da kapsamdan çıkanlar:
 - **`get_road_works`** — tek kaynağı olan 501 (`teas/api/open_data`) kalkmış (nginx 404, 6 yol varyantı denendi). Yol çalışmaları bu projenin önceliği değil; envanterde "ertelendi".
@@ -92,7 +94,7 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 - İki API istemcisi: İETT için SOAP, Metro ve diğerleri için REST (`httpx`). Ortak katman: zaman aşımı, yeniden deneme, kaynak bazlı TTL önbellek.
   - **Risk:** `zeep` dört İETT WSDL'ini açamıyor (350, 349, 172, 171) — `AuthHeader` bildirilmiş ama eşleşen `<message>` tanımı yok. Faz 0'da elle kurulan SOAP zarfı çalıştı. İstemci yöntemi ölçümle seçilecek; karar `documents/decisions/` altına yazılacak.
   - **Metro REST istemcisi sağlık kontrolünü HTTP durumuna değil `Success` alanına dayandırır:** API başarısızlıkta da HTTP 200 + `Success: false` dönüyor.
-- `transit_server` canlı araçları: `get_next_departures` (canlı/otobüs kısmı), `get_service_alerts`, `get_station_accessibility`, `get_vehicle_positions`.
+- `transit_server` canlı araçları: `get_next_departures` (canlı/otobüs kısmı), `get_service_alerts`, `get_station_accessibility`. `get_vehicle_positions` askıda (bkz. araç tasarımı bölümü).
 - `city_server` araçları: `find_parking`, `get_traffic_status`, `get_air_quality`. `find_mobility_options` düşük öncelikli, en sona.
 
 **Bitti tanımı:** Her canlı araç fixture tabanlı birim testlerinden geçiyor; API kapalıyken araç anlamlı bir hata mesajı dönüyor; agent 10 canlı veri sorusunun en az 8'inde doğru aracı seçiyor.

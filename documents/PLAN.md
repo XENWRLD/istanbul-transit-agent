@@ -131,6 +131,19 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 **Bitti tanımı:** `eval/agent_scenarios.jsonl` içindeki en az 40 senaryo otomatik çalışıyor; beklenen araçlar ve sıra kontrol ediliyor.
 
+**Sonuç (10 Kasım 2026): bitti.** **49 senaryo** otomatik çalışıyor; araç, sıra ve cevaptaki ifade kontrol ediliyor. Yerel modelle (`qwen3.5:4b`, `num_ctx=16384`) ölçüm:
+
+| Oran | Sonuç |
+|---|---|
+| geçen senaryo | 41/49 (%83.7) |
+| araç doğruluğu | %87.8 |
+| sıra doğruluğu | %50 (2 senaryoda) |
+| ifade doğruluğu | %91.3 (23 senaryoda) |
+| kaynaksız cevap | 3 (uyarı olmasa 8) |
+| gecikme ortanca | 44 s |
+
+Başarısız 8 senaryo üç gruba düşüyor: araca bakmadan "bende yok" demek (3), yanlış araç ya da adım sınırına çarpmak (3), doğru aracı çağırıp yokluğu söylememek (2). Ayrıntılar ve ölçümün kendi kusuru: `documents/decisions/0010-entegrasyon.md`. Sonuçlar `eval/results/agent_eval.json`.
+
 ### Faz 5 — Değerlendirme, paketleme, demo
 - Gemini Flash vs yerel `qwen3.5:4b`: araç seçimi doğruluğu, cevap kalitesi, adım sayısı, gecikme. Yerel model 15 araçta zorlanırsa araç sayısını azaltan bir "yönlendirici" deneyi yap ve sonucu raporla.
 - Gradio demo (harita üzerinde durak/otopark gösterimi artı puan), FastAPI uç noktası, Dockerfile.

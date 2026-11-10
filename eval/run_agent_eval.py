@@ -279,7 +279,10 @@ async def main_async(args: argparse.Namespace) -> int:
         for row, scenario in zip(rows, scenarios, strict=True)
         if row["unverified"] and not scenario.expects_no_tool
     ]
-    times = [row["seconds"] for row in rows if not row["cached"]] or [0.0]
+    # Gecikme **bütün** satırlardan hesaplanıyor: önbellekten gelen satır da
+    # ölçüldüğü andaki süreyi taşıyor. İlk sürüm yalnızca yeni çalışan
+    # satırları sayıyordu ve her şey önbellekten gelince "0.0 s" yazıyordu.
+    times = [row["seconds"] for row in rows] or [0.0]
 
     summary = {
         "provider": args.provider,

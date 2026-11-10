@@ -121,7 +121,7 @@ bunu kullanır.
 
 ## Senaryo seti
 
-`eval/agent_scenarios.jsonl` — 48 senaryo, yedi aracın tamamını kapsıyor:
+`eval/agent_scenarios.jsonl` — 49 senaryo, yedi aracın tamamını kapsıyor:
 
 | Grup | Senaryo | Ne ölçülüyor |
 |---|---|---|
@@ -146,7 +146,46 @@ sağlayıcı + model + **prompt özetine** göre önbelleğe alınıyor. Prompt
 değiştiğinde anahtar değişiyor, çünkü prompt değişikliği davranış
 değişikliğidir (CLAUDE.md kuralı).
 
-<!-- SONUÇ TABLOSU -->
+## Ölçüm: 49 senaryo, yerel model
+
+`qwen3.5:4b`, `reasoning=False`, `num_ctx=16384`:
+
+| Oran | Sonuç |
+|---|---|
+| geçen senaryo | **41/49 (%83.7)** |
+| araç doğruluğu | %87.8 |
+| sıra doğruluğu | %50 (sıra beklenen 2 senaryoda) |
+| ifade doğruluğu | %91.3 (23 senaryoda) |
+| kaynaksız cevap | 3 |
+| uyarı turu gereken | 8 |
+| hata | 0 |
+| gecikme (ortanca) | 44 s |
+
+**Uyarı turu işe yarıyor:** 8 turda model araç çağırmadan cevap verdi,
+5'i uyarıdan sonra aracı çağırdı, 3'ü ikinci turda da çağırmayıp
+`unverified` işaretlendi. Yani koruma olmasa kaynaksız cevap sayısı 8
+olurdu.
+
+### Başarısız 8 senaryo, gruplanmış
+
+| Grup | Senaryo | Olan |
+|---|---|---|
+| araç çağırmadan "bende yok" dedi | `rail-06`, `route-05`, `refuse-06` | Cevabın **özü doğru** (Paris raylı ağda yok; ara durak saati veride yok; canlı arıza durumu yok) ama araca bakmadan söyledi. Yokluğu doğrulamadan iddia etmek de kaynaksız iddiadır, bu yüzden başarısız sayıldı. |
+| yanlış araç | `lines-03`, `chain-02`, `chain-05` | `lines-03` iskele hat sorusunda `geocode_place` çağırdı (cevabın özü yine doğru). `chain-02` sekiz çağrı yaptı, beşi aynı araç, adım sınırına çarptı ("need more steps"). `chain-05` ikinci adımı hiç atmadı ve araç çıktısını "verdiğiniz JSON verisi" diye yorumladı. |
+| ifade eksik | `refuse-05`, `refuse-07` | İkisinde de araç çağrıldı ama cevap **yokluğu söylemedi**: `refuse-05` iskeleleri listeleyip bozuk bir cümleyle bitti, `refuse-07` iç monologla ("kullanıcıya sormalıyım") bitti. |
+
+### Ölçümün kendi kusuru
+
+İlk tam koşu 40/49 verdi. `place-04` başarısız görünüyordu ama agent
+"Paris adında bir durak, istasyon veya iskele **elimde kayıtlı değil**"
+demişti — tam istenen şey; benim ifade listem bu söyleyişi kapsamıyordu.
+Liste genişletildi ve senaryo geçti (41/49). Aynı incelemede `refuse-05`
+ve `refuse-07`'nin **gerçekten** başarısız olduğu görüldü (biri sefer
+verisinin yokluğunu hiç söylemiyor, öteki iç monologla bitiyor), onlar
+olduğu gibi bırakıldı.
+
+Not: puanlama önbellekteki cevaplar üzerinde yeniden yapıldı, modele
+yeniden sorulmadı — rubrik düzeltmesi ölçümü değil ölçütü değiştirdi.
 
 ## Yeniden gözden geçirme koşulları
 
@@ -155,5 +194,5 @@ değişikliğidir (CLAUDE.md kuralı).
   yettiği yeniden sorgulanmalı (karar 0006'nın koşulu).
 - Yerel model değişirse `num_ctx` ve düşünme ayarı yeniden ölçülmeli.
 - RAGAS (cevap sadakati) hâlâ çalıştırılmadı; Gemini kotası günde 20 istek
-  olduğu sürece 48 senaryo × kip ölçümü yapılamaz. Faz 5'te yerel modelle
+  olduğu sürece 49 senaryo × kip ölçümü yapılamaz. Faz 5'te yerel modelle
   ya da kota artırımıyla ele alınacak.

@@ -13,7 +13,7 @@
 {"id": "place-01", "question": "Kadıköy'ün konumu nedir?", "expect_tools": ["geocode_place"], "note": "ad → koordinat"}
 {"id": "place-02", "question": "Taksim nerede, koordinatı ne?", "expect_tools": ["geocode_place"], "note": "ad → koordinat"}
 {"id": "place-03", "question": "Üsküdar iskelesinin konumu nedir?", "expect_tools": ["geocode_place"], "note": "iskele adları işletmeci ekli"}
-{"id": "place-04", "question": "Paris diye bir durak var mı?", "expect_tools": ["geocode_place"], "must_mention": ["yok", "bulunamadı", "bulamadım"], "note": "olmayan yer"}
+{"id": "place-04", "question": "Paris diye bir durak var mı?", "expect_tools": ["geocode_place"], "must_mention": ["yok", "bulunamadı", "bulamadım", "kayıtlı değil", "kayıtlı olmayan"], "note": "olmayan yer; yokluğu söylemesi yeterli (ifade listesi ilk ölçümden sonra genişletildi)"}
 {"id": "near-01", "question": "Kadıköy iskelesine en yakın otobüs durakları hangileri?", "expect_tools": ["find_nearby_stops"], "note": "çevre araması"}
 {"id": "near-02", "question": "Taksim'in 300 metre içinde hangi duraklar var?", "expect_tools": ["find_nearby_stops"], "note": "yarıçap verilmiş"}
 {"id": "near-03", "question": "Üsküdar'a en yakın metro istasyonu hangisi?", "expect_tools": ["find_nearby_stops", "geocode_place"], "expect_any": true, "note": "mod filtresi"}

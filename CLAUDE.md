@@ -64,7 +64,7 @@ uv run python -m istanbul_agent.servers.city_server
 uv run python -m istanbul_agent.servers.knowledge_server
 uv run python -m istanbul_agent.app                   # demo arayüzü
 uv run python eval/run_rag_eval.py
-uv run python eval/run_agent_eval.py                  # 48 senaryo (ollama, önbellekli)
+uv run python eval/run_agent_eval.py                  # 49 senaryo (ollama, önbellekli)
 uv run python eval/run_agent_eval.py --provider gemini --limit 5   # kota: günde 20 istek
 ```
 

@@ -1,0 +1,62 @@
+{"id": "faq-01", "question": "Metroya bisikletimle binebilir miyim?", "expected_sources": ["metro_faq"], "keywords": ["bisiklet"], "note": "SSS: katlanabilir bisiklet kuralı"}
+{"id": "faq-02", "question": "Raylı sistemde evcil hayvan taşıma kuralları nedir?", "expected_sources": ["metro_faq"], "keywords": ["evcil", "çanta"], "note": "SSS: kedi/köpek taşıma"}
+{"id": "faq-03", "question": "Metroda yük ve eşya taşımanın bir sınırı var mı?", "expected_sources": ["metro_faq"], "keywords": ["yük", "eşya"], "note": "SSS: yük ve eşya taşıma kuralları"}
+{"id": "faq-04", "question": "İstasyondaki asansör çalışmıyor, durumu nereden öğrenebilirim?", "expected_sources": ["metro_faq"], "keywords": ["asansör", "yürüyen merdiven"], "note": "SSS: ekipman durumu"}
+{"id": "faq-05", "question": "Yolculuk sırasında aktarma yapmam gerekip gerekmediğini nasıl anlarım?", "expected_sources": ["metro_faq"], "keywords": ["aktarma"], "note": "SSS: aktarma bilgisi"}
+{"id": "faq-06", "question": "Metro istasyonundaki panolara reklam vermek için ne yapmalıyım?", "expected_sources": ["metro_faq"], "keywords": ["reklam"], "note": "SSS: reklam talebi"}
+{"id": "faq-07", "question": "İstasyonda stant açmak istiyorum, kime başvurmalıyım?", "expected_sources": ["metro_faq"], "keywords": ["stant"], "note": "SSS: Ticaret Müdürlüğü"}
+{"id": "faq-08", "question": "Metro araçlarında temizlik ne sıklıkla yapılıyor?", "expected_sources": ["metro_faq"], "keywords": ["temizlik"], "note": "SSS: temizlik sıklığı"}
+{"id": "faq-09", "question": "Metro hat haritasını nereden bulabilirim?", "expected_sources": ["metro_faq"], "keywords": ["harita"], "note": "SSS: hat haritaları"}
+{"id": "faq-10", "question": "Sefer tarifelerindeki rakamlar ne anlama geliyor?", "expected_sources": ["metro_faq"], "keywords": ["tarife", "rakam"], "note": "SSS: tarife okuma"}
+{"id": "faq-11", "question": "Neden bütün metro hatlarında gece seferi yok?", "expected_sources": ["metro_faq"], "keywords": ["gece"], "note": "SSS: gece seferleri"}
+{"id": "faq-12", "question": "Galatasaray stadyumuna raylı sistemle nasıl gidilir?", "expected_sources": ["metro_faq"], "keywords": ["Galatasaray"], "note": "SSS: stada erişim"}
+{"id": "faq-13", "question": "Metro İstanbul'un çalışmalarını nereden takip edebilirim?", "expected_sources": ["metro_faq"], "keywords": ["takip"], "note": "SSS: iletişim kanalları"}
+{"id": "faq-14", "question": "Sefer tarifelerini nereden öğrenebilirim?", "expected_sources": ["metro_faq"], "keywords": ["tarife"], "note": "SSS: tarife kaynağı"}
+{"id": "price-01", "question": "Tam bilet şu anda kaç lira?", "expected_sources": ["metro_ticket_prices"], "keywords": ["Tam"], "note": "güncel fiyat; eski tablo değil"}
+{"id": "price-02", "question": "Öğrenci kartıyla bir biniş ne kadar?", "expected_sources": ["metro_ticket_prices"], "keywords": ["Öğrenci"], "note": "güncel fiyat"}
+{"id": "price-03", "question": "Anonim İstanbulkart ücretleri nedir?", "expected_sources": ["metro_ticket_prices"], "keywords": ["Anonim"], "note": "kart tipi bazında fiyat"}
+{"id": "price-04", "question": "Mavi İstanbulkart ile aylık abonman fiyatı ne kadar?", "expected_sources": ["metro_ticket_prices"], "keywords": ["Mavi"], "note": "kart tipi bazında fiyat"}
+{"id": "price-05", "question": "Sosyal bilet ücreti nedir?", "expected_sources": ["metro_ticket_prices"], "keywords": ["Sosyal"], "note": "güncel fiyat"}
+{"id": "price-06", "question": "Bilet fiyatlarının yıllara göre değişimi nasıl?", "expected_sources": ["ticket_prices_2017_2022"], "keywords": ["2017", "2022"], "note": "tarihçe sorusu: eski kaynak doğru kaynak"}
+{"id": "price-07", "question": "2017 yılında tam bilet ne kadardı?", "expected_sources": ["ticket_prices_2017_2022"], "keywords": ["2017"], "note": "tarihsel fiyat"}
+{"id": "price-08", "question": "2019'da öğrenci bileti kaç liraydı?", "expected_sources": ["ticket_prices_2017_2022"], "keywords": ["2019"], "note": "tarihsel fiyat"}
+{"id": "price-09", "question": "2022 bilet fiyatları neydi?", "expected_sources": ["ticket_prices_2017_2022"], "keywords": ["2022"], "note": "tarihsel fiyat"}
+{"id": "index-01", "question": "34 Dakika İstanbul yürünebilirlik indeksi neyi ölçüyor?", "expected_sources": ["index_transport_tr", "dataset_notes"], "keywords": ["yürünebilirlik"], "note": "indeks yöntemi"}
+{"id": "index-02", "question": "Karşılanabilirlik indeksi nasıl tanımlanıyor?", "expected_sources": ["index_transport_tr", "dataset_notes"], "keywords": ["karşılanabilirlik"], "note": "indeks yöntemi"}
+{"id": "index-03", "question": "34 Dakika çeşitlilik indeksi nedir?", "expected_sources": ["index_transport_tr", "dataset_notes"], "keywords": ["çeşitlilik"], "note": "indeks yöntemi"}
+{"id": "index-04", "question": "34 Dakika İstanbul'da günlük ihtiyaçlar kaç fonksiyona ayrılmış?", "expected_sources": ["index_transport_tr"], "keywords": ["fonksiyon"], "note": "8 fonksiyon"}
+{"id": "index-05", "question": "34 Dakika İstanbul platformu ne için kurulmuş?", "expected_sources": ["index_transport_tr", "dataset_notes"], "keywords": ["34 Dakika"], "note": "platform tanımı"}
+{"id": "uap-01", "question": "Ulaşım Ana Planı hanehalkı araştırması nedir?", "expected_sources": ["uap_report", "dataset_notes"], "keywords": ["hanehalkı"], "note": "araştırmanın tanımı"}
+{"id": "uap-02", "question": "2012 hanehalkı araştırmasının sonuçları neyi gösteriyor?", "expected_sources": ["uap_report"], "keywords": ["2012"], "note": "rapor içeriği"}
+{"id": "uap-03", "question": "İstanbul'da ilçelere göre nüfus yoğunluğu araştırmada nasıl veriliyor?", "expected_sources": ["uap_report"], "keywords": ["yoğunluk"], "note": "rapordaki tablo"}
+{"id": "uap-04", "question": "Analitik etüt çalışması neyi kapsıyor?", "expected_sources": ["uap_report"], "keywords": ["etüt"], "note": "rapor bölümü"}
+{"id": "uap-05", "question": "Hanehalkı araştırmasında hane başına ortalama kişi sayısı nedir?", "expected_sources": ["uap_report"], "keywords": ["hane"], "note": "rapor istatistiği"}
+{"id": "uap-06", "question": "Araştırmada eğitim düzeyi nasıl ele alınmış?", "expected_sources": ["uap_report"], "keywords": ["eğitim"], "note": "rapor bölümü"}
+{"id": "uap-07", "question": "Ulaşım Ana Planı raporunun sonuç bölümünde ne yazıyor?", "expected_sources": ["uap_report"], "keywords": ["sonuç"], "note": "rapor sonucu"}
+{"id": "uap-08", "question": "Hanehalkı anketi 24 saatlik yolculukları nasıl kaydediyor?", "expected_sources": ["uap_survey_2006", "uap_survey_2012", "uap_report"], "keywords": ["24 saat"], "note": "anket yöntemi"}
+{"id": "uap-09", "question": "2006 hanehalkı anket formu hangi bölümlerden oluşuyor?", "expected_sources": ["uap_survey_2006"], "keywords": ["BÖLÜM"], "note": "anket formu yapısı"}
+{"id": "uap-10", "question": "Anket formunda hanehalkı bilgileri bölümünde neler soruluyor?", "expected_sources": ["uap_survey_2006", "uap_survey_2012"], "keywords": ["HANEHALKI"], "note": "anket formu içeriği"}
+{"id": "uap-11", "question": "2012 anket formunda seyahat bilgileri nasıl toplanıyor?", "expected_sources": ["uap_survey_2012", "uap_survey_2006"], "keywords": ["seyahat"], "note": "anket formu içeriği"}
+{"id": "uap-12", "question": "Ankette araçların kirli olması hakkında soru var mı?", "expected_sources": ["uap_survey_2006"], "keywords": ["kirli"], "note": "anket maddesi"}
+{"id": "data-01", "question": "İSPARK otopark verilerinde hangi bilgiler var?", "expected_sources": ["dataset_notes"], "keywords": ["ISPARK", "İSPARK"], "note": "veri seti açıklaması"}
+{"id": "data-02", "question": "Saatlik trafik yoğunluğu veri seti neyi içeriyor?", "expected_sources": ["dataset_notes"], "keywords": ["traffic", "trafik"], "note": "veri seti açıklaması"}
+{"id": "data-03", "question": "Bisiklet yolları verisi hangi bilgileri veriyor?", "expected_sources": ["dataset_notes"], "keywords": ["bicycle", "bisiklet"], "note": "veri seti açıklaması"}
+{"id": "data-04", "question": "Hava kalitesi ölçüm istasyonları verisi nedir?", "expected_sources": ["dataset_notes"], "keywords": ["air quality", "hava kalitesi"], "note": "veri seti açıklaması"}
+{"id": "data-05", "question": "İETT GTFS veri seti ne içeriyor?", "expected_sources": ["dataset_notes"], "keywords": ["GTFS"], "note": "veri seti açıklaması"}
+{"id": "data-06", "question": "Raylı sistem istasyon noktaları verisi hangi formatta?", "expected_sources": ["dataset_notes"], "keywords": ["istasyon"], "note": "veri seti açıklaması"}
+{"id": "data-07", "question": "Elektrikli araç şarj istasyonları veri setinde ne var?", "expected_sources": ["dataset_notes"], "keywords": ["şarj", "charging"], "note": "veri seti açıklaması"}
+{"id": "data-08", "question": "Deniz iskeleleri yolcu sayıları verisi hangi yılları kapsıyor?", "expected_sources": ["dataset_notes"], "keywords": ["iskele", "yolcu"], "note": "veri seti açıklaması"}
+{"id": "data-09", "question": "Raylı sistem istasyon bazlı yolcu sayıları nerede yayımlanıyor?", "expected_sources": ["dataset_notes"], "keywords": ["yolcu"], "note": "veri seti açıklaması"}
+{"id": "data-10", "question": "İETT yolculuk ve sefer bilgileri web servisi ne yapıyor?", "expected_sources": ["dataset_notes"], "keywords": ["İETT"], "note": "veri seti açıklaması"}
+{"id": "data-11", "question": "Baraj doluluk oranları veri seti ne sıklıkla güncelleniyor?", "expected_sources": ["dataset_notes"], "keywords": ["baraj", "dam"], "note": "veri seti açıklaması"}
+{"id": "data-12", "question": "Otopark sayıları ve kapasiteleri hangi veri setinde?", "expected_sources": ["dataset_notes"], "keywords": ["otopark", "parking", "kapasite"], "note": "veri seti açıklaması"}
+{"id": "data-13", "question": "Mahmutbey-Esenyurt metro hattı hakkında hangi veri setleri var?", "expected_sources": ["dataset_notes"], "keywords": ["Mahmutbey"], "note": "veri seti açıklaması"}
+{"id": "data-14", "question": "Dudullu-Bostancı metro hattı verisi neyi anlatıyor?", "expected_sources": ["dataset_notes"], "keywords": ["Dudullu"], "note": "veri seti açıklaması"}
+{"id": "term-01", "question": "GetTicketPrice servisi ne döndürüyor?", "expected_sources": ["dataset_notes"], "keywords": ["ticket", "bilet"], "note": "terim araması: servis adı"}
+{"id": "term-02", "question": "ParkDetay web servisi hangi veri setinde anlatılıyor?", "expected_sources": ["dataset_notes"], "keywords": ["ISPARK", "İSPARK", "otopark", "parking"], "note": "terim araması: servis adı"}
+{"id": "term-03", "question": "M7 hattı hakkında veri seti var mı?", "expected_sources": ["dataset_notes"], "keywords": ["M7", "Mahmutbey"], "note": "terim araması: hat kodu"}
+{"id": "term-04", "question": "GTFS formatında hangi veri setleri yayımlanıyor?", "expected_sources": ["dataset_notes"], "keywords": ["GTFS"], "note": "terim araması: format adı"}
+{"id": "term-05", "question": "İSTMARİN verisi nedir?", "expected_sources": ["dataset_notes"], "keywords": ["İSTMARİN", "ISTMARIN"], "note": "terim araması: kurum adı"}
+{"id": "term-06", "question": "İstanbulkart nedir ve hangi kart tipleri var?", "expected_sources": ["metro_ticket_prices", "dataset_notes"], "keywords": ["İstanbul Kart", "İstanbulkart"], "note": "terim araması: ürün adı"}
+{"id": "term-07", "question": "AQI ölçüm istasyonu verisi hangi kaynakta?", "expected_sources": ["dataset_notes"], "keywords": ["air quality", "hava kalitesi", "AQI"], "note": "terim araması: kısaltma"}
+{"id": "term-08", "question": "Marmaray ile ilgili veri setleri neler?", "expected_sources": ["dataset_notes"], "keywords": ["Marmaray", "rail", "raylı"], "note": "terim araması: hat adı"}

@@ -92,7 +92,9 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 **Sonuç (10 Kasım 2026): bitti.** Kabul sorularının **5/5**'inde doğru araç seçildi (yerel model `qwen3.5:4b`, ölçüm karar 0008). Araç sayısı 6; `uv run python -m istanbul_agent.store.ingest` beslemeyi baştan kuruyor (~8 dk); 419 birim testi geçiyor. Faz 1'de açığa çıkan üç araç kusuru düzeltildi: geçersiz mod boş sonuç döndürüyordu, ön ek birkaç adaya uyduğunda reddediyordu, benzerlik eşitliğini keyfî bozuyordu.
 
-### Faz 2 — Canlı veri araçları
+### Faz 2 — Canlı veri araçları  ⏸ ertelendi (10 Kasım 2026)
+
+**Kullanıcı kararıyla ertelendi, iptal edilmedi.** Faz 3 (RAG) canlı veriye bağlı olmadığı için sıra değiştirildi. Bu fazda yapılacaklar olduğu gibi duruyor: İETT SOAP/REST istemcileri, `get_next_departures` otobüs tarafı (ara durak saatleri yalnızca canlı servisten gelebilir, karar 0007), `get_service_alerts`, `get_station_accessibility`, `find_parking`, `get_traffic_status`, `get_air_quality`.
 - İki API istemcisi: İETT için SOAP, Metro ve diğerleri için REST (`httpx`). Ortak katman: zaman aşımı, yeniden deneme, kaynak bazlı TTL önbellek.
   - **Risk:** `zeep` dört İETT WSDL'ini açamıyor (350, 349, 172, 171) — `AuthHeader` bildirilmiş ama eşleşen `<message>` tanımı yok. Faz 0'da elle kurulan SOAP zarfı çalıştı. İstemci yöntemi ölçümle seçilecek; karar `documents/decisions/` altına yazılacak.
   - **Metro REST istemcisi sağlık kontrolünü HTTP durumuna değil `Success` alanına dayandırır:** API başarısızlıkta da HTTP 200 + `Success: false` dönüyor.
@@ -101,12 +103,22 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 **Bitti tanımı:** Her canlı araç fixture tabanlı birim testlerinden geçiyor; API kapalıyken araç anlamlı bir hata mesajı dönüyor; agent 10 canlı veri sorusunun en az 8'inde doğru aracı seçiyor.
 
-### Faz 3 — RAG hattı ve `search_knowledge`
-- Kaynaklar: C grubu (Metro SSS, bilet fiyatları, 34 Dakika metodolojileri, Ulaşım Ana Planı raporları), API kullanım dokümanları (PDF), tüm veri seti açıklamaları (`ibb_datasets.csv` + JSON'daki `notes`).
-- Başlık bazlı chunking (tablolar bölünmez), BGE-M3, Qdrant yerel mod, hibrit arama + BGE reranker.
-- `eval/rag_questions.jsonl`: en az 50 soru, beklenen kaynak ve referans cevap.
+### Faz 3 — RAG hattı ve `search_knowledge` ✅ bitti (10 Kasım 2026)
+- Kaynaklar (bitti): Metro SSS (509, yalnızca TR kayıtlar), güncel bilet fiyatı (canlı API), bilet fiyatı 2017-2022 (541), 34 Dakika indeks belgesi (445 ve 442 **aynı dosya**, bir kez indekslendi), UAP raporu (496), UAP anket formları 2006/2012 (435), 565 veri seti açıklaması. İETT SOAP kullanım dokümanı kapsam dışı (depoda yok).
+- Başlık bazlı chunking (tablolar ve soru-cevaplar bölünmez), BGE-M3 (yoğun + seyrek tek geçişte), Qdrant yerel mod, hibrit arama (RRF) + isteğe bağlı BGE reranker. Gürültü filtresi tür bazlı; tazelik sırası soruya bakıyor (karar 0009).
+- `eval/rag_questions.jsonl`: **62 soru**, beklenen kaynak ve anahtar kelimeler (terim ağırlıklı 8 soru dahil: servis adı, hat kodu, kısaltma).
 
 **Bitti tanımı:** RAG değerlendirmesi çalışıyor, metrikler `eval/results/` altında; reranker'lı ve reranker'sız karşılaştırma yapılmış.
+
+**Sonuç:** 8 kaynak indirildi ve ölçüldü, **853 parça** indekslendi (Qdrant yerel mod, BGE-M3 yoğun + seyrek). `eval/rag_questions.jsonl` **62 soru**; getirme metrikleri `eval/results/rag_eval.json`:
+
+| Kip | recall@1 | recall@3 | MRR | gecikme |
+|---|---|---|---|---|
+| dense | 0.968 | 1.000 | 0.981 | 0.28 s |
+| hybrid | 0.952 | 0.984 | 0.968 | 0.30 s |
+| sparse | 0.903 | 0.952 | 0.929 | 0.30 s |
+
+Reranker CPU'da 10 saniyenin üstünde kaldığı için cihaza göre varsayılan (CUDA'da açık). Kararlar ve ölçümler: `documents/decisions/0009-rag-hatti.md`. RAGAS (cevap sadakati) LLM kotası nedeniyle Faz 4-5'e bırakıldı.
 
 ### Faz 4 — Entegrasyon
 - Üç MCP sunucusu aynı agent'a bağlı.
@@ -145,9 +157,9 @@ Kota notu: RAGAS ve agent değerlendirmesi ücretsiz kotayı tüketir. Tam değe
 - İETT SOAP istemcisi: `zeep` yamalanabilir mi, yoksa elle SOAP zarfı mı
 - Geocoding yöntemi (yalnızca yerel durak adları mı, başka bir kaynak mı)
 - Önbellek TTL değerleri (kaynak bazında)
-- Chunk boyutu ve örtüşme (300-600 token aralığında başla)
-- Sparse arama yöntemi (BGE-M3 sparse mi, BM25 mi)
-- Reranker aday sayısı ve döndürülen sonuç sayısı
+- ~~Chunk boyutu ve örtüşme~~ → karar 0009: 1600/2000 karakter hedef, 200 karakter örtüşme; `qa` ve `table` bölünmez. Ölçülen token ortancası 105 (çoğu parça atomik soru-cevap).
+- ~~Sparse arama yöntemi~~ → karar 0009: BGE-M3'ün seyrek çıktısı (ikinci model gerekmiyor). Ölçümde yoğun arama tek başına hibritten iyi çıktı; hibrit risk kararı olarak varsayılan kaldı.
+- ~~Reranker aday sayısı~~ → karar 0009: GPU'da 12, CPU'da 6 aday; CPU'da 10 s'yi aştığı için varsayılan kapalı. Döndürülen sonuç 4 (araç varsayılanı).
 - Tek ReAct döngüsü mü, planlayıcı düğüm mü
 - 4 GB VRAM'e sığan en iyi yerel model (`qwen3.5:4b`, `gemma4:e4b` vb.)
 

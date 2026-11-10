@@ -53,7 +53,10 @@ uv run python scripts/inspect_iett_feed.py --full     # İETT beslemesinin ağz�
 uv run python scripts/inspect_iett_times.py           # tarife nerede + metin onarımı ölçümü
 uv run python -m istanbul_agent.store.ingest          # İETT GTFS + nokta katmanları → DuckDB (~8 dk)
 uv run python -m istanbul_agent.store.ingest --only-places  # yalnızca transit_places
-uv run python -m istanbul_agent.rag.ingest            # dokümanları indeksle
+uv run python scripts/download_knowledge.py            # RAG metin kaynakları (509, 541, 445, 442, 435, 496)
+uv run python scripts/inspect_knowledge.py             # kaynakların metni gerçekte nasıl çıkıyor
+uv run python -m istanbul_agent.rag.ingest             # dokümanları indeksle (~6 dk, CPU)
+uv run python -m istanbul_agent.rag.ingest --dry-run   # gömme yapmadan parça ölçümü
 uv run python -m istanbul_agent.servers.transit_server   # MCP sunucusu (stdio)
 uv run python -m istanbul_agent.cli "soru"                # agent, komut satırı
 uv run python scripts/run_agent_questions.py          # 5 senaryo x 2 sağlayıcı
@@ -94,6 +97,9 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - API kapalıysa veya hata verirse araç bunu açıkça döner; asla tahmini veri üretmez.
 - **Bir aracın boş sonucu parametre hatasını gizlemesin** (kararlar 0006/7a, 0008/3): geçersiz bir mod, bilinmeyen bir hat ya da yanlış yazılmış bir ad "sonuç yok" değil, geçerli değerleri veya adayları sayan bir hata döndürür. Araç eşit puanlı adaylar arasından keyfî seçim yapmaz; hepsini döndürür ya da seçimi kullanıcıya bırakır.
 - Durak/istasyon araması **küme** döndürür: aynı adı taşıyan ve 300 m içindeki noktalar tek yer, uzaktakiler ayrı yer. Durak kimliği ad + konumdur, ad tek başına değil (karar 0008).
+- **Qdrant yerel modunda koleksiyonu silip yeniden oluşturmak eski noktaları geri getiriyor** (ölçüldü, karar 0009): yeniden indeksleme `reset_storage` ile dizini siler. Yerel mod dizini tek sürece kilitler — `knowledge_server` açıkken ingest çalışmaz.
+- RAG parçalarında gürültü eşiği **tür bazlıdır** (karar 0009): `qa` her zaman kabul, `table` ≥12 harf, `prose` ≥25 harf. Tek eşik kullanmak küçük fiyat tablolarını ve kısa SSS cevaplarını atıyordu; harf **oranı** kullanmak raporun istatistik tablolarını atıyordu.
+- Tazelik kaynağa göre belirlenir, tarihe göre değil: 2023 tarihli bir araştırma raporu eski değildir, eskiyen şey fiyat gibi değişen bilgidir. Güncel kaynak ilk 3 sonuçta eskinin önüne alınır — **soru geçmişi sormuyorsa** (karar 0009).
 - Mimari bir karar verdiğinde (chunk boyutu, model seçimi, araç tasarımı) `documents/decisions/` altına kısa bir not ekle: bağlam, seçenekler, karar, gerekçe.
 - Yeni bir araç veya RAG değişikliği eklerken ilgili test ve değerlendirme senaryosunu da ekle.
 - Küçük, anlamlı commit'ler at; commit mesajları İngilizce.

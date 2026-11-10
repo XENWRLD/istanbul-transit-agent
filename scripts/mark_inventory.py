@@ -14,6 +14,7 @@ import re
 import sys
 
 from istanbul_agent.config import PROJECT_ROOT
+from istanbul_agent.console import enable_unicode_output
 
 INVENTORY = PROJECT_ROOT / "datasets" / "data-inventory.md"
 FIXTURES = PROJECT_ROOT / "tests" / "fixtures"
@@ -149,4 +150,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

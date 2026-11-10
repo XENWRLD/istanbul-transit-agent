@@ -22,6 +22,7 @@ from collections import defaultdict
 import openpyxl
 
 from istanbul_agent.config import PROJECT_ROOT
+from istanbul_agent.console import enable_unicode_output
 from istanbul_agent.store.station_names import normalize
 
 REFERENCE_DIR = PROJECT_ROOT / "data" / "rail_reference"
@@ -158,4 +159,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

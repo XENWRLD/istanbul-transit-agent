@@ -24,6 +24,7 @@ import time
 from typing import Any
 
 from istanbul_agent.config import PROJECT_ROOT
+from istanbul_agent.console import enable_unicode_output
 from istanbul_agent.store.geo import haversine_m
 from istanbul_agent.store.rail_queries import load_network
 from istanbul_agent.store.station_names import collapsed, normalize
@@ -173,4 +174,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

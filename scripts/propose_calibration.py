@@ -22,6 +22,7 @@ import sys
 import time
 
 from istanbul_agent.config import PROJECT_ROOT
+from istanbul_agent.console import enable_unicode_output
 from istanbul_agent.store.rail_queries import get_rail_travel_time, load_network
 
 EXTERNAL = PROJECT_ROOT / "datasets" / "external_travel_times.csv"
@@ -181,4 +182,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

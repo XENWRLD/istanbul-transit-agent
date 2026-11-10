@@ -22,6 +22,7 @@ from itertools import pairwise
 import httpx
 
 from istanbul_agent.config import get_settings
+from istanbul_agent.console import enable_unicode_output
 from istanbul_agent.store.gtfs import GtfsFeed, to_seconds
 from istanbul_agent.store.station_names import normalize
 
@@ -135,4 +136,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

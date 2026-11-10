@@ -24,6 +24,7 @@ from itertools import pairwise
 import httpx
 
 from istanbul_agent.config import get_settings
+from istanbul_agent.console import enable_unicode_output
 from istanbul_agent.store.geo import haversine_m, parse_coordinate
 from istanbul_agent.store.gtfs import GtfsFeed
 from istanbul_agent.store.station_names import collapsed
@@ -148,4 +149,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

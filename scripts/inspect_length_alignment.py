@@ -26,6 +26,7 @@ from itertools import pairwise
 import openpyxl
 
 from istanbul_agent.config import PROJECT_ROOT
+from istanbul_agent.console import enable_unicode_output
 from istanbul_agent.store.geo import haversine_m, parse_coordinate
 from istanbul_agent.store.gtfs import GtfsFeed
 from istanbul_agent.store.rail_reference import _clean, _split_pair
@@ -159,4 +160,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

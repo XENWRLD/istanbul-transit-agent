@@ -41,7 +41,7 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
-__all__ = ["collapsed", "normalize", "similarity", "token_key", "variants"]
+__all__ = ["collapsed", "fold_case", "normalize", "similarity", "token_key", "variants"]
 
 # Turkish letters mapped before lowercasing (see rule 2).
 _TURKISH_FOLD = str.maketrans(
@@ -149,6 +149,18 @@ def _fold(name: str) -> str:
     text = text.translate(_TURKISH_FOLD)
     text = "".join(c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c))
     return text.lower()
+
+
+def fold_case(text: str | None) -> str:
+    """Türkçe duyarlı küçük harfe çevirme; token atmaz.
+
+    `str.casefold()` Türkçede yanlış sonuç veriyor: `"YAKLAŞIK".casefold()`
+    noktalı `i` üretiyor ve aranan `yaklaşık` (noktasız `ı`) ile eşleşmiyor.
+    Bu yüzden karşılaştırma yapan her yer (ör. `eval/run_agent_eval.py`
+    ifade kontrolü) bu fonksiyonu kullanır. `normalize()`ten farkı: tesis
+    eklerini ve noktalamayı **atmaz**, yalnızca harfleri katlar.
+    """
+    return _fold(text or "")
 
 
 def normalize(name: str | None, *, drop_square: bool = False) -> str:

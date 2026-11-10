@@ -1,10 +1,20 @@
-"""LangGraph ReAct agent'ı, transit_server'a MCP üzerinden bağlı.
+"""LangGraph ReAct agent'ı, MCP sunucularına stdio üzerinden bağlı.
 
-Araçlar agent'ın içinde tanımlı değil: `transit_server` ayrı bir süreç
-olarak stdio üzerinden konuşuyor ve araç listesi oradan geliyor. Fazladan
-bir katman gibi görünüyor ama bütün noktası bu — araçlar aynı şekilde
-Claude Desktop'a veya başka bir MCP istemcisine de bağlanabiliyor, ve
-agent'ın gördüğü şey ile dışarıya sunulan şey birebir aynı oluyor.
+Araçlar agent'ın içinde tanımlı değil: her sunucu ayrı bir süreç olarak
+stdio üzerinden konuşuyor ve araç listesi oradan geliyor. Fazladan bir
+katman gibi görünüyor ama bütün noktası bu — araçlar aynı şekilde Claude
+Desktop'a veya başka bir MCP istemcisine de bağlanabiliyor, ve agent'ın
+gördüğü şey ile dışarıya sunulan şey birebir aynı oluyor.
+
+**Oturumlar agent çalıştığı sürece açık tutuluyor.** `get_tools()` her araç
+çağrısında yeni bir oturum açıyor; `knowledge_server` için bu, BGE-M3'ü her
+aramada yeniden yüklemek demekti. Bunun yerine her sunucu için bir oturum
+`AsyncExitStack` ile açılıyor ve araç listeleri birleştiriliyor: sunucu
+süreci bir kez kalkıyor, model bir kez yükleniyor.
+
+Faz 4'te iki sunucu bağlı: `transit` (6 araç) ve `knowledge` (1 araç).
+`city` sunucusu Faz 2 ertelendiği için henüz yok; tanımı burada hazır ve
+dosya ortaya çıktığında listeye eklemek yeterli.
 
 LLM yalnızca `istanbul_agent.llm.get_llm()` üzerinden kurulur (proje
 kuralı); sağlayıcı `.env` içindeki `LLM_PROVIDER` ile ya da `provider`
@@ -14,7 +24,7 @@ parametresiyle seçilir.
 from __future__ import annotations
 
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -27,18 +37,34 @@ from istanbul_agent.agent.prompt import SYSTEM_PROMPT
 from istanbul_agent.config import PROJECT_ROOT
 from istanbul_agent.llm import get_llm
 
-__all__ = ["AgentRun", "ToolCall", "answer", "transit_agent"]
+__all__ = [
+    "DEFAULT_SERVERS",
+    "NUDGE",
+    "AgentRun",
+    "ToolCall",
+    "answer",
+    "istanbul_agent",
+    "transit_agent",
+]
 
-# The server is started as a module so it runs with the project's venv and
-# its own imports, exactly as an external MCP client would start it.
-SERVER_COMMAND = {
-    "transit": {
+
+def _stdio(module: str) -> dict[str, Any]:
+    """Sunucuyu modül olarak başlat: projenin venv'i ve importları geçerli olsun."""
+    return {
         "command": sys.executable,
-        "args": ["-m", "istanbul_agent.servers.transit_server"],
+        "args": ["-m", module],
         "transport": "stdio",
         "cwd": str(PROJECT_ROOT),
     }
+
+
+SERVER_COMMANDS: dict[str, dict[str, Any]] = {
+    "transit": _stdio("istanbul_agent.servers.transit_server"),
+    "knowledge": _stdio("istanbul_agent.servers.knowledge_server"),
+    # "city": _stdio("istanbul_agent.servers.city_server"),  # Faz 2
 }
+
+DEFAULT_SERVERS: tuple[str, ...] = ("transit", "knowledge")
 
 
 @dataclass
@@ -62,31 +88,81 @@ class AgentRun:
     tool_calls: list[ToolCall] = field(default_factory=list)
     error: str | None = None
     messages: list[BaseMessage] = field(default_factory=list)
+    nudged: bool = False
+    unverified: bool = False
+
+    @property
+    def tool_names(self) -> list[str]:
+        return [call.name for call in self.tool_calls]
 
 
 @asynccontextmanager
-async def transit_agent(
-    provider: str | None = None, *, max_steps: int = 8
+async def istanbul_agent(
+    provider: str | None = None,
+    *,
+    max_steps: int = 8,
+    servers: Sequence[str] = DEFAULT_SERVERS,
 ) -> AsyncIterator[tuple[Any, str, str]]:
-    """A ReAct agent wired to transit_server over stdio.
+    """A ReAct agent wired to the MCP servers over stdio.
 
-    Yields `(agent, provider, model)`. The MCP session lives as long as the
-    context manager, so tools stay callable while the graph runs.
+    Yields `(agent, provider, model)`. Every MCP session lives as long as the
+    context manager, so tools stay callable while the graph runs and each
+    server process starts only once.
     """
+    from contextlib import AsyncExitStack
+
+    from langchain_mcp_adapters.tools import load_mcp_tools
+
     from istanbul_agent.config import get_settings
+
+    unknown = [name for name in servers if name not in SERVER_COMMANDS]
+    if unknown:
+        known = ", ".join(sorted(SERVER_COMMANDS))
+        raise KeyError(f"bilinmeyen MCP sunucusu: {unknown} (bilinenler: {known})")
 
     llm = get_llm(provider)
     model_name = getattr(llm, "model", None) or getattr(llm, "model_name", "?")
     used = provider or get_settings().llm_provider
 
-    client = MultiServerMCPClient(SERVER_COMMAND)
-    async with client.session("transit") as session:
-        from langchain_mcp_adapters.tools import load_mcp_tools
-
-        tools = await load_mcp_tools(session)
+    client = MultiServerMCPClient({name: SERVER_COMMANDS[name] for name in servers})
+    async with AsyncExitStack() as stack:
+        tools: list[Any] = []
+        for name in servers:
+            session = await stack.enter_async_context(client.session(name))
+            tools.extend(await load_mcp_tools(session))
         agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
         agent = agent.with_config({"recursion_limit": max_steps * 2})
         yield agent, used, str(model_name)
+
+
+# Faz 1'den kalan ad; tek sunucuya bağlanmak isteyen çağrılar için.
+@asynccontextmanager
+async def transit_agent(
+    provider: str | None = None, *, max_steps: int = 8
+) -> AsyncIterator[tuple[Any, str, str]]:
+    """Yalnızca `transit_server`'a bağlı agent (geriye dönük ad)."""
+    async with istanbul_agent(provider, max_steps=max_steps, servers=("transit",)) as bundle:
+        yield bundle
+
+
+# Araç çağırmayan modele verilen tek seferlik uyarı. Prompt'la çözülemedi:
+# yerel model (qwen3.5:4b) "metroya bisikletle binebilir miyim" sorusunda
+# araç çağırmadan bisiklet dolabı ve izin belgesi uydurdu, prompt'a kaynak
+# gösterme kuralı eklendiğinde de **kaynağı** uydurdu ("Metro İstanbul
+# SSS'ine göre"). Bu yüzden koruma grafikte: araç çağrılmadıysa bir kez
+# uyarılıyor, ikinci turda da çağırmazsa cevap `unverified` işaretleniyor.
+# Soru uyarının içinde **yeniden yazılıyor**: ilk denemede uyarı tek başına
+# gönderildi ve yerel model soruyu kaybedip "hangi soruyu soruyorsunuz?"
+# diye cevap verdi.
+NUDGE = (
+    "Bu soruyu araç çağırmadan cevapladın: {question!r}\n\n"
+    "İstanbul ulaşımı hakkındaki hiçbir olguyu kendi belleğinden "
+    "söyleyemezsin: saat, süre, fiyat, kural, durak, hat ve konum bilgisi "
+    "yalnızca araçlardan gelir. Şimdi bu soru için uygun aracı çağır ve "
+    "cevabı aracın döndürdüğü veriye dayandır. Araçlardan hiçbiri bu soruyu "
+    "cevaplayamıyorsa 'bu bilgi elimdeki kaynaklarda yok' de ve kaynak "
+    "cümlesi yazma."
+)
 
 
 def _text(content: Any) -> str:
@@ -129,16 +205,44 @@ def _collect(messages: list[BaseMessage]) -> list[ToolCall]:
     return [calls[identifier] for identifier in order]
 
 
-async def answer(question: str, provider: str | None = None, *, max_steps: int = 8) -> AgentRun:
-    """Ask one question and return the answer with what it took to get it."""
+async def answer(
+    question: str,
+    provider: str | None = None,
+    *,
+    max_steps: int = 8,
+    servers: Sequence[str] = DEFAULT_SERVERS,
+    nudge: bool = True,
+) -> AgentRun:
+    """Ask one question and return the answer with what it took to get it.
+
+    `nudge` açıkken araç çağırmayan bir cevap bir kez geri çevrilir (bkz.
+    `NUDGE`). İkinci turda da araç çağrılmazsa sonuç `unverified=True`
+    döner: kaynaksız bir cevabı sessizce doğru gibi sunmak, kaynak gösteren
+    bir sistemde kabul edilemez.
+    """
     import time
 
     started = time.monotonic()
-    async with transit_agent(provider, max_steps=max_steps) as (agent, used, model_name):
+    async with istanbul_agent(provider, max_steps=max_steps, servers=servers) as (
+        agent,
+        used,
+        model_name,
+    ):
+        history: list[BaseMessage] = [SystemMessage(SYSTEM_PROMPT), HumanMessage(question)]
+        nudged = False
         try:
-            state = await agent.ainvoke(
-                {"messages": [SystemMessage(SYSTEM_PROMPT), HumanMessage(question)]}
-            )
+            state = await agent.ainvoke({"messages": history})
+            if nudge and not _collect(list(state["messages"])):
+                # Araç çağrılmadı: bir kez uyar ve yeniden sor.
+                nudged = True
+                state = await agent.ainvoke(
+                    {
+                        "messages": [
+                            *list(state["messages"]),
+                            HumanMessage(NUDGE.format(question=question)),
+                        ]
+                    }
+                )
         except Exception as problem:
             return AgentRun(
                 question=question,
@@ -158,12 +262,15 @@ async def answer(question: str, provider: str | None = None, *, max_steps: int =
         ),
         "",
     )
+    calls = _collect(messages)
     return AgentRun(
         question=question,
         answer=final,
         provider=used,
         model=model_name,
         seconds=time.monotonic() - started,
-        tool_calls=_collect(messages),
+        tool_calls=calls,
         messages=messages,
+        nudged=nudged,
+        unverified=not calls,
     )

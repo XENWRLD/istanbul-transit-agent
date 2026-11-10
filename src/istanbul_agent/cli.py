@@ -26,9 +26,17 @@ def render(run: AgentRun, *, quiet: bool = False) -> None:
             print(f"  araç {index}: {call.name}({arguments})")
         if not run.tool_calls:
             print("  araç çağrısı yok")
+        if run.nudged:
+            print("  (araç çağrılmadığı için model bir kez uyarıldı)")
     if run.error:
         print(f"HATA: {run.error}", file=sys.stderr)
         return
+    if run.unverified:
+        print(
+            "UYARI: bu cevap hiçbir araç çağrısına dayanmıyor, yani kaynaksız. "
+            "Doğrulanmamış bilgi olarak değerlendir.",
+            file=sys.stderr,
+        )
     print(run.answer.strip())
     if not quiet:
         print(f"\n({run.seconds:.1f} s)")

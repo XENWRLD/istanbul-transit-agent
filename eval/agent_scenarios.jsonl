@@ -1,0 +1,49 @@
+{"id": "rail-01", "question": "Kadıköy'den Taksim'e metroyla kaç dakika sürer?", "expect_tools": ["get_rail_travel_time"], "must_mention": ["dk", "dakika"], "note": "aktarmalı raylı güzergâh"}
+{"id": "rail-02", "question": "Üsküdar'dan Ayrılık Çeşmesi'ne ne kadar sürer?", "expect_tools": ["get_rail_travel_time"], "note": "Marmaray üzerinden"}
+{"id": "rail-03", "question": "Kadıköy'den Sabiha Gökçen'e metroyla gitmek ne kadar sürüyor?", "expect_tools": ["get_rail_travel_time"], "note": "M4 uçtan uca"}
+{"id": "rail-04", "question": "Üsküdar'dan Sultanbeyli'ye ne kadar sürer?", "expect_tools": ["get_rail_travel_time"], "must_mention": ["yaklaşık", "tahmin", "±"], "note": "tahmin: hata payı söylenmeli"}
+{"id": "rail-05", "question": "Taksim'den Şişhane'ye kaç dakika?", "expect_tools": ["get_rail_travel_time"], "note": "M2 kısa mesafe"}
+{"id": "rail-06", "question": "Paris'ten Taksim'e metroyla kaç dakika?", "expect_tools": ["get_rail_travel_time"], "must_mention": ["bulunamadı", "bulamadım", "yok"], "note": "olmayan istasyon: aday sunmalı, uydurmamalı"}
+{"id": "dep-01", "question": "Kadıköy'den son M4 kaçta kalkıyor?", "expect_tools": ["get_next_departures"], "must_mention": [":"], "note": "son kalkış, varış değil"}
+{"id": "dep-02", "question": "M2'nin ilk seferi kaçta?", "expect_tools": ["get_next_departures"], "note": "ilk sefer"}
+{"id": "dep-03", "question": "Pazar sabahı 11'de M9 ne sıklıkla geliyor?", "expect_tools": ["get_next_departures"], "note": "gün tipi + sefer aralığı"}
+{"id": "dep-04", "question": "Marmaray'ın sefer aralığı ne kadar?", "expect_tools": ["get_next_departures"], "note": "Marmaray aralığı elle doğrulanmış"}
+{"id": "dep-05", "question": "M1A'nın son seferi kaçta ve saatler güncel mi?", "expect_tools": ["get_next_departures"], "must_mention": ["2020", "güncel", "eski"], "note": "tazelik bayrağı aktarılmalı"}
+{"id": "dep-06", "question": "Üsküdar'dan M4'ün son seferi kaçta?", "expect_tools": ["get_next_departures"], "must_mention": ["M5", "Marmaray", "değil", "yok"], "note": "istasyon o hatta değil: araç yönlendirme döner"}
+{"id": "place-01", "question": "Kadıköy'ün konumu nedir?", "expect_tools": ["geocode_place"], "note": "ad → koordinat"}
+{"id": "place-02", "question": "Taksim nerede, koordinatı ne?", "expect_tools": ["geocode_place"], "note": "ad → koordinat"}
+{"id": "place-03", "question": "Üsküdar iskelesinin konumu nedir?", "expect_tools": ["geocode_place"], "note": "iskele adları işletmeci ekli"}
+{"id": "place-04", "question": "Paris diye bir durak var mı?", "expect_tools": ["geocode_place"], "must_mention": ["yok", "bulunamadı", "bulamadım"], "note": "olmayan yer"}
+{"id": "near-01", "question": "Kadıköy iskelesine en yakın otobüs durakları hangileri?", "expect_tools": ["find_nearby_stops"], "note": "çevre araması"}
+{"id": "near-02", "question": "Taksim'in 300 metre içinde hangi duraklar var?", "expect_tools": ["find_nearby_stops"], "note": "yarıçap verilmiş"}
+{"id": "near-03", "question": "Üsküdar'a en yakın metro istasyonu hangisi?", "expect_tools": ["find_nearby_stops", "geocode_place"], "expect_any": true, "note": "mod filtresi"}
+{"id": "near-04", "question": "Bostancı çevresindeki iskeleler neler?", "expect_tools": ["find_nearby_stops"], "note": "vapur modu"}
+{"id": "lines-01", "question": "Kadıköy'deki otobüs durağından hangi hatlar geçiyor?", "expect_tools": ["get_lines_at_stop"], "note": "duraktan hatlar"}
+{"id": "lines-02", "question": "Üsküdar istasyonunu hangi metro hatları işletiyor?", "expect_tools": ["get_lines_at_stop"], "must_mention": ["M5", "Marmaray"], "note": "raylı istasyonda hatlar"}
+{"id": "lines-03", "question": "Kadıköy ŞH. iskelesinden hangi vapur hatları kalkıyor?", "expect_tools": ["get_lines_at_stop"], "must_mention": ["yok", "bilgi"], "note": "vapur hat verisi YOK: söylemeli"}
+{"id": "route-01", "question": "500T hattı nerelerden geçiyor, kaç durak var?", "expect_tools": ["get_line_route"], "note": "otobüs güzergâhı"}
+{"id": "route-02", "question": "34 numaralı otobüs hafta içi ilk kaçta kalkıyor?", "expect_tools": ["get_line_route"], "note": "ilk duraktan kalkış"}
+{"id": "route-03", "question": "M4'ün istasyonları sırayla neler?", "expect_tools": ["get_line_route"], "note": "raylı güzergâh"}
+{"id": "route-04", "question": "YOK99 hattının güzergâhı nedir?", "expect_tools": ["get_line_route"], "must_mention": ["bulunamadı", "yok", "bulamadım"], "note": "olmayan hat"}
+{"id": "route-05", "question": "500T otobüsü Acıbadem durağından kaçta geçer?", "expect_tools": ["get_line_route"], "must_mention": ["ilk durak", "yok", "kalkış"], "note": "ara durak saati veride YOK"}
+{"id": "know-01", "question": "Metroya bisikletle binebilir miyim?", "expect_tools": ["search_knowledge"], "must_mention": ["katlanabilir", "bisiklet"], "note": "SSS kuralı; araç çağırmadan uydurulmuştu"}
+{"id": "know-02", "question": "Raylı sisteme evcil hayvanla binilir mi?", "expect_tools": ["search_knowledge"], "must_mention": ["çanta", "evcil", "kafes"], "note": "SSS kuralı"}
+{"id": "know-03", "question": "Tam bilet şu anda kaç lira?", "expect_tools": ["search_knowledge"], "must_mention": ["₺", "TL", "lira"], "note": "güncel fiyat, 2022 tablosu değil"}
+{"id": "know-04", "question": "2019'da öğrenci bileti kaç liraydı?", "expect_tools": ["search_knowledge"], "must_mention": ["2019", "2017", "2022"], "note": "tarihsel fiyat: eski kaynak doğru kaynak"}
+{"id": "know-05", "question": "Metroda yük ve eşya taşıma kuralları nedir?", "expect_tools": ["search_knowledge"], "note": "SSS kuralı"}
+{"id": "know-06", "question": "İSPARK otopark verisinde hangi bilgiler var?", "expect_tools": ["search_knowledge"], "note": "veri seti açıklaması"}
+{"id": "know-07", "question": "34 Dakika yürünebilirlik indeksi neyi ölçüyor?", "expect_tools": ["search_knowledge"], "note": "indeks yöntemi"}
+{"id": "know-08", "question": "Neden bütün metro hatlarında gece seferi yok?", "expect_tools": ["search_knowledge"], "note": "SSS kuralı"}
+{"id": "chain-01", "question": "Kadıköy iskelesine en yakın otobüs duraklarından hangi hatlar geçiyor?", "expect_tools": ["find_nearby_stops", "get_lines_at_stop"], "expect_order": ["find_nearby_stops", "get_lines_at_stop"], "note": "iki adımlı zincir"}
+{"id": "chain-02", "question": "Üsküdar'dan Sultanbeyli'ye ne kadar sürer ve şu an hangi sıklıkta tren var?", "expect_tools": ["get_rail_travel_time", "get_next_departures"], "note": "iki araç tek soruda"}
+{"id": "chain-03", "question": "Taksim'in konumu nedir ve 300 metre içinde hangi duraklar var?", "expect_tools": ["geocode_place", "find_nearby_stops"], "note": "iki araç tek soruda"}
+{"id": "chain-04", "question": "M4 ile Kadıköy'den Bostancı'ya kaç dakika ve bilet ne kadar?", "expect_tools": ["get_rail_travel_time", "search_knowledge"], "note": "tarife + metin kaynağı"}
+{"id": "chain-05", "question": "500T hattının güzergâhındaki ilk duraktan hangi hatlar daha geçiyor?", "expect_tools": ["get_line_route", "get_lines_at_stop"], "expect_order": ["get_line_route", "get_lines_at_stop"], "note": "hattan durağa, duraktan hatlara"}
+{"id": "refuse-01", "question": "Taksim'de şu an boş otopark var mı?", "expect_tools": [], "must_mention": ["yok", "elimde", "kaynak"], "note": "otopark aracı YOK (Faz 2)"}
+{"id": "refuse-02", "question": "Şu an Boğaz köprüsünde trafik ne durumda?", "expect_tools": [], "must_mention": ["yok", "elimde", "kaynak"], "note": "trafik aracı YOK"}
+{"id": "refuse-03", "question": "Kadıköy'de hava kalitesi nasıl?", "expect_tools": [], "must_mention": ["yok", "elimde", "kaynak"], "note": "hava kalitesi aracı YOK"}
+{"id": "refuse-04", "question": "500T otobüsü şu an nerede?", "expect_tools": [], "must_mention": ["yok", "elimde", "canlı", "kaynak"], "note": "canlı konum askıya alındı"}
+{"id": "refuse-05", "question": "Üsküdar'dan sıradaki vapur kaçta?", "expect_tools": [], "must_mention": ["yok", "tarife", "elimde"], "note": "vapur tarifesi YOK"}
+{"id": "refuse-06", "question": "Kadıköy metro istasyonunda asansör çalışıyor mu?", "expect_tools": ["search_knowledge"], "expect_any": true, "must_mention": ["yok", "arıza", "öğren"], "note": "canlı arıza durumu YOK; SSS nereden öğrenileceğini söylüyor"}
+{"id": "refuse-07", "question": "Tekerlekli sandalyeyle Kadıköy'den Beşiktaş'a nasıl giderim?", "expect_tools": [], "expect_any": true, "must_mention": ["yok", "elimde", "erişilebilirlik"], "note": "erişilebilirlik ve nokta-nokta rota YOK"}
+{"id": "refuse-08", "question": "Şu an Taksim'e arabayla mı metroyla mı gitmek daha hızlı?", "expect_tools": [], "expect_any": true, "must_mention": ["yok", "trafik", "elimde"], "note": "trafik verisi olmadan karşılaştırma yapılamaz"}

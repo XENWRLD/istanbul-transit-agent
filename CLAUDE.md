@@ -8,11 +8,11 @@ Yol haritası, aşamalar ve "bitti" tanımları: `documents/PLAN.md`. Veri kayna
 
 - `src/istanbul_agent/servers/transit_server.py` → MCP: toplu taşıma araçları (yerel GTFS/GeoJSON + canlı İETT/Metro)
 - `src/istanbul_agent/servers/city_server.py` → MCP: otopark, trafik, yol çalışmaları, hava kalitesi, mikromobilite
-- `src/istanbul_agent/servers/knowledge_server.py` → MCP: `search_knowledge` (RAG)
+- `src/istanbul_agent/servers/knowledge_server.py` → MCP: `search_knowledge` (RAG); gömme modelini **açılışta** yükler (`warm_up`)
 - `src/istanbul_agent/clients/` → İETT SOAP istemcisi (`zeep`), REST istemcisi (`httpx`), ortak önbellek/yeniden deneme
 - `src/istanbul_agent/store/` → GTFS ve GeoJSON ingest, DuckDB sorguları (`ingest` otobüs + nokta katmanları, `ingest_rail` raylı sistem, `ingest_timetable` sefer saatleri)
 - `src/istanbul_agent/rag/` → ingest, chunking, embedding, hibrit arama, reranking
-- `src/istanbul_agent/agent/` → LangGraph grafı ve sistem prompt'u
+- `src/istanbul_agent/agent/` → LangGraph grafı (transit + knowledge sunucularına kalıcı MCP oturumları) ve sistem prompt'u
 - `src/istanbul_agent/llm.py` → LLM sağlayıcı fabrikası (gemini | ollama)
 - `eval/` → RAG ve agent değerlendirme setleri, betikler, sonuçlar
 - `documents/` → `PLAN.md` (yol haritası) ve `decisions/` (mimari karar notları)
@@ -64,7 +64,8 @@ uv run python -m istanbul_agent.servers.city_server
 uv run python -m istanbul_agent.servers.knowledge_server
 uv run python -m istanbul_agent.app                   # demo arayüzü
 uv run python eval/run_rag_eval.py
-uv run python eval/run_agent_eval.py
+uv run python eval/run_agent_eval.py                  # 48 senaryo (ollama, önbellekli)
+uv run python eval/run_agent_eval.py --provider gemini --limit 5   # kota: günde 20 istek
 ```
 
 Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bölümü güncelle.
@@ -100,6 +101,11 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - **Qdrant yerel modunda koleksiyonu silip yeniden oluşturmak eski noktaları geri getiriyor** (ölçüldü, karar 0009): yeniden indeksleme `reset_storage` ile dizini siler. Yerel mod dizini tek sürece kilitler — `knowledge_server` açıkken ingest çalışmaz.
 - RAG parçalarında gürültü eşiği **tür bazlıdır** (karar 0009): `qa` her zaman kabul, `table` ≥12 harf, `prose` ≥25 harf. Tek eşik kullanmak küçük fiyat tablolarını ve kısa SSS cevaplarını atıyordu; harf **oranı** kullanmak raporun istatistik tablolarını atıyordu.
 - Tazelik kaynağa göre belirlenir, tarihe göre değil: 2023 tarihli bir araştırma raporu eski değildir, eskiyen şey fiyat gibi değişen bilgidir. Güncel kaynak ilk 3 sonuçta eskinin önüne alınır — **soru geçmişi sormuyorsa** (karar 0009).
+- **MCP stdio sunucusunda ağır modeli araç gövdesinde yükleme, açılışta yükle** (karar 0010): BGE-M3'ü FastMCP'nin iş parçacığı havuzunda yüklemek sunucuyu kilitliyor — boş sorgu 0.0 s'de dönerken gerçek sorgu 180 s'de çıktı vermeden asılıyor ve istemci `Connection closed` alıyor. Aynı çağrı süreç içinde 15.8 s. `warm_up()` ana iş parçacığında yükler, sonrası 3.2 s.
+- Agent MCP oturumlarını **açık tutar**; `MultiServerMCPClient.get_tools()` her araç çağrısında yeni oturum açtığı için gömme modeli her aramada yeniden yüklenirdi.
+- **Araç çağırmadan verilen cevap kaynaksızdır.** `answer()` araç çağrılmayan turu bir kez geri çevirir (soruyu tekrarlayan bir uyarıyla) ve ikinci turda da çağrılmazsa sonucu `unverified=True` işaretler; CLI bunu uyarı olarak basar. Prompt'a "kaynak göster" yazmak tek başına yetmedi — model kaynağı da uydurdu (karar 0010).
+- Türkçe metin karşılaştırmasında `str.casefold()` kullanma: `"YAKLAŞIK".casefold()` noktalı `i` üretip `yaklaşık` ile eşleşmiyor. `store.station_names.fold_case()` kullan.
+- `OLLAMA_NUM_CTX` araç yüzeyine bağlıdır: yedi araçta prompt + şemalar ~5900 token, 8192'lik pencere taşıyor ve model hiç araç çağırmıyor. Varsayılan 16384 (kararlar 0006, 0010); araç eklenince yeniden ölç.
 - Mimari bir karar verdiğinde (chunk boyutu, model seçimi, araç tasarımı) `documents/decisions/` altına kısa bir not ekle: bağlam, seçenekler, karar, gerekçe.
 - Yeni bir araç veya RAG değişikliği eklerken ilgili test ve değerlendirme senaryosunu da ekle.
 - Küçük, anlamlı commit'ler at; commit mesajları İngilizce.

@@ -49,7 +49,13 @@ class Settings(BaseSettings):
     # fix: at the default window the model answered quickly but wrongly,
     # losing which line the question was about (decision 0006, karar 6).
     ollama_reasoning: bool = False
-    ollama_num_ctx: int = 8192
+    # 8192'den 16384'e çıkarıldı (Faz 4, karar 0010). Sebep ölçüldü: sistem
+    # prompt'u 6515 karakter + yedi aracın şema ve açıklamaları 12933
+    # karakter = ~5900 token. 8192'lik pencerede araç sonuçlarına ~2300
+    # token kalıyordu ve 66 duraklı bir güzergâh tek başına bunu aşıyor.
+    # Sonuç, karar 0006'da ölçülen bozulmanın aynısıydı: model hiç araç
+    # çağırmadan cevap uyduruyordu. 16384'te aynı senaryolar geçiyor.
+    ollama_num_ctx: int = 16384
 
     # --- Shared ---
     llm_request_timeout: float = 120.0

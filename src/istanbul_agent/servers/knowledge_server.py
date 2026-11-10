@@ -193,7 +193,25 @@ def search_knowledge(
     )
 
 
+def warm_up() -> None:
+    """Gömme modelini sunucu açılmadan, **ana iş parçacığında** yükle.
+
+    Neden açılışta: model ilk arama sırasında yüklendiğinde sunucu
+    kilitleniyordu. Ölçüm — boş sorgu (model yüklemeyen yol) 0.0 saniyede
+    cevap veriyor, gerçek sorgu 180 saniyede hiçbir çıktı üretmeden
+    asılıyor ve istemci "Connection closed" alıyor. Aynı çağrı süreç içinde
+    doğrudan yapıldığında 15.8 saniye sürüyor. Fark, yüklemenin FastMCP'nin
+    iş parçacığı havuzunda olması.
+
+    Yan faydası: ilk sorgu 16 saniyelik model yükleme bedelini ödemiyor.
+    """
+    from istanbul_agent.rag.embedding import get_model
+
+    get_model()
+
+
 def main() -> None:
+    warm_up()
     try:
         mcp.run()
     finally:
@@ -206,4 +224,4 @@ if __name__ == "__main__":
     main()
 
 
-__all__ = ["index_stats", "mcp", "search_knowledge"]
+__all__ = ["index_stats", "mcp", "search_knowledge", "warm_up"]

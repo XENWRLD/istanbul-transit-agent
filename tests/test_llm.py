@@ -30,7 +30,7 @@ def test_ollama_defaults_disable_thinking_and_widen_the_context():
     """
     llm = get_llm(settings=_settings(llm_provider="ollama"))
     assert llm.reasoning is False
-    assert llm.num_ctx == 8192
+    assert llm.num_ctx == 16384
 
 
 def test_thinking_can_still_be_turned_back_on_per_call():

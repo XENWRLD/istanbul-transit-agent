@@ -123,9 +123,11 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 **Reranker bu korpusta kazanç sağlamıyor:** recall@1'i düzeltiyor ama recall@5'i düşürüyor ve gecikmeyi 26 katına çıkarıyor. Varsayılan cihaza göre (CUDA'da açık, CPU'da kapalı); kod korpus büyüdüğünde yeniden ölçülmek üzere duruyor. Kararlar ve ölçümler: `documents/decisions/0009-rag-hatti.md`. RAGAS (cevap sadakati) LLM kotası nedeniyle Faz 4-5'e bırakıldı.
 
 ### Faz 4 — Entegrasyon
-- Üç MCP sunucusu aynı agent'a bağlı.
-- Sistem prompt'u kuralları: kaynak göster; canlı veri statik veriyle çelişirse canlıyı esas al; `is_stale` verilerde bunu söyle; rota hesaplaması yapamadığında bunu açıkça belirt ve alternatif olarak ilgili durak/hat/saat bilgisini ver.
-- Çok adımlı senaryolar: "Tekerlekli sandalyeyle Kadıköy'den Beşiktaş'a", "Şu an Taksim'e arabayla mı metroyla mı", "Üsküdar'dan sıradaki vapur".
+- **İki** MCP sunucusu aynı agent'a bağlı: `transit` (6 araç) + `knowledge` (1 araç). Plan "üç sunucu" diyordu; `city_server` Faz 2 ertelendiği için henüz yok, grafikteki kayıtta satırı yorum olarak bekliyor. Oturumlar agent çalıştığı sürece açık tutulur — `get_tools()` her çağrıda yeni oturum açtığı için gömme modeli her aramada yeniden yüklenirdi (karar 0010/1).
+- **Ağır model sunucu açılışında yüklenir.** BGE-M3'ü FastMCP'nin iş parçacığı havuzunda yüklemek sunucuyu kilitliyordu: boş sorgu 0.0 s, gerçek sorgu 180 s+ ve `Connection closed`. `warm_up()` sonrası 3.2 s (karar 0010/2).
+- Sistem prompt'u kuralları: kaynağı **araç çıktısından kopyala** (araç çağırmadıysan kaynak yazma); canlı/güncel veri eskiyle çelişirse günceli esas al; `is_stale`/`estimated` bayraklarını cevaba taşı; elinde araç olmayan konuda (otopark, trafik, hava kalitesi, canlı konum, vapur tarifesi, erişilebilirlik, nokta-nokta rota) bilginin yokluğunu söyle ve elindekini ver.
+- **Kaynaksız cevap koruması grafikte:** araç çağrılmayan tur bir kez geri çevrilir, ikinci turda da çağrılmazsa cevap `unverified` işaretlenir. Prompt'a "kaynak göster" yazmak tek başına zarar verdi — model kaynağı da uydurdu (karar 0010/3).
+- Çok adımlı senaryolar ve araç yokluğu senaryoları `eval/agent_scenarios.jsonl` içinde ("Tekerlekli sandalyeyle Kadıköy'den Beşiktaş'a", "Şu an Taksim'e arabayla mı metroyla mı", "Üsküdar'dan sıradaki vapur" — üçü de Faz 2 araçları olmadığı için **yokluğu söylemesi** beklenen senaryolar).
 
 **Bitti tanımı:** `eval/agent_scenarios.jsonl` içindeki en az 40 senaryo otomatik çalışıyor; beklenen araçlar ve sıra kontrol ediliyor.
 

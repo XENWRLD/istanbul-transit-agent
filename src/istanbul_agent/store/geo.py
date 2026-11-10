@@ -14,7 +14,19 @@ from __future__ import annotations
 
 from math import asin, cos, radians, sin, sqrt
 
-__all__ = ["EARTH_RADIUS_M", "haversine_m", "parse_coordinate"]
+__all__ = [
+    "EARTH_RADIUS_M",
+    "ISTANBUL_LAT_RANGE",
+    "ISTANBUL_LON_RANGE",
+    "haversine_m",
+    "parse_coordinate",
+    "parse_grouped_coordinate",
+]
+
+# İstanbul'un kaba sınır kutusu. Onarılan bir koordinatın buraya düşmesi,
+# onarımın doğru olduğunun ölçülebilir kanıtıdır (karar 0007).
+ISTANBUL_LAT_RANGE = (40.75, 41.70)
+ISTANBUL_LON_RANGE = (27.80, 30.00)
 
 EARTH_RADIUS_M = 6_371_008.8
 
@@ -45,3 +57,29 @@ def parse_coordinate(value: object) -> float | None:
     if number == 0.0 or not -180.0 <= number <= 180.0:
         return None
     return number
+
+
+def parse_grouped_coordinate(value: object) -> float | None:
+    """İETT GTFS'inin binlik noktalarla parçalanmış koordinatını oku.
+
+    `stops.csv` enlem ve boylamı `410.191.700.005.564` gibi veriyor: basamaklar
+    doğru, ondalık ayırıcı kaybolmuş ve yerine binlik nokta serpilmiş. Ondalık
+    **ilk iki basamaktan sonra** gelir; bu kural 15 390 durağın 15 386'sında
+    İstanbul sınır kutusuna düşerek doğrulandı (karar 0007). Kalan 4 satırda
+    kolonlar kaymış (enlem alanında `direction: GİDİŞ` yazıyor) ve `None`
+    dönerek atılır.
+
+    Düzgün yazılmış bir koordinat (tek ondalık nokta) olduğu gibi okunur, bu
+    yüzden besleme bir gün düzelirse bu fonksiyon yine doğru çalışır.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.count(".") == 1 and text.count(",") == 0:
+        return parse_coordinate(text)
+    digits = text.replace(".", "").replace(",", "")
+    if not digits.isdigit() or len(digits) < 3:
+        return None
+    return parse_coordinate(f"{digits[:2]}.{digits[2:]}")

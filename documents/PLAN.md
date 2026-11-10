@@ -79,7 +79,7 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 **Sonuç:** 39 veri seti çağrıldı — REST 25/32 çalışıyor, İETT SOAP 7/7 WSDL okundu (28 metot), 9/9 doğrulanan çağrı. Hiçbiri kimlik doğrulama istemedi. `llm.py` ile Gemini (`gemini-3.5-flash`) ve Ollama (`qwen3.5:4b`) doğrulandı. Araç sayısı 15 → 14.
 
 ### Faz 1 — Yerel veri deposu ve statik toplu taşıma araçları
-- `ingest` betikleri: GTFS (İETT + genel), B grubundaki GeoJSON'lar → DuckDB (`data/transit.duckdb`), spatial eklentisi ile. GTFS CSV'leri **cp1254** kodlamalı, UTF-8 değil.
+- `ingest` betikleri (bitti): GTFS (İETT + genel), B grubundaki nokta katmanları → DuckDB (`data/transit.duckdb`). **İki besleme iki ayrı ağız:** 308 cp1254/virgül, 75 UTF-8+BOM/noktalı virgül + çifte kodlanmış metin + parçalanmış koordinat + zip'li `stop_times`; ağız `dialect_for()` içinde bildirilir (karar 0007). İETT beslemesi ara duraklara saat vermediği için ham `stop_times` saklanmaz, `bus_trips` + `bus_route_stops` türetilir. Nokta tablosu `transit_places`: otobüs 15 386, minibüs 7 908, raylı 254, vapur 98, dolmuş 44.
 - Her tabloya kaynak ve `data_as_of` bilgisi.
 - Araçlar: `geocode_place`, `find_nearby_stops`, `get_lines_at_stop`, `get_line_route`, `get_next_departures` (yalnızca GTFS kısmı).
 - **Metro kapsam analizi** (bitti): 2020 GTFS beslemesinin bugünkü ağa oranı hat hat ölçüldü — 8 hat tam, 8 kısmen, 2 yok (F4, T5). 248 istasyonun 187'si eşleşti, 49'u gerçekten eksik, 11'i (T3) güvenilmez. İstasyon adı normalize kuralı `store/station_names.py`, eşleme `datasets/station_name_map.csv`, hat bütünlük skorları `datasets/metro_line_integrity.csv`.

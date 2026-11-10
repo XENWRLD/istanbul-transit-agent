@@ -10,7 +10,7 @@ Yol haritası, aşamalar ve "bitti" tanımları: `documents/PLAN.md`. Veri kayna
 - `src/istanbul_agent/servers/city_server.py` → MCP: otopark, trafik, yol çalışmaları, hava kalitesi, mikromobilite
 - `src/istanbul_agent/servers/knowledge_server.py` → MCP: `search_knowledge` (RAG)
 - `src/istanbul_agent/clients/` → İETT SOAP istemcisi (`zeep`), REST istemcisi (`httpx`), ortak önbellek/yeniden deneme
-- `src/istanbul_agent/store/` → GTFS ve GeoJSON ingest, DuckDB sorguları
+- `src/istanbul_agent/store/` → GTFS ve GeoJSON ingest, DuckDB sorguları (`ingest` otobüs + nokta katmanları, `ingest_rail` raylı sistem, `ingest_timetable` sefer saatleri)
 - `src/istanbul_agent/rag/` → ingest, chunking, embedding, hibrit arama, reranking
 - `src/istanbul_agent/agent/` → LangGraph grafı ve sistem prompt'u
 - `src/istanbul_agent/llm.py` → LLM sağlayıcı fabrikası (gemini | ollama)
@@ -48,7 +48,11 @@ uv run python -m istanbul_agent.store.ingest_timetable # sefer saatleri tablolar
 uv run python scripts/show_travel_examples.py         # get_rail_travel_time örnekleri
 uv run python scripts/show_departure_examples.py      # get_next_departures örnekleri
 uv run python scripts/compare_service_hours.py        # GTFS vs elle doğrulanmış saatler
-uv run python -m istanbul_agent.store.ingest          # GTFS + GeoJSON → DuckDB
+uv run python scripts/download_stop_geojson.py        # durak/iskele nokta katmanları (128, 15, 13, 9)
+uv run python scripts/inspect_iett_feed.py --full     # İETT beslemesinin ağzını ölç
+uv run python scripts/inspect_iett_times.py           # tarife nerede + metin onarımı ölçümü
+uv run python -m istanbul_agent.store.ingest          # İETT GTFS + nokta katmanları → DuckDB (~8 dk)
+uv run python -m istanbul_agent.store.ingest --only-places  # yalnızca transit_places
 uv run python -m istanbul_agent.rag.ingest            # dokümanları indeksle
 uv run python -m istanbul_agent.servers.transit_server   # MCP sunucusu (stdio)
 uv run python -m istanbul_agent.cli "soru"                # agent, komut satırı
@@ -79,7 +83,8 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - Ücretsiz API kotası sınırlı (Gemini: dakikada 5, **günde 20** istek — ölçüldü, karar 0006): değerlendirme betikleri LLM yanıtlarını `eval/.cache/` altında önbelleğe alır, 429 hatalarında üstel geri çekilme (backoff) uygular. Kota dolarsa yerel model (`--provider ollama`) ile devam edilir.
 - İBB API'sinin davranışını tahmin etme; önce gerçek yanıtı incele, sonra kodu yaz.
 - Metro İstanbul REST API'si başarısızlıkta da HTTP 200 döner; gövdedeki `Success` alanına bak, durum koduna değil.
-- İBB GTFS CSV'leri **cp1254** kodlamalıdır, UTF-8 değil. `calendar.csv` penceresi dolmuştur: servis günleri yalnızca hafta günü desenine göre seçilir (karar 0002).
+- **İki GTFS beslemesi iki ayrı ağızdır; ağzı tahmin etme, `store/gtfs.py` içindeki `dialect_for()` ile al** (karar 0007). 308 beslemesi (metro/vapur/minibüs): cp1254, virgül, `calendar.csv` penceresi dolmuş — servis günleri yalnızca hafta günü desenine göre seçilir (karar 0002). 75 beslemesi (İETT otobüs): UTF-8+BOM, noktalı virgül (ama `agency.csv` ve `stop_times.txt` virgüllü), metin çifte kodlanmış (`store/text_repair.py` onarır), `stops.csv` koordinatları parçalanmış (`geo.parse_grouped_coordinate` onarır), `calendar.csv` penceresi **geçerli**, `stop_times` zip içinde.
+- **İETT beslemesi ara duraklara saat vermez:** sefer başına yalnızca iki saat var (ilk duraktan kalkış, son durağa varış). Ham `stop_times` saklanmıyor; `bus_trips` ve `bus_route_stops` türetiliyor. Ara durak saatleri yalnızca canlı İETT servisinden gelebilir (karar 0007).
 - Marmaray aynı GTFS beslemesinde **TCDD** ajansı altındadır, Metro İstanbul'da değil; ajans filtresi onu düşürür. Metro ağı Boğaz'ın iki yakasında ancak Marmaray üzerinden bağlanır.
 - Aktarmalar koordinattan kurulur, ad eşleşmesinden değil: yarıçap 400 m, 313'ün iki ucunu da adlandırdığı çiftlerde 1000 m. Aktarma cezası = 210 s bekleme + yürüme (≤400 m için 150 s, üstünde mesafe / 1.2 m/s) (karar 0004).
 - Segment anahtarları hattı içermek zorunda: Marmaray ve M4 aynı adlı istasyonlar arasında (`Bostancı→Küçükyalı`) ayrı hatlar işletiyor.

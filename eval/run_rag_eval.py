@@ -197,7 +197,18 @@ def main(argv: list[str] | None = None) -> int:
         f"({best['recall@3']:.3f})"
     )
 
+    # Sonuçlar **birleştirilir**, üzerine yazılmaz: reranker'lı kipler CPU'da
+    # 25 dakika sürüyor ve ayrı çalıştırılıyor; tek dosyada bütün kiplerin
+    # karşılaştırılabilir durması gerekiyor. (Aynı hatayı indirme manifest'inde
+    # de yapmıştık, karar 0009.)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    merged: dict[str, dict[str, Any]] = {}
+    if RESULTS_PATH.exists():
+        previous = json.loads(RESULTS_PATH.read_text(encoding="utf-8"))
+        for row in previous.get("configs", []):
+            merged[f"{row['mode']}:{row['reranker']}"] = row
+    for row in rows:
+        merged[f"{row['mode']}:{row['reranker']}"] = row
     RESULTS_PATH.write_text(
         json.dumps(
             {
@@ -205,8 +216,8 @@ def main(argv: list[str] | None = None) -> int:
                 "device": get_device(),
                 "questions": len(questions),
                 "limit": LIMIT,
-                "configs": rows,
-                "total_seconds": round(time.perf_counter() - started, 1),
+                "configs": [merged[key] for key in sorted(merged)],
+                "last_run_seconds": round(time.perf_counter() - started, 1),
             },
             ensure_ascii=False,
             indent=2,

@@ -130,9 +130,11 @@ kalitesini ölçüyor.
 
 | Kip | recall@1 | recall@3 | recall@5 | MRR | kelime isabeti | gecikme (ortanca) |
 |---|---|---|---|---|---|---|
-| **dense** | **0.968** | **1.000** | 1.000 | **0.981** | 0.968 | 0.28 s |
-| hybrid (RRF) | 0.952 | 0.984 | 1.000 | 0.968 | 0.984 | 0.30 s |
-| sparse | 0.903 | 0.952 | 0.968 | 0.929 | 0.919 | 0.30 s |
+| **dense** | **0.968** | **1.000** | **1.000** | **0.978** | 0.968 | **0.27 s** |
+| dense + rerank | 0.968 | 0.984 | 0.984 | 0.976 | 0.952 | 7.75 s |
+| hybrid (RRF) | 0.952 | 0.984 | 1.000 | 0.968 | **0.984** | 0.30 s |
+| hybrid + rerank | 0.968 | 0.984 | 0.984 | 0.973 | 0.968 | 7.83 s |
+| sparse | 0.919 | 0.952 | 0.968 | 0.940 | 0.919 | 0.30 s |
 
 Yoğun arama tek başına hibritten iyi. İlk soru seti anlam ağırlıklıydı, bu
 yüzden karşılaştırmayı adil kılmak için **terim ağırlıklı 8 soru** eklendi
@@ -141,9 +143,27 @@ yüzden karşılaştırmayı adil kılmak için **terim ağırlıklı 8 soru** e
 
 **Karar:** varsayılan kip `hybrid` kalıyor ama bu bir ölçüm sonucu değil,
 bir risk kararı: fark küçük (recall@3'te 0.984 vs 1.000, tek soru) ve
-seyrek taraf terim eşleşmesini garanti ediyor. Korpus büyüdükçe (özellikle
-kod ve kısaltma yoğun içerikle) yeniden ölçülmeli; bugünkü veriyle
-"hibrit şart" demek ölçümün söylemediği bir şeyi söylemek olur.
+seyrek taraf terim eşleşmesini garanti ediyor — hibrit, anahtar kelime
+isabetinde en iyi kip (0.984). Korpus büyüdükçe (özellikle kod ve kısaltma
+yoğun içerikle) yeniden ölçülmeli; bugünkü veriyle "hibrit şart" demek
+ölçümün söylemediği bir şeyi söylemek olur.
+
+### Reranker bu korpusta kazanç sağlamıyor
+
+Tablodaki en önemli satır reranker'lı kipler. Reranker:
+
+- hibritin **recall@1**'ini düzeltiyor (0.952 → 0.968),
+- ama her iki kipte **recall@5'i düşürüyor** (1.000 → 0.984),
+- ve gecikmeyi **26 katına** çıkarıyor (0.3 s → 7.8 s).
+
+recall@5 düşüşünün sebebi alaka eşiği (`MIN_RERANK_SCORE = -2.0`): reranker
+doğru parçayı "alakasız" puanlayıp attığı bir soru var. Yani reranker
+burada yalnızca pahalı değil, **net olarak zararlı**.
+
+Bu sonuç korpusun küçük (853 parça) ve soruların çoğunda tek bir açıkça
+doğru parça olmasıyla açıklanabilir; reranker, birbirine çok benzeyen çok
+sayıda aday yarıştığında kazanmaya başlar. Korpus büyüdüğünde yeniden
+ölçülmeli — bu yüzden kod kaldırılmadı, yalnızca varsayılan kapatıldı.
 
 ## Karar 5 — Reranker CPU'da varsayılan olarak kapalı
 
@@ -153,7 +173,7 @@ ayrı bir indirme). Ölçüm:
 | Yapılandırma | Sorgu gecikmesi |
 |---|---|
 | hibrit arama, reranker yok | **0.3 s** (ortanca) |
-| + reranker, 6 aday | 10-12 s |
+| + reranker, 6 aday | **7.8 s** (ortanca; 62 soruda ölçüldü) |
 | + reranker, 12 aday | 11-28 s |
 
 Bir agent aracı için 10 saniyenin üstü kabul edilemez, bu yüzden reranker

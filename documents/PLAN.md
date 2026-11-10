@@ -112,13 +112,15 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 **Sonuç:** 8 kaynak indirildi ve ölçüldü, **853 parça** indekslendi (Qdrant yerel mod, BGE-M3 yoğun + seyrek). `eval/rag_questions.jsonl` **62 soru**; getirme metrikleri `eval/results/rag_eval.json`:
 
-| Kip | recall@1 | recall@3 | MRR | gecikme |
-|---|---|---|---|---|
-| dense | 0.968 | 1.000 | 0.981 | 0.28 s |
-| hybrid | 0.952 | 0.984 | 0.968 | 0.30 s |
-| sparse | 0.903 | 0.952 | 0.929 | 0.30 s |
+| Kip | recall@1 | recall@3 | recall@5 | MRR | gecikme |
+|---|---|---|---|---|---|
+| dense | 0.968 | **1.000** | **1.000** | 0.978 | 0.27 s |
+| dense + rerank | 0.968 | 0.984 | 0.984 | 0.976 | 7.75 s |
+| hybrid | 0.952 | 0.984 | 1.000 | 0.968 | 0.30 s |
+| hybrid + rerank | 0.968 | 0.984 | 0.984 | 0.973 | 7.83 s |
+| sparse | 0.919 | 0.952 | 0.968 | 0.940 | 0.30 s |
 
-Reranker CPU'da 10 saniyenin üstünde kaldığı için cihaza göre varsayılan (CUDA'da açık). Kararlar ve ölçümler: `documents/decisions/0009-rag-hatti.md`. RAGAS (cevap sadakati) LLM kotası nedeniyle Faz 4-5'e bırakıldı.
+**Reranker bu korpusta kazanç sağlamıyor:** recall@1'i düzeltiyor ama recall@5'i düşürüyor ve gecikmeyi 26 katına çıkarıyor. Varsayılan cihaza göre (CUDA'da açık, CPU'da kapalı); kod korpus büyüdüğünde yeniden ölçülmek üzere duruyor. Kararlar ve ölçümler: `documents/decisions/0009-rag-hatti.md`. RAGAS (cevap sadakati) LLM kotası nedeniyle Faz 4-5'e bırakıldı.
 
 ### Faz 4 — Entegrasyon
 - Üç MCP sunucusu aynı agent'a bağlı.

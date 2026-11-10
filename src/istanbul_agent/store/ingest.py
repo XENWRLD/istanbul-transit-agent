@@ -536,22 +536,36 @@ def build_places(
     if rail_stations_available(connection):
         rail = connection.execute(
             """
-            SELECT name, line, mode, lat, lon, source, data_as_of
+            SELECT name, line, mode, lat, lon, coord_source, data_as_of
             FROM rail_stations
             WHERE lat IS NOT NULL AND lon IS NOT NULL
             ORDER BY name, line
             """
         ).fetchall()
+        # Nokta tablosunda önemli olan **koordinatın** kaynağı, satırın
+        # kaynağı değil: 198 istasyonun satır tarihi 2020 beslemesinden
+        # geliyor ama koordinatı canlı Metro API'den. İlk sürüm satırın
+        # tarihini yazıp `is_stale=false` diyordu; bu, 2020 tarihli bir
+        # konumu güncel göstermekle aynı hata sınıfıydı.
+        live_date = connection.execute(
+            """
+            SELECT max(data_as_of) FROM rail_stations
+            WHERE coord_source IS NOT NULL AND coord_source NOT LIKE 'GTFS%'
+            """
+        ).fetchone()
+        live_as_of = (live_date[0] if live_date else None) or "bilinmiyor"
+
         # Aynı istasyon birden çok hatta geçiyor; nokta tablosunda bir kez
         # dursun ama hangi hatlar olduğu `code` alanında görünsün.
         lines_by_station: dict[str, list[str]] = defaultdict(list)
         best_by_station: dict[str, tuple[Any, ...]] = {}
-        for name, line, mode, lat, lon, source, data_as_of in rail:
+        for name, line, mode, lat, lon, coord_source, data_as_of in rail:
             key = normalize(name)
             if line:
                 lines_by_station[key].append(line)
-            best_by_station.setdefault(key, (name, mode, lat, lon, source, data_as_of))
-        for key, (name, mode, lat, lon, source, data_as_of) in best_by_station.items():
+            best_by_station.setdefault(key, (name, mode, lat, lon, coord_source, data_as_of))
+        for key, (name, mode, lat, lon, coord_source, data_as_of) in best_by_station.items():
+            from_feed = (coord_source or "").startswith("GTFS")
             rows.append(
                 (
                     f"rayli:{key}",
@@ -561,12 +575,12 @@ def build_places(
                     collapsed(name),
                     token_key(name),
                     ", ".join(sorted(set(lines_by_station[key]))) or None,
-                    None,
+                    f"konum kaynağı: {coord_source}" if coord_source else None,
                     float(lat),
                     float(lon),
-                    source or "raylı sistem tabloları",
-                    data_as_of or "bilinmiyor",
-                    False,
+                    coord_source or "raylı sistem tabloları",
+                    (data_as_of or "bilinmiyor") if from_feed else live_as_of,
+                    from_feed,
                 )
             )
             rail_rows += 1

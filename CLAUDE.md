@@ -92,6 +92,8 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - Agent ham API'leri görmez: uç noktalar `documents/PLAN.md` araç tablosundaki alan bazlı araçların arkasında birleştirilir. Yeni araç eklemeden önce mevcut bir araca parametre eklemenin yeterli olup olmadığını düşün; toplam araç sayısını ~15'te tut.
 - Her araç çıktısı `source` ve `data_as_of` alanı taşır; 2018-2020 tarihli "Public Transport GTFS" verisinden gelen sonuçlar `is_stale: true` ile işaretlenir.
 - API kapalıysa veya hata verirse araç bunu açıkça döner; asla tahmini veri üretmez.
+- **Bir aracın boş sonucu parametre hatasını gizlemesin** (kararlar 0006/7a, 0008/3): geçersiz bir mod, bilinmeyen bir hat ya da yanlış yazılmış bir ad "sonuç yok" değil, geçerli değerleri veya adayları sayan bir hata döndürür. Araç eşit puanlı adaylar arasından keyfî seçim yapmaz; hepsini döndürür ya da seçimi kullanıcıya bırakır.
+- Durak/istasyon araması **küme** döndürür: aynı adı taşıyan ve 300 m içindeki noktalar tek yer, uzaktakiler ayrı yer. Durak kimliği ad + konumdur, ad tek başına değil (karar 0008).
 - Mimari bir karar verdiğinde (chunk boyutu, model seçimi, araç tasarımı) `documents/decisions/` altına kısa bir not ekle: bağlam, seçenekler, karar, gerekçe.
 - Yeni bir araç veya RAG değişikliği eklerken ilgili test ve değerlendirme senaryosunu da ekle.
 - Küçük, anlamlı commit'ler at; commit mesajları İngilizce.

@@ -18,7 +18,14 @@ needs_store = pytest.mark.skipif(
     not database_path().exists(), reason="data/transit.duckdb kurulmamış"
 )
 
-TOOLS = ("get_rail_travel_time", "get_next_departures")
+TOOLS = (
+    "geocode_place",
+    "find_nearby_stops",
+    "get_lines_at_stop",
+    "get_line_route",
+    "get_rail_travel_time",
+    "get_next_departures",
+)
 
 
 @pytest.fixture(scope="module")
@@ -27,7 +34,7 @@ def listed():
 
 
 class TestRegistration:
-    def test_both_tools_are_exposed(self, listed):
+    def test_every_tool_is_exposed(self, listed):
         assert set(listed) == set(TOOLS)
 
     @pytest.mark.parametrize("name", TOOLS)
@@ -148,3 +155,162 @@ class TestDeparturesTool:
     def test_a_bad_time_is_ignored_rather_than_failing(self):
         result = transit_server.get_next_departures("M2", at="yarın akşam")
         assert result.ok is True
+
+
+@needs_store
+class TestGeocodeTool:
+    def test_a_name_becomes_a_coordinate(self):
+        result = transit_server.geocode_place("Kadıköy")
+        assert result.ok is True
+        assert result.match_method == "tam ad"
+        first = result.places[0]
+        assert 40.9 < first.lat < 41.1
+        assert 28.9 < first.lon < 29.1
+
+    def test_rail_is_offered_before_a_bus_flag(self):
+        result = transit_server.geocode_place("Kadıköy")
+        assert result.places[0].mode in {"metro", "tramvay", "tren", "vapur"}
+
+    def test_a_rail_position_from_the_live_api_is_not_marked_stale(self):
+        """Satır tarihi 2020 beslemesinden ama koordinat Metro API'den."""
+        result = transit_server.geocode_place("Kadıköy", mode="metro")
+        place = result.places[0]
+        assert place.is_stale is False
+        assert place.data_as_of > "2026-01-01"
+
+    def test_mode_narrows_the_search(self):
+        result = transit_server.geocode_place("Kadıköy", mode="otobus")
+        assert {place.mode for place in result.places} == {"otobus"}
+
+    def test_duplicate_points_are_merged_and_counted(self):
+        result = transit_server.geocode_place("Kadıköy", mode="otobus")
+        assert max(place.point_count for place in result.places) > 1
+
+    def test_operator_suffixed_piers_surface_as_related(self):
+        result = transit_server.geocode_place("Kadıköy")
+        assert any("ŞH" in name or "İDO" in name for name in result.related)
+
+    def test_an_unknown_name_returns_candidates(self):
+        result = transit_server.geocode_place("Paris")
+        assert result.ok is False
+        assert result.error == "yer_bulunamadi"
+        assert len(result.candidates) == 3
+
+
+@needs_store
+class TestNearbyTool:
+    def test_stops_around_a_named_place(self):
+        result = transit_server.find_nearby_stops(around="Kadıköy", radius_m=400)
+        assert result.ok is True
+        assert result.stops
+        distances = [stop.distance_m for stop in result.stops]
+        assert distances == sorted(distances)
+
+    def test_a_coordinate_works_without_a_name(self):
+        result = transit_server.find_nearby_stops(lat=40.9907, lon=29.0220, radius_m=300)
+        assert result.ok is True
+        assert result.around.startswith("40.99")
+
+    def test_radius_is_capped(self):
+        result = transit_server.find_nearby_stops(around="Kadıköy", radius_m=99_999)
+        assert result.radius_m == 2000.0
+
+    def test_mode_filter(self):
+        result = transit_server.find_nearby_stops(around="Kadıköy", radius_m=800, mode="vapur")
+        assert {stop.mode for stop in result.stops} == {"vapur"}
+
+    def test_neither_name_nor_coordinate_is_refused(self):
+        result = transit_server.find_nearby_stops()
+        assert result.ok is False
+
+    def test_an_unknown_name_returns_candidates(self):
+        result = transit_server.find_nearby_stops(around="Paris")
+        assert result.ok is False
+        assert result.candidates
+
+
+@needs_store
+class TestLinesAtStopTool:
+    def test_a_busy_bus_stop_lists_many_lines(self):
+        result = transit_server.get_lines_at_stop("Kadıköy", mode="otobus")
+        assert result.ok is True
+        assert result.line_count > 20
+        assert result.lines[0].trip_count >= result.lines[-1].trip_count
+
+    def test_a_rail_station_lists_its_lines_and_says_the_data_is_old(self):
+        result = transit_server.get_lines_at_stop("Üsküdar", mode="metro")
+        assert {line.line for line in result.lines} >= {"M5"}
+        assert all(line.is_stale for line in result.lines)
+
+    def test_a_pier_says_there_is_no_line_data(self):
+        result = transit_server.get_lines_at_stop("Kadıköy ŞH. (Yeni)")
+        assert result.ok is True
+        assert result.lines == []
+        assert any("hat bilgisi yok" in note for note in result.notes)
+
+    def test_an_unknown_stop_returns_candidates(self):
+        result = transit_server.get_lines_at_stop("Paris")
+        assert result.ok is False
+        assert result.candidates
+
+
+@needs_store
+class TestLineRouteTool:
+    def test_a_bus_line_has_two_directions_with_ordered_stops(self):
+        result = transit_server.get_line_route("500T")
+        assert result.ok is True
+        assert len(result.directions) == 2
+        for direction in result.directions:
+            sequences = [stop.sequence for stop in direction.stops]
+            assert sequences == sorted(sequences)
+            assert direction.stop_count > 50
+
+    def test_service_windows_carry_first_and_last_departure(self):
+        route = transit_server.get_line_route("500T").directions[0]
+        windows = {window.service: window for window in route.service_windows}
+        assert set(windows) >= {"WEEKDAYS", "SATURDAY", "SUNDAY"}
+        assert windows["WEEKDAYS"].first_departure
+        assert windows["WEEKDAYS"].median_duration_minutes
+
+    def test_trip_count_is_the_direction_total_not_one_variant(self):
+        """İki varyantın durak sayısı eşit olduğunda sefer sayısı seçmez."""
+        for direction in transit_server.get_line_route("500T").directions:
+            assert direction.trip_count > 100
+
+    def test_a_rail_line_is_one_direction_and_marked_stale(self):
+        result = transit_server.get_line_route("M4")
+        assert len(result.directions) == 1
+        route = result.directions[0]
+        assert route.stops[0].name == "Kadıköy"
+        assert route.is_stale is True
+
+    def test_an_unknown_line_is_refused_with_guidance(self):
+        result = transit_server.get_line_route("YOK99")
+        assert result.ok is False
+        assert "hat kodu" in result.message
+
+
+@needs_store
+class TestModeParameter:
+    def test_a_synonym_is_accepted(self):
+        """Model `mode="iskele"` yazdı; tablodaki değer `vapur`."""
+        result = transit_server.geocode_place("Kadıköy", mode="iskele")
+        assert result.ok is True
+        assert {place.mode for place in result.places} == {"vapur"}
+        # İskeleler işletmeci ekiyle kayıtlı; dördü de Kadıköy iskelesi.
+        assert any("ŞH" in place.name or "İDO" in place.name for place in result.places)
+
+    def test_turkish_spelling_of_bus_is_accepted(self):
+        result = transit_server.find_nearby_stops(around="Kadıköy", mode="otobüs", radius_m=300)
+        assert result.ok is True
+        assert {stop.mode for stop in result.stops} == {"otobus"}
+
+    def test_an_unknown_mode_is_refused_with_the_valid_list(self):
+        result = transit_server.geocode_place("Kadıköy", mode="uçak")
+        assert result.ok is False
+        assert result.error == "gecersiz_mod"
+        assert "vapur" in result.valid_modes
+
+    def test_lines_at_stop_refuses_an_unknown_mode_too(self):
+        result = transit_server.get_lines_at_stop("Kadıköy", mode="uçak")
+        assert result.error == "gecersiz_mod"

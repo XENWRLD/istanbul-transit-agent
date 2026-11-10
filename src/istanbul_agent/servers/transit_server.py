@@ -1,7 +1,11 @@
-"""MCP sunucusu: raylı sistem araçları.
+"""MCP sunucusu: toplu taşıma araçları.
 
-Şu an iki araç sunuyor:
+Şu an altı araç sunuyor:
 
+- `geocode_place` — ad → konum (durak, istasyon, iskele)
+- `find_nearby_stops` — bir yerin çevresindeki duraklar
+- `get_lines_at_stop` — bir duraktan geçen hatlar
+- `get_line_route` — bir hattın sıralı durakları ve servis penceresi
 - `get_rail_travel_time` — iki istasyon arası süre ve güzergâh
 - `get_next_departures` — bir hattın ilk/son seferi ve sefer aralığı
 
@@ -27,6 +31,15 @@ from pydantic import BaseModel, Field
 from istanbul_agent.clients.metro import Announcement, fetch_announcements
 from istanbul_agent.store.departures import DepartureInfo
 from istanbul_agent.store.departures import get_next_departures as _get_next_departures
+from istanbul_agent.store.line_queries import get_line_route as _get_line_route
+from istanbul_agent.store.line_queries import get_lines_at_stop as _get_lines_at_stop
+from istanbul_agent.store.places import (
+    MODE_LABELS,
+    MODE_SYNONYMS,
+    find_nearby_places,
+    find_places,
+    resolve_mode,
+)
 from istanbul_agent.store.rail_queries import get_rail_travel_time as _get_rail_travel_time
 from istanbul_agent.store.rail_queries import load_network
 from istanbul_agent.store.station_names import normalize
@@ -189,6 +202,164 @@ class DeparturesOut(BaseModel):
         default_factory=list, description="Tarifeyle ilgili Metro İstanbul duyuruları"
     )
     warnings: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class PlaceNotFound(BaseModel):
+    """Aranan yer bulunamadı; en yakın adaylar ve ilgili adlar döner."""
+
+    ok: Literal[False] = False
+    error: Literal["yer_bulunamadi"] = "yer_bulunamadi"
+    asked: str = Field(description="Kullanıcının yazdığı ad")
+    candidates: list[str] = Field(default_factory=list, description="En yakın 3 durak/istasyon adı")
+    related: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Sorguyla başlayan tam adlar, ör. 'Üsküdar' için 'Üsküdar ŞH.', "
+            "'Üsküdar Turyol'. İskele adları işletmeci ekiyle kayıtlı."
+        ),
+    )
+    message: str
+
+
+class InvalidMode(BaseModel):
+    """Verilen `mode` tabloda yok; geçerli değerler döner.
+
+    Boş sonuç dönmek yerine hata dönmesi bilinçli: model ilk denemede
+    `mode="iskele"` verdi, arama boş döndü ve model kullanıcıya "böyle bir
+    yer yok" dedi. Geçerli değerleri sayan bir hata, modelin aracı doğru
+    parametreyle yeniden çağırmasını sağlıyor.
+    """
+
+    ok: Literal[False] = False
+    error: Literal["gecersiz_mod"] = "gecersiz_mod"
+    asked: str
+    valid_modes: list[str] = Field(default_factory=list)
+    message: str
+
+
+class PlaceOut(BaseModel):
+    """Tek bir yer: aynı adı taşıyan ve birbirine yakın noktalar birleştirilmiş."""
+
+    name: str
+    mode: str = Field(
+        description="metro | tramvay | funikuler | teleferik | tren | vapur | otobus | minibus | dolmus"
+    )
+    mode_label: str = Field(description="Modun Türkçe adı, ör. 'otobüs durağı'")
+    lat: float
+    lon: float
+    point_count: int = Field(
+        description="Bu yere katılan nokta sayısı (yönler ve peronlar ayrı kayıtlı)"
+    )
+    codes: list[str] = Field(default_factory=list, description="Durak kodları veya hat kodları")
+    details: list[str] = Field(default_factory=list)
+    distance_m: float | None = Field(None, description="Sorulan konuma uzaklık (metre)")
+    source: str
+    data_as_of: str
+    is_stale: bool
+
+
+class GeocodeOut(BaseModel):
+    """`geocode_place` cevabı."""
+
+    ok: Literal[True] = True
+    asked: str
+    places: list[PlaceOut]
+    match_method: str | None = Field(
+        None, description="tam ad | yazım farkı | kelime sırası | ön ek | benzerlik N"
+    )
+    total_points: int = Field(description="Ada uyan toplam nokta sayısı")
+    related: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class NearbyOut(BaseModel):
+    """`find_nearby_stops` cevabı."""
+
+    ok: Literal[True] = True
+    around: str = Field(description="Çevresi arananan yerin adı veya koordinatı")
+    lat: float
+    lon: float
+    radius_m: float
+    stops: list[PlaceOut]
+    notes: list[str] = Field(default_factory=list)
+
+
+class LineAtStopOut(BaseModel):
+    """Bir duraktan geçen tek hat."""
+
+    line: str
+    mode: str
+    long_name: str | None = None
+    directions: list[str] = Field(
+        default_factory=list, description="Seferlerin son durakları (yön levhası)"
+    )
+    variant_count: int = Field(
+        description="Bu hattın kaç ayrı güzergâh varyantı bu duraktan geçiyor"
+    )
+    trip_count: int = Field(description="Haftalık tarifede bu duraktan geçen sefer sayısı")
+    is_stale: bool
+
+
+class StopLinesOut(BaseModel):
+    """`get_lines_at_stop` cevabı."""
+
+    ok: Literal[True] = True
+    stop: str
+    mode: str
+    mode_label: str
+    lines: list[LineAtStopOut]
+    line_count: int
+    source: str | None = None
+    data_as_of: str | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
+class RouteStopOut(BaseModel):
+    """Güzergâhtaki bir durak."""
+
+    sequence: int
+    name: str
+    lat: float | None = None
+    lon: float | None = None
+
+
+class ServiceWindowOut(BaseModel):
+    """Bir yöndeki servis penceresi."""
+
+    service: str = Field(description="Servis günü: WEEKDAYS | SATURDAY | SUNDAY")
+    trips: int
+    first_departure: str | None = Field(None, description="İlk duraktan ilk kalkış (HH:MM)")
+    last_departure: str | None = Field(None, description="İlk duraktan son kalkış (HH:MM)")
+    median_duration_minutes: int | None = Field(
+        None, description="Baştan sona yolculuk süresinin ortancası"
+    )
+
+
+class LineRouteOut(BaseModel):
+    """Bir hattın tek yönü."""
+
+    line: str
+    mode: str
+    direction_id: str | None = None
+    direction_name: str | None = Field(None, description="Yönün son durağı")
+    stops: list[RouteStopOut]
+    stop_count: int
+    variant_count: int = Field(description="Bu yöndeki güzergâh varyantı sayısı")
+    trip_count: int
+    service_windows: list[ServiceWindowOut] = Field(default_factory=list)
+    source: str
+    data_as_of: str
+    is_stale: bool
+    notes: list[str] = Field(default_factory=list)
+
+
+class LineRoutesOut(BaseModel):
+    """`get_line_route` cevabı: hattın her yönü ayrı."""
+
+    ok: Literal[True] = True
+    line: str
+    directions: list[LineRouteOut]
     notes: list[str] = Field(default_factory=list)
 
 
@@ -419,6 +590,339 @@ def get_next_departures(
         alerts=list(result.alerts),
         warnings=list(result.warnings),
         notes=list(result.notes),
+    )
+
+
+def _place_out(cluster: object) -> PlaceOut:
+    """Bir yer kümesini araç cevabına çevir."""
+    return PlaceOut(
+        name=cluster.name,  # type: ignore[attr-defined]
+        mode=cluster.mode,  # type: ignore[attr-defined]
+        mode_label=cluster.mode_label,  # type: ignore[attr-defined]
+        lat=round(cluster.lat, 6),  # type: ignore[attr-defined]
+        lon=round(cluster.lon, 6),  # type: ignore[attr-defined]
+        point_count=cluster.point_count,  # type: ignore[attr-defined]
+        codes=list(cluster.codes),  # type: ignore[attr-defined]
+        details=list(cluster.details),  # type: ignore[attr-defined]
+        distance_m=cluster.distance_m,  # type: ignore[attr-defined]
+        source=cluster.source,  # type: ignore[attr-defined]
+        data_as_of=cluster.data_as_of,  # type: ignore[attr-defined]
+        is_stale=cluster.is_stale,  # type: ignore[attr-defined]
+    )
+
+
+@mcp.tool()
+def geocode_place(query: str, mode: str | None = None) -> GeocodeOut | PlaceNotFound | InvalidMode:
+    """Bir durak, istasyon veya iskele adını konuma (enlem/boylam) çevirir.
+
+    Otobüs durakları, metro/tramvay/füniküler/teleferik istasyonları,
+    iskeleler, minibüs ve dolmuş durakları aranır. Aynı adı taşıyan ve
+    birbirine 300 metreden yakın noktalar tek yer olarak birleştirilir;
+    `point_count` kaç kaydın birleştiğini söyler (bir kavşağın iki yönü ayrı
+    kayıt). Aynı adlı ama farklı semtteki duraklar ayrı yerler olarak döner.
+
+    Parametreler:
+        query: aranan ad. Kullanıcının yazdığı hali yeterli ("kadikoy",
+            "ÜSKÜDAR"); bulunamazsa en yakın 3 aday ve sorguyla başlayan
+            tam adlar (`related`) döner.
+        mode: aramayı tek bir moda kısıtlar — `metro`, `tramvay`,
+            `funikuler`, `teleferik`, `tren`, `vapur`, `otobus`, `minibus`,
+            `dolmus`. "Üsküdar" hem metro istasyonu hem otobüs durağı hem
+            iskele olduğu için kullanıcı birini kastediyorsa bunu ver.
+
+    İskele adları işletmeci ekiyle kayıtlıdır ("Kadıköy ŞH.", "Üsküdar
+    Turyol"); `vapur` modunda arama ad tam tutmazsa `related` listesine bak.
+
+    NE ZAMAN KULLANMA:
+    - Adres, semt, mahalle veya cadde aramak için kullanma; bu araç yalnızca
+      durak/istasyon/iskele adlarını bilir, adres çözemez.
+    - Bir yerin çevresindeki durakları listelemek için kullanma —
+      `find_nearby_stops` kullan. Bu araç adı konuma çevirir, çevre aramaz.
+    - Hangi hatların geçtiğini sormak için kullanma — `get_lines_at_stop`
+      kullan.
+    - Yolculuk süresi veya sefer saati için kullanma; bu araç saat ve süre
+      vermez.
+    """
+    resolved_mode, mode_error = resolve_mode(mode)
+    if mode_error:
+        return InvalidMode(
+            asked=mode or "",
+            valid_modes=sorted(set(MODE_SYNONYMS.values())),
+            message=mode_error,
+        )
+    search = find_places(query, modes=(resolved_mode,) if resolved_mode else None, limit=5)
+    if not search.found:
+        return PlaceNotFound(
+            asked=query,
+            candidates=list(search.candidates),
+            related=list(search.related),
+            message=(
+                f"'{query}' adlı bir durak, istasyon veya iskele bulunamadı. "
+                "Adaylar ya da ilgili adlar arasından doğru olanı kullanıcıya sor."
+            ),
+        )
+    notes: list[str] = []
+    if len(search.clusters) > 1:
+        notes.append(
+            f"Bu ada uyan {len(search.clusters)} ayrı yer var; mod ve konuma bakarak "
+            "hangisini kullandığını cevapta belirt."
+        )
+    return GeocodeOut(
+        asked=query,
+        places=[_place_out(cluster) for cluster in search.clusters],
+        match_method=search.how,
+        total_points=search.total_points,
+        related=list(search.related),
+        notes=notes,
+    )
+
+
+@mcp.tool()
+def find_nearby_stops(
+    around: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    radius_m: float = 500.0,
+    mode: str | None = None,
+    limit: int = 10,
+) -> NearbyOut | PlaceNotFound | InvalidMode:
+    """Bir yerin çevresindeki durak, istasyon ve iskeleleri yakından uzağa listeler.
+
+    Parametreler:
+        around: çevresi aranacak yerin adı ("Kadıköy", "Taksim"). Ad önce
+            konuma çevrilir; `lat`/`lon` verilmişse bu alan göz ardı edilir.
+        lat: enlem. `around` yerine koordinat vermek için `lon` ile birlikte
+            kullan.
+        lon: boylam, `lat` ile birlikte.
+        radius_m: arama yarıçapı, metre. Varsayılan 500, en çok 2000.
+        mode: sonucu tek moda kısıtlar — `metro`, `tramvay`, `funikuler`,
+            `teleferik`, `tren`, `vapur`, `otobus`, `minibus`, `dolmus`.
+        limit: en çok kaç yer dönecek. Varsayılan 10, en çok 50.
+
+    Aynı adlı yakın noktalar tek satırda birleşir; `distance_m` sorulan
+    konuma uzaklıktır (kuş uçuşu, yürüme mesafesi değil).
+
+    NE ZAMAN KULLANMA:
+    - Bir adresin çevresini aramak için kullanma; başlangıç noktası bir
+      durak/istasyon/iskele adı ya da koordinat olmalı.
+    - Hangi hatların geçtiğini öğrenmek için kullanma — bulduğun durağı
+      `get_lines_at_stop` ile sor. Bu araç yer listeler, hat listelemez.
+    - İki yer arası süre için kullanma — `get_rail_travel_time` kullan;
+      buradaki mesafe kuş uçuşudur.
+    - Otopark, şarj istasyonu veya bisiklet noktası için kullanma; bu araç
+      yalnızca toplu taşıma noktalarını bilir.
+    """
+    resolved_mode, mode_error = resolve_mode(mode)
+    if mode_error:
+        return InvalidMode(
+            asked=mode or "",
+            valid_modes=sorted(set(MODE_SYNONYMS.values())),
+            message=mode_error,
+        )
+    radius = max(50.0, min(float(radius_m), 2000.0))
+    count = max(1, min(int(limit), 50))
+
+    if lat is not None and lon is not None:
+        origin_name = f"{lat:.5f},{lon:.5f}"
+        origin_lat, origin_lon = float(lat), float(lon)
+        notes: list[str] = []
+    else:
+        if not around:
+            return PlaceNotFound(
+                asked="",
+                message="Ya `around` (yer adı) ya da `lat` ve `lon` birlikte verilmeli.",
+            )
+        search = find_places(around, limit=3)
+        if not search.found:
+            return PlaceNotFound(
+                asked=around,
+                candidates=list(search.candidates),
+                related=list(search.related),
+                message=(
+                    f"'{around}' adlı bir yer bulunamadı, bu yüzden çevresi aranamadı. "
+                    "Adaylar arasından doğru olanı kullanıcıya sor."
+                ),
+            )
+        anchor = search.clusters[0]
+        origin_name = anchor.name
+        origin_lat, origin_lon = anchor.lat, anchor.lon
+        notes = [f"Merkez olarak '{anchor.name}' ({anchor.mode_label}) alındı."]
+        if len(search.clusters) > 1:
+            notes.append("Bu ada uyan başka yerler de var; merkezin doğru olduğunu cevapta belirt.")
+
+    clusters = find_nearby_places(
+        origin_lat,
+        origin_lon,
+        radius_m=radius,
+        modes=(resolved_mode,) if resolved_mode else None,
+        limit=count,
+    )
+    if not clusters:
+        notes.append(f"{radius:.0f} m içinde kayıtlı durak bulunamadı; yarıçapı artırmayı dene.")
+    return NearbyOut(
+        around=origin_name,
+        lat=round(origin_lat, 6),
+        lon=round(origin_lon, 6),
+        radius_m=radius,
+        stops=[_place_out(cluster) for cluster in clusters],
+        notes=notes,
+    )
+
+
+@mcp.tool()
+def get_lines_at_stop(
+    stop: str, mode: str | None = None
+) -> StopLinesOut | PlaceNotFound | InvalidMode:
+    """Bir duraktan veya istasyondan geçen hatları listeler.
+
+    Otobüste hat kodu, güzergâh adı, yön levhaları ve haftalık tarifedeki
+    sefer sayısı döner; raylı sistemde o istasyonu işleten hat kodları
+    döner.
+
+    Parametreler:
+        stop: durak veya istasyon adı. Kullanıcının yazdığı hali yeterli.
+            Bulunamazsa en yakın 3 aday döner.
+        mode: durağı tek bir modda ara — `otobus`, `metro`, `tramvay`,
+            `funikuler`, `teleferik`, `tren`, `vapur`, `minibus`, `dolmus`.
+            "Üsküdar" hem metro istasyonu hem otobüs durağı olduğu için,
+            kullanıcı otobüs soruyorsa `otobus` ver.
+
+    Minibüs, dolmuş ve iskeleler için **hat bilgisi yoktur**: yerel veride
+    yalnızca durak konumları var. Araç bunu söyler, hat uydurmaz.
+    Raylı sistem hat bilgisi 2020 beslemesinden gelir (`is_stale: true`).
+
+    NE ZAMAN KULLANMA:
+    - Bir hattın güzergâhındaki durakları öğrenmek için kullanma —
+      `get_line_route` kullan. Bu araç duraktan hatta gider, hattan durağa
+      değil.
+    - Sefer saati veya aralığı için kullanma — metro/Marmaray için
+      `get_next_departures` kullan; otobüste ilk/son kalkış
+      `get_line_route` içindedir.
+    - Otobüsün şu an nerede olduğunu sormak için kullanma; bu araç tarife
+      verisini okur, canlı konum vermez.
+    """
+    resolved_mode, mode_error = resolve_mode(mode)
+    if mode_error:
+        return InvalidMode(
+            asked=mode or "",
+            valid_modes=sorted(set(MODE_SYNONYMS.values())),
+            message=mode_error,
+        )
+    result = _get_lines_at_stop(stop, mode=resolved_mode)
+    if not result.found:
+        return PlaceNotFound(
+            asked=stop,
+            candidates=list(result.candidates),
+            related=list(result.related),
+            message="; ".join(result.notes) or f"'{stop}' bulunamadı.",
+        )
+    lines = sorted(result.lines, key=lambda line: (-line.trip_count, line.line))
+    return StopLinesOut(
+        stop=result.stop_name or stop,
+        mode=result.mode or "",
+        mode_label=MODE_LABELS.get(result.mode or "", result.mode or ""),
+        lines=[
+            LineAtStopOut(
+                line=line.line,
+                mode=line.mode,
+                long_name=line.long_name,
+                directions=list(line.headsigns),
+                variant_count=line.variant_count,
+                trip_count=line.trip_count,
+                is_stale=line.is_stale,
+            )
+            for line in lines
+        ],
+        line_count=len(lines),
+        source=lines[0].source if lines else None,
+        data_as_of=lines[0].data_as_of if lines else None,
+        notes=list(result.notes),
+    )
+
+
+@mcp.tool()
+def get_line_route(line: str, direction: str | None = None) -> LineRoutesOut | LineNotFound:
+    """Bir hattın sıralı duraklarını, yönlerini ve servis penceresini verir.
+
+    Otobüs hatlarında her yön ayrı döner: sıralı durak listesi, yön levhası,
+    servis günü başına sefer sayısı, ilk duraktan ilk/son kalkış saati ve
+    baştan sona yolculuk süresinin ortancası. Raylı sistemde tek sonuç döner
+    ve duraklar uç istasyondan başlar.
+
+    Parametreler:
+        line: hat kodu — otobüste `500T`, `34`, `12A`; raylı sistemde `M4`,
+            `T1`, `Marmaray`. Büyük/küçük harf önemsiz.
+        direction: yalnızca tek yön istenirse `"0"` veya `"1"`. Yön kodları
+            beslemeden gelir; hangi yönün hangi son durağa gittiği cevaptaki
+            `direction_name` alanında yazar. Raylı sistemde yok sayılır.
+
+    **Saatler ilk duraktan kalkışı gösterir**, ara duraklardan geçiş saatini
+    göstermez: İETT beslemesi sefer başına yalnızca iki saat veriyor (ilk
+    duraktan kalkış, son durağa varış). Bir hattın birden çok güzergâh
+    varyantı varsa en çok durağa uğrayan listelenir ve `variant_count` kaç
+    varyant olduğunu söyler.
+
+    NE ZAMAN KULLANMA:
+    - Bir **duraktan** geçen hatları sormak için kullanma —
+      `get_lines_at_stop` kullan. Bu araç hattan durağa gider.
+    - Ara bir duraktan otobüsün kaçta geçeceğini sormak için kullanma; o
+      bilgi bu veride yok, saatler yalnızca ilk duraktan kalkışı gösterir.
+    - Metro/Marmaray sefer aralığı veya "şu an ne sıklıkta geliyor" için
+      kullanma — `get_next_departures` kullan.
+    - İki durak arası süre için kullanma — raylı sistemde
+      `get_rail_travel_time` kullan; buradaki süre hattın tamamını gezmenin
+      süresidir.
+    """
+    routes = _get_line_route(line, direction=direction)
+    if not routes:
+        return LineNotFound(
+            asked=line,
+            message=(
+                f"'{line}' adlı bir hat bulunamadı. Otobüste hat kodu ('500T', '34'), "
+                "raylı sistemde hat kodu ('M4', 'T1', 'Marmaray') ver."
+            ),
+        )
+    notes: list[str] = []
+    if direction is not None and len(routes) == 1 and routes[0].direction_id != direction:
+        notes.append(f"'{direction}' yönü bulunamadı; hattın bilinen yönü listelendi.")
+    return LineRoutesOut(
+        line=routes[0].line,
+        directions=[
+            LineRouteOut(
+                line=route.line,
+                mode=route.mode,
+                direction_id=route.direction_id,
+                direction_name=route.direction_name,
+                stops=[
+                    RouteStopOut(
+                        sequence=stop.sequence,
+                        name=stop.name,
+                        lat=round(stop.lat, 6) if stop.lat is not None else None,
+                        lon=round(stop.lon, 6) if stop.lon is not None else None,
+                    )
+                    for stop in route.stops
+                ],
+                stop_count=len(route.stops),
+                variant_count=route.variant_count,
+                trip_count=route.trip_count,
+                service_windows=[
+                    ServiceWindowOut(
+                        service=window.service_name or window.service_id or "bilinmiyor",
+                        trips=window.trips,
+                        first_departure=window.first_departure,
+                        last_departure=window.last_departure,
+                        median_duration_minutes=window.median_duration_min,
+                    )
+                    for window in route.service_windows
+                ],
+                source=route.source,
+                data_as_of=route.data_as_of,
+                is_stale=route.is_stale,
+                notes=list(route.notes),
+            )
+            for route in routes
+        ],
+        notes=notes,
     )
 
 

@@ -17,13 +17,22 @@ import json
 import sys
 
 from istanbul_agent.agent.graph import AgentRun, answer
+from istanbul_agent.console import enable_unicode_output
 
+# İlk beş soru raylı araçları, sonraki beş soru Faz 1'in otobüs ve konum
+# araçlarını sınıyor. 6-10 arası Faz 1'in "bitti" tanımındaki kabul
+# sorularıdır: en az dördü doğru araçlarla doğru cevaplanmalı.
 QUESTIONS = (
     "Kadıköy'den Taksim'e metroyla kaç dakika?",
     "Kadıköy'den son M4 kaçta kalkıyor?",
     "Pazar sabahı 11'de M9 ne sıklıkla geliyor?",
     "Aşiyan'dan Levent'e nasıl giderim?",
     "Üsküdar'dan Sultanbeyli'ye ne kadar sürer, şu an hangi sıklıkta tren var?",
+    "Kadıköy iskelesine en yakın otobüs durakları hangileri?",
+    "Kadıköy'deki otobüs durağından hangi hatlar geçiyor?",
+    "500T hattı nerelerden geçiyor, kaç durak var?",
+    "34 numaralı otobüs hafta içi ilk kaçta kalkıyor?",
+    "Taksim'in konumu nedir, 300 metre içinde hangi duraklar var?",
 )
 
 PROVIDERS = ("gemini", "ollama")
@@ -77,4 +86,5 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    enable_unicode_output()
     sys.exit(main())

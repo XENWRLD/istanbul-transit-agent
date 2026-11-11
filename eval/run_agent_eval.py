@@ -149,6 +149,12 @@ def check(scenario: Scenario, run: Any) -> dict[str, Any]:
         "question": scenario.question,
         "expects_no_tool": scenario.expects_no_tool,
         "tools_called": names,
+        # Yalnızca ad yetmiyor: karar 0015'te `rail-04`'ün hangi mod
+        # değeriyle düştüğü kayıtta görünmediği için teşhis tahmin kaldı.
+        # Argümanlar da kaydediliyor; sonuç gövdeleri kaydedilmiyor (uzun).
+        "calls": [
+            {"name": call.name, "arguments": call.arguments} for call in run.tool_calls
+        ],
         "tools_ok": tools_ok,
         "order_ok": order_ok,
         "mention_ok": mention_ok,

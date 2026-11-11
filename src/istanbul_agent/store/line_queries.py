@@ -140,7 +140,7 @@ def _bus_stop_ids(connection: object, name: str, lat: float, lon: float) -> list
 def get_lines_at_stop(
     stop: str,
     *,
-    mode: str | None = None,
+    modes: Sequence[str] | None = None,
     path: Path | None = None,
     places: Sequence[Place] | None = None,
 ) -> StopLines:
@@ -149,14 +149,15 @@ def get_lines_at_stop(
     Durak önce nokta tablosunda aranır (dört adımlı ad eşleştirme), sonra
     bulunan kümenin moduna göre otobüs ya da raylı sistem tabloları
     sorgulanır. Mod verilirse arama o moda kısıtlanır — "Üsküdar" hem metro
-    istasyonu hem otobüs durağı hem iskele.
+    istasyonu hem otobüs durağı hem iskele. `modes` birden çok değer
+    taşıyabilir (şemsiye mod `rayli` dört moda açılır).
     """
     pool = list(places) if places is not None else load_places(path)
-    search = find_places(stop, modes=(mode,) if mode else None, places=pool, limit=3)
+    search = find_places(stop, modes=modes or None, places=pool, limit=3)
     if not search.found:
         return StopLines(
             stop_name=None,
-            mode=mode,
+            mode=modes[0] if modes and len(modes) == 1 else None,
             candidates=search.candidates,
             related=search.related,
             notes=[f"'{stop}' adlı bir durak veya istasyon bulunamadı."],

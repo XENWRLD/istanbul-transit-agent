@@ -388,7 +388,6 @@ class TestModeResolution:
             ("füniküler", "funikuler"),
             ("minibüs", "minibus"),
             ("dolmuş", "dolmus"),
-            ("marmaray", "tren"),
             ("METRO", "metro"),
             ("  Tram  ", "tramvay"),
         ],
@@ -396,21 +395,67 @@ class TestModeResolution:
     def test_accepted_spellings(self, written, expected):
         from istanbul_agent.store.places import resolve_mode
 
-        mode, error = resolve_mode(written)
-        assert (mode, error) == (expected, None)
+        modes, error = resolve_mode(written)
+        assert (modes, error) == ((expected,), None)
 
     def test_no_mode_is_not_an_error(self):
         from istanbul_agent.store.places import resolve_mode
 
-        assert resolve_mode(None) == (None, None)
-        assert resolve_mode("  ") == (None, None)
+        assert resolve_mode(None) == ((), None)
+        assert resolve_mode("  ") == ((), None)
 
     def test_an_unknown_mode_names_the_valid_ones(self):
         from istanbul_agent.store.places import resolve_mode
 
-        mode, error = resolve_mode("uçak")
-        assert mode is None
+        modes, error = resolve_mode("uçak")
+        assert modes == ()
         assert error and "otobus" in error and "vapur" in error
+
+    def test_every_synonym_resolves_to_a_mode_the_table_really_has(self):
+        """Bir eşanlamlı saklanmayan bir moda açılırsa arama sessizce boşalır.
+
+        `rayli` kendine, `tren`/`marmaray` da `tren`e eşleniyordu; tabloda
+        o iki değerde tek satır yok, yani bu modlarla yapılan **her** arama
+        "yer bulunamadı" dönüyordu (karar 0015). Eski test bunu yakalamıyordu
+        çünkü eşanlamlının kendi adını doğruluyordu, tabloyu değil.
+        """
+        from istanbul_agent.store.places import MODE_SYNONYMS, STORED_MODES
+
+        dead = {
+            written: modes
+            for written, modes in MODE_SYNONYMS.items()
+            if not set(modes) <= STORED_MODES
+        }
+        assert dead == {}
+
+    def test_labels_and_priority_cover_exactly_the_stored_modes(self):
+        from istanbul_agent.store.places import MODE_LABELS, MODE_PRIORITY, STORED_MODES
+
+        assert set(MODE_LABELS) == STORED_MODES
+        assert set(MODE_PRIORITY) == STORED_MODES
+
+    def test_the_error_message_vocabulary_is_accepted_input(self):
+        """Hata mesajı ne yazıyorsa araç onu kabul etmek zorunda."""
+        from istanbul_agent.store.places import MODE_VOCABULARY, resolve_mode
+
+        for word in MODE_VOCABULARY:
+            modes, error = resolve_mode(word)
+            assert error is None, word
+            assert modes, word
+
+    def test_rail_is_an_umbrella_over_the_four_rail_modes(self):
+        from istanbul_agent.store.places import resolve_mode
+
+        modes, error = resolve_mode("raylı")
+        assert error is None
+        assert set(modes) == {"metro", "tramvay", "funikuler", "teleferik"}
+
+    def test_marmaray_looks_at_metro_rows(self):
+        """Marmaray ayrı bir mod değil: istasyonları `metro` satırı."""
+        from istanbul_agent.store.places import resolve_mode
+
+        for written in ("marmaray", "tren", "banliyö"):
+            assert resolve_mode(written) == (("metro",), None), written
 
 
 class TestSimilarityTies:

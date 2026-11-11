@@ -40,7 +40,7 @@ from istanbul_agent.store.line_queries import get_line_route as _get_line_route
 from istanbul_agent.store.line_queries import get_lines_at_stop as _get_lines_at_stop
 from istanbul_agent.store.places import (
     MODE_LABELS,
-    MODE_SYNONYMS,
+    MODE_VOCABULARY,
     find_nearby_places,
     find_places,
     resolve_mode,
@@ -793,10 +793,13 @@ def geocode_place(
         query: aranan ad. Kullanıcının yazdığı hali yeterli ("kadikoy",
             "ÜSKÜDAR"); bulunamazsa en yakın 3 aday ve sorguyla başlayan
             tam adlar (`related`) döner.
-        mode: aramayı tek bir moda kısıtlar — `metro`, `tramvay`,
-            `funikuler`, `teleferik`, `tren`, `vapur`, `otobus`, `minibus`,
-            `dolmus`. "Üsküdar" hem metro istasyonu hem otobüs durağı hem
-            iskele olduğu için kullanıcı birini kastediyorsa bunu ver.
+        mode: aramayı bir moda kısıtlar — `metro`, `tramvay`, `funikuler`,
+            `teleferik`, `vapur`, `otobus`, `minibus`, `dolmus`. `rayli`
+            dördünü (metro + tramvay + füniküler + teleferik) birlikte arar;
+            `marmaray` ve `tren` metro istasyonlarına bakar, çünkü Marmaray
+            istasyonları ayrı bir mod değil metro kaydı olarak duruyor.
+            "Üsküdar" hem metro istasyonu hem otobüs durağı hem iskele
+            olduğu için kullanıcı birini kastediyorsa bunu ver.
 
     İskele adları işletmeci ekiyle kayıtlıdır ("Kadıköy ŞH.", "Üsküdar
     Turyol"); `vapur` modunda arama ad tam tutmazsa `related` listesine bak.
@@ -814,14 +817,14 @@ def geocode_place(
     guard = _store_guard()
     if guard is not None:
         return guard
-    resolved_mode, mode_error = resolve_mode(mode)
+    resolved_modes, mode_error = resolve_mode(mode)
     if mode_error:
         return InvalidMode(
             asked=mode or "",
-            valid_modes=sorted(set(MODE_SYNONYMS.values())),
+            valid_modes=list(MODE_VOCABULARY),
             message=mode_error,
         )
-    search = find_places(query, modes=(resolved_mode,) if resolved_mode else None, limit=5)
+    search = find_places(query, modes=resolved_modes or None, limit=5)
     if not search.found:
         return PlaceNotFound(
             asked=query,
@@ -866,8 +869,10 @@ def find_nearby_stops(
             kullan.
         lon: boylam, `lat` ile birlikte.
         radius_m: arama yarıçapı, metre. Varsayılan 500, en çok 2000.
-        mode: sonucu tek moda kısıtlar — `metro`, `tramvay`, `funikuler`,
-            `teleferik`, `tren`, `vapur`, `otobus`, `minibus`, `dolmus`.
+        mode: sonucu bir moda kısıtlar — `metro`, `tramvay`, `funikuler`,
+            `teleferik`, `vapur`, `otobus`, `minibus`, `dolmus`. `rayli`
+            dört raylı modu birlikte verir; `marmaray`/`tren` metro
+            istasyonlarına bakar.
         limit: en çok kaç yer dönecek. Varsayılan 10, en çok 50.
 
     Aynı adlı yakın noktalar tek satırda birleşir; `distance_m` sorulan
@@ -886,11 +891,11 @@ def find_nearby_stops(
     guard = _store_guard()
     if guard is not None:
         return guard
-    resolved_mode, mode_error = resolve_mode(mode)
+    resolved_modes, mode_error = resolve_mode(mode)
     if mode_error:
         return InvalidMode(
             asked=mode or "",
-            valid_modes=sorted(set(MODE_SYNONYMS.values())),
+            valid_modes=list(MODE_VOCABULARY),
             message=mode_error,
         )
     radius = max(50.0, min(float(radius_m), 2000.0))
@@ -928,7 +933,7 @@ def find_nearby_stops(
         origin_lat,
         origin_lon,
         radius_m=radius,
-        modes=(resolved_mode,) if resolved_mode else None,
+        modes=resolved_modes or None,
         limit=count,
     )
     if not clusters:
@@ -956,8 +961,10 @@ def get_lines_at_stop(
     Parametreler:
         stop: durak veya istasyon adı. Kullanıcının yazdığı hali yeterli.
             Bulunamazsa en yakın 3 aday döner.
-        mode: durağı tek bir modda ara — `otobus`, `metro`, `tramvay`,
-            `funikuler`, `teleferik`, `tren`, `vapur`, `minibus`, `dolmus`.
+        mode: durağı bir modda ara — `otobus`, `metro`, `tramvay`,
+            `funikuler`, `teleferik`, `vapur`, `minibus`, `dolmus`. `rayli`
+            dört raylı modu birlikte arar; `marmaray`/`tren` metro
+            istasyonlarına bakar.
             "Üsküdar" hem metro istasyonu hem otobüs durağı olduğu için,
             kullanıcı otobüs soruyorsa `otobus` ver.
 
@@ -978,14 +985,14 @@ def get_lines_at_stop(
     guard = _store_guard()
     if guard is not None:
         return guard
-    resolved_mode, mode_error = resolve_mode(mode)
+    resolved_modes, mode_error = resolve_mode(mode)
     if mode_error:
         return InvalidMode(
             asked=mode or "",
-            valid_modes=sorted(set(MODE_SYNONYMS.values())),
+            valid_modes=list(MODE_VOCABULARY),
             message=mode_error,
         )
-    result = _get_lines_at_stop(stop, mode=resolved_mode)
+    result = _get_lines_at_stop(stop, modes=resolved_modes or None)
     if not result.found:
         return PlaceNotFound(
             asked=stop,

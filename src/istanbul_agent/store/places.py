@@ -35,6 +35,9 @@ __all__ = [
     "MODE_LABELS",
     "MODE_PRIORITY",
     "MODE_SYNONYMS",
+    "MODE_VOCABULARY",
+    "RAIL_MODES",
+    "STORED_MODES",
     "Place",
     "PlaceCluster",
     "PlaceSearch",
@@ -58,14 +61,28 @@ PREFIX_FANOUT_LIMIT = 5
 SIMILARITY_THRESHOLD = 0.85
 SIMILARITY_TIE_BAND = 0.01
 
+# `transit_places` tablosunun gerçekten taşıdığı mod değerleri; `ingest`
+# başka değer üretmiyor. Bir eşanlamlı bunların dışına açılırsa arama
+# **sessizce boş** döner, o yüzden eşanlamlı sözlüğü buna karşı test edilir.
+STORED_MODES: frozenset[str] = frozenset(
+    {
+        "metro",
+        "tramvay",
+        "funikuler",
+        "teleferik",
+        "vapur",
+        "otobus",
+        "minibus",
+        "dolmus",
+    }
+)
+
 # Kullanıcının bir ad söylediğinde kastettiği mod sırası.
 MODE_PRIORITY: tuple[str, ...] = (
     "metro",
-    "tren",
     "tramvay",
     "funikuler",
     "teleferik",
-    "rayli",
     "vapur",
     "otobus",
     "minibus",
@@ -74,16 +91,29 @@ MODE_PRIORITY: tuple[str, ...] = (
 
 MODE_LABELS: dict[str, str] = {
     "metro": "metro istasyonu",
-    "tren": "tren istasyonu",
     "tramvay": "tramvay durağı",
     "funikuler": "füniküler istasyonu",
     "teleferik": "teleferik istasyonu",
-    "rayli": "raylı sistem istasyonu",
     "vapur": "iskele",
     "otobus": "otobüs durağı",
     "minibus": "minibüs durağı",
     "dolmus": "dolmuş durağı",
 }
+
+# Modu olmayan bir şey sorulduğunda hata mesajında gösterilecek sözcükler:
+# her saklanan mod için bir yazım, artı şemsiye `rayli` ve `marmaray`.
+MODE_VOCABULARY: tuple[str, ...] = (
+    "dolmus",
+    "funikuler",
+    "marmaray",
+    "metro",
+    "minibus",
+    "otobus",
+    "rayli",
+    "teleferik",
+    "tramvay",
+    "vapur",
+)
 
 
 # Modun kullanıcı (ve modelin) yazabileceği halleri. Buraya gerek var çünkü
@@ -91,50 +121,60 @@ MODE_LABELS: dict[str, str] = {
 # ("metro") boş dize döner (station_names rule 5). Model ilk denemede
 # `mode="iskele"` verdi, mod listesinde o değer yoktu ve arama sessizce boş
 # döndü — araç "geçersiz mod" demek yerine "yer bulunamadı" demiş oldu.
-MODE_SYNONYMS: dict[str, str] = {
-    "metro": "metro",
-    "tren": "tren",
-    "banliyo": "tren",
-    "banliyö": "tren",
-    "marmaray": "tren",
-    "tramvay": "tramvay",
-    "tram": "tramvay",
-    "funikuler": "funikuler",
-    "füniküler": "funikuler",
-    "teleferik": "teleferik",
-    "rayli": "rayli",
-    "raylı": "rayli",
-    "vapur": "vapur",
-    "iskele": "vapur",
-    "feribot": "vapur",
-    "deniz": "vapur",
-    "otobus": "otobus",
-    "otobüs": "otobus",
-    "bus": "otobus",
-    "iett": "otobus",
-    "minibus": "minibus",
-    "minibüs": "minibus",
-    "dolmus": "dolmus",
-    "dolmuş": "dolmus",
+# Her eşanlamlı **saklanan** modlara açılır, kendi adına değil. İki tuzak
+# buradan çıktı (karar 0015): `rayli` kendine eşleniyordu ama tabloda o
+# modda tek satır yok, `tren`/`marmaray` da öyle — ikisi de her sorguda
+# "yer bulunamadı" döndürüyordu. Raylı sistem bir şemsiye: dört moda
+# açılır. Marmaray ayrı bir mod değil, istasyonları `metro` satırı olarak
+# duruyor (hat kodu `code` alanında "Marmaray" yazar).
+RAIL_MODES: tuple[str, ...] = ("metro", "tramvay", "funikuler", "teleferik")
+
+MODE_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "metro": ("metro",),
+    "tren": ("metro",),
+    "banliyo": ("metro",),
+    "banliyö": ("metro",),
+    "marmaray": ("metro",),
+    "tramvay": ("tramvay",),
+    "tram": ("tramvay",),
+    "funikuler": ("funikuler",),
+    "füniküler": ("funikuler",),
+    "teleferik": ("teleferik",),
+    "rayli": RAIL_MODES,
+    "raylı": RAIL_MODES,
+    "vapur": ("vapur",),
+    "iskele": ("vapur",),
+    "feribot": ("vapur",),
+    "deniz": ("vapur",),
+    "otobus": ("otobus",),
+    "otobüs": ("otobus",),
+    "bus": ("otobus",),
+    "iett": ("otobus",),
+    "minibus": ("minibus",),
+    "minibüs": ("minibus",),
+    "dolmus": ("dolmus",),
+    "dolmuş": ("dolmus",),
 }
 
 
-def resolve_mode(value: str | None) -> tuple[str | None, str | None]:
-    """Mod adını tabloda kullanılan değere çevir.
+def resolve_mode(value: str | None) -> tuple[tuple[str, ...], str | None]:
+    """Mod adını tabloda kullanılan değerlere çevir.
 
-    `(mod, hata)` döner. Tanınmayan bir mod **sessizce boş sonuç değil**,
-    geçerli değerleri sayan bir hata üretir: boş sonuç, modelin "böyle bir
-    yer yok" diye cevaplamasına yol açıyor.
+    `(modlar, hata)` döner; mod verilmemişse modlar boştur (kısıt yok).
+    Tanınmayan bir mod **sessizce boş sonuç değil**, geçerli değerleri sayan
+    bir hata üretir: boş sonuç, modelin "böyle bir yer yok" diye
+    cevaplamasına yol açıyor. Bir eşanlamlı birden çok moda açılabilir
+    (`rayli` → metro + tramvay + füniküler + teleferik).
     """
     if value is None:
-        return None, None
+        return (), None
     wanted = value.strip().lower()
     if not wanted:
-        return None, None
+        return (), None
     resolved = MODE_SYNONYMS.get(wanted)
     if resolved is None:
-        valid = ", ".join(sorted(set(MODE_SYNONYMS.values())))
-        return None, f"'{value}' geçerli bir mod değil. Geçerli değerler: {valid}."
+        valid = ", ".join(MODE_VOCABULARY)
+        return (), f"'{value}' geçerli bir mod değil. Geçerli değerler: {valid}."
     return resolved, None
 
 

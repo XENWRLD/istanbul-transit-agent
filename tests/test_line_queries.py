@@ -279,13 +279,13 @@ def places(store):
 
 class TestLinesAtStop:
     def test_lists_the_lines_serving_a_bus_stop(self, store, places):
-        result = get_lines_at_stop("Kadıköy", mode="otobus", path=store, places=places)
+        result = get_lines_at_stop("Kadıköy", modes=("otobus",), path=store, places=places)
         assert result.found
         assert [line.line for line in result.lines] == ["500T"]
         assert result.lines[0].long_name == "KADIKÖY - SONDURAK"
 
     def test_counts_variants_and_trips(self, store, places):
-        result = get_lines_at_stop("Kadıköy", mode="otobus", path=store, places=places)
+        result = get_lines_at_stop("Kadıköy", modes=("otobus",), path=store, places=places)
         line = result.lines[0]
         # İki varyant, dört sefer (r1'de üç, r2'de bir).
         assert line.variant_count == 2
@@ -293,7 +293,7 @@ class TestLinesAtStop:
 
     def test_a_same_named_stop_elsewhere_is_not_mixed_in(self, store, places):
         """Ad eşleşmesi yetmez: 14R yalnızca uzaktaki KADIKÖY'den geçiyor."""
-        result = get_lines_at_stop("Kadıköy", mode="otobus", path=store, places=places)
+        result = get_lines_at_stop("Kadıköy", modes=("otobus",), path=store, places=places)
         assert "14R" not in [line.line for line in result.lines]
         assert any("ayrı otobüs durağı" in note for note in result.notes)
 

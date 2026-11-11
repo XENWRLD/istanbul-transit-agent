@@ -153,14 +153,26 @@ async def transit_agent(
 # Soru uyarının içinde **yeniden yazılıyor**: ilk denemede uyarı tek başına
 # gönderildi ve yerel model soruyu kaybedip "hangi soruyu soruyorsunuz?"
 # diye cevap verdi.
+#
+# Son cümle karar 0015'te değişti ve **tek başına** ölçüldü. Eski hâli
+# *"araçlardan hiçbiri bu soruyu cevaplayamıyorsa 'bu bilgi elimdeki
+# kaynaklarda yok' de"* diyordu; model uyarıyı aldıktan sonra da araç
+# çağırmayıp tam o dalı seçiyordu (`route-04`, `refuse-08`, `rail-06` —
+# üçünde de sıfır araç çağrısı). Yani uyarı kendi kaçış kapısını
+# gösteriyordu. Şimdi sıra şart: yokluk da bir araç çıktısına dayanmak
+# zorunda. Aynı turda prompt'a eklenen iki bölüm geri alındı (ölçüm: net
+# −2 senaryo, bir senaryoda uydurma); bu değişiklik ayrı ölçülüyor.
 NUDGE = (
     "Bu soruyu araç çağırmadan cevapladın: {question!r}\n\n"
     "İstanbul ulaşımı hakkındaki hiçbir olguyu kendi belleğinden "
     "söyleyemezsin: saat, süre, fiyat, kural, durak, hat ve konum bilgisi "
-    "yalnızca araçlardan gelir. Şimdi bu soru için uygun aracı çağır ve "
-    "cevabı aracın döndürdüğü veriye dayandır. Araçlardan hiçbiri bu soruyu "
-    "cevaplayamıyorsa 'bu bilgi elimdeki kaynaklarda yok' de ve kaynak "
-    "cümlesi yazma."
+    "yalnızca araçlardan gelir. Bir bilginin **yokluğu da olgudur**: "
+    "'böyle bir hat yok', 'bu veri elimde yok', 'bu araç bunu vermez' demek "
+    "için de önce aracı çağırıp çıktısına bakmak zorundasın — araç "
+    "açıklamasını okuyup karar vermek yeterli değil.\n\n"
+    "Şimdi bu soru için en yakın aracı çağır. Araç 'bulunamadı', 'veri yok' "
+    "ya da boş sonuç döndürürse **o zaman** 'bu bilgi elimdeki kaynaklarda "
+    "yok' de ve gerekçe olarak o araç çağrısını göster."
 )
 
 

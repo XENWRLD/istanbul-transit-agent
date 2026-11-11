@@ -175,7 +175,73 @@ Düzelen: `route-04`. Yeni düşen: `lines-03`, `know-06`, `refuse-05`.
 **Karar: prompt ve nudge değişiklikleri geri alındı.** Ölçülmüş bir
 gerileme tutulmaz. Mod düzeltmesi ve argüman kaydı kalıyor — ikisi de bu
 ölçümden bağımsız olarak doğru. Nudge değişikliği tek başına, kendi
-ölçümüyle yeniden denenecek.
+ölçümüyle yeniden denendi; aşağıdaki bölüm onun sonucu.
+
+## Nudge tek başına: net +3, sıfır yeni düşme
+
+İkinci turda **yalnızca** `graph.py` içindeki `NUDGE` metni değişti;
+`prompt.py`'ye dokunulmadı (tek dosya, tek değişken).
+
+| Ölçüt | Taban (0014) | Üç değişiklik | **Yalnızca nudge** |
+|---|---|---|---|
+| geçen senaryo | 47/54 (%87.0) | 45/54 (%83.3) | **50/54 (%92.6)** |
+| araç doğruluğu | %88.9 | %87.0 | **%94.4** |
+| ifade doğruluğu | %92.3 | %88.5 | %92.3 |
+| kaynaksız cevap | 3 | 1 | **1** |
+| uyarılan tur | 8 | 10 | 9 |
+| gecikme ortancası | 36.0 s | 33.7 s | 37.2 s |
+
+Tabana göre düzelen: `rail-06`, `refuse-08`, `route-04`. **Yeni düşen: yok.**
+
+Üçü de taban çizgisinde **sıfır araç** çağıran senaryolardı ve üçü de şimdi
+aynı deseni izliyor: uyarıldı → aracı çağırdı → cevabı çıktıya dayandırdı.
+
+- `refuse-08` ("arabayla mı metroyla mı"): *"Şu an İstanbul genelinde trafik
+  akıcı durumda (indeks 2). Ancak bu veri sadece şehir genelidir."*
+- `route-04` ("YOK99 hattının güzergâhı"): aracın geçerli hat kodlarını sayan
+  hatasını gerekçe gösteriyor.
+- `rail-06` ("Paris'ten Taksim'e"): `get_rail_travel_time`'ı çağırıp aracın
+  İstanbul'a kısıtlı olduğunu çıktıyla birlikte söylüyor.
+
+**Ayrıştırmanın kazancı bu tabloda.** Üç değişiklik birlikteyken `refuse-08`
+düzelmemişti ve `know-06` ile `lines-03` düşmüştü; nudge tek başına
+`refuse-08`'i düzeltiyor ve ikisini de bozmuyor. Yani prompt eklemeleri
+nudge'ın kazancını hem maskeliyor hem üstüne iki senaryo kaybettiriyordu.
+İki değişikliği aynı turda ölçmek bu bilgiyi tamamen gizlemişti.
+
+**Prompt eklemeleri geri alınmış durumda kalıyor.** İstenirse aynı yöntemle
+tek tek denenebilir: biri "yokluğu araç çıktısına dayandır" bölümü, diğeri
+"araç çıktısı kullanıcının verdiği veri değildir" kuralı.
+
+## Kalan dört başarısızlık
+
+| Senaryo | Çağrı | Niçin düşüyor |
+|---|---|---|
+| `chain-05` | `get_line_route(500T)` | ikinci aracı (`get_lines_at_stop`) hiç çağırmıyor |
+| `route-05` | `get_line_route(500T)` | ara durak saatinin olmadığını söylemiyor (ifade) |
+| `near-04` | `geocode_place(Bostancı, vapur)` | `find_nearby_stops` bekleniyor |
+| `rail-04` | — | sıfır araç, `unverified` |
+
+`near-04` muhtemelen **senaryo katılığı**: `geocode_place` üç iskeleyi doğru
+ve kaynaklı döndürüyor, soru ("Bostancı çevresindeki iskeleler neler?")
+cevaplanmış oluyor. Senaryo yine de `find_nearby_stops` şart koşuyor.
+
+`rail-04` ise tek başına bir bulgu: aynı girdiyle **dört koşuda üç farklı
+davranış** gösterdi — doğru araç (82.7 s, geçti), iki `geocode_place`
+("Sultanbeyler" yazım hatasıyla, düştü), sıfır araç (`unverified`, düştü).
+Karar 0014'ün *"davranış tekrarlanıyor, oynayan tek şey süre"* iddiası bu
+senaryo için geçerli değil. Sıcaklık 0.0 ama tohum yok ve `llama.cpp`
+kısmi GPU boşaltmayla bit düzeyinde yinelenebilir değil. **Tek senaryoluk
+bir koşudan "düzeldi" sonucu çıkarmamak gerekiyor** — bu turda bir kez o
+hatayı yaptım ve rapor ettim.
+
+## Koşunun duvar saati temiz değil
+
+Arka plandaki koşu tekrar tekrar kesildi, bu yüzden 54 satır beş ayrı
+çağrıdan toplandı (önbellek her tamamlanan senaryoyu sakladığı için
+ilerleme kalıcı oldu). Satırların tamamı **aynı** prompt + uyarı özetiyle
+koşuldu, yani oranlar geçerli; ama "tek koşunun duvar saati" diye bir sayı
+bu ölçümde **yok**. Karar 0014 aynı ayrımı yapmıştı.
 
 ## Önbellek anahtarı nudge metnini de kapsamalı
 

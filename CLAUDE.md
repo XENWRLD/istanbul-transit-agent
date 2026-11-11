@@ -62,7 +62,9 @@ uv run python -m istanbul_agent.cli "soru"                # agent, komut satır�
 uv run python scripts/run_agent_questions.py          # 5 senaryo x 2 sağlayıcı
 uv run python -m istanbul_agent.servers.city_server
 uv run python -m istanbul_agent.servers.knowledge_server
-uv run python -m istanbul_agent.app                   # demo arayüzü
+uv run python -m istanbul_agent.app                   # Gradio demo arayüzü
+uv run uvicorn istanbul_agent.api:app --reload        # FastAPI: /ask, /health
+uv run python eval/compare_providers.py               # iki sağlayıcı, ortak senaryolar
 uv run python eval/run_rag_eval.py
 uv run python eval/run_agent_eval.py                  # 49 senaryo (ollama, önbellekli)
 uv run python eval/run_agent_eval.py --provider gemini --limit 5   # kota: günde 20 istek
@@ -108,4 +110,7 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - `OLLAMA_NUM_CTX` araç yüzeyine bağlıdır: yedi araçta prompt + şemalar ~5900 token, 8192'lik pencere taşıyor ve model hiç araç çağırmıyor. Varsayılan 16384 (kararlar 0006, 0010); araç eklenince yeniden ölç.
 - Mimari bir karar verdiğinde (chunk boyutu, model seçimi, araç tasarımı) `documents/decisions/` altına kısa bir not ekle: bağlam, seçenekler, karar, gerekçe.
 - Yeni bir araç veya RAG değişikliği eklerken ilgili test ve değerlendirme senaryosunu da ekle.
+- Araçlar yalnızca veri hatasını değil **kurulum** hatasını da açıkça döner: depo yoksa ham `IOException` değil, çalıştırılacak komutu içeren `depo_yok` hatası (karar 0011).
+- `unverified` bayrağı her arayüzde görünür olmak zorunda (CLI, FastAPI, Gradio); taşımayan bir arayüz korumayı etkisiz kılar.
+- Sağlayıcı karşılaştırması **ortak senaryolar** üzerinden yapılır; farklı kapsamdaki oranları yan yana koymak kıyas değil yanıltmadır (karar 0011).
 - Küçük, anlamlı commit'ler at; commit mesajları İngilizce.

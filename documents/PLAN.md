@@ -144,12 +144,15 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 Başarısız 8 senaryo üç gruba düşüyor: araca bakmadan "bende yok" demek (3), yanlış araç ya da adım sınırına çarpmak (3), doğru aracı çağırıp yokluğu söylememek (2). Ayrıntılar ve ölçümün kendi kusuru: `documents/decisions/0010-entegrasyon.md`. Sonuçlar `eval/results/agent_eval.json`.
 
-### Faz 5 — Değerlendirme, paketleme, demo
-- Gemini Flash vs yerel `qwen3.5:4b`: araç seçimi doğruluğu, cevap kalitesi, adım sayısı, gecikme. Yerel model 15 araçta zorlanırsa araç sayısını azaltan bir "yönlendirici" deneyi yap ve sonucu raporla.
-- Gradio demo (harita üzerinde durak/otopark gösterimi artı puan), FastAPI uç noktası, Dockerfile.
-- README: mimari diyagram, kurulum, metrik tabloları, veri tazeliği ve bilinen sınırlamalar.
+### Faz 5 — Değerlendirme, paketleme, demo ✅ bitti (11 Kasım 2026)
+- Gemini Flash vs yerel `qwen3.5:4b` (bitti): karşılaştırma **ortak senaryolar** üzerinden yapılıyor (`eval/compare_providers.py`), çünkü Gemini kotası 49 senaryoya yetmiyor. Ortak 6 senaryoda Gemini 6/6, yerel model 3/6; adım 10 vs 17, gecikme 25.9 s vs 53.1 s. **Yönlendirici deneyi yapılmadı** — yerel modelin kaybı araç sayısından değil bağlam penceresi, araç çıktısını yorumlama ve çok adımlı soruda döngüye girmeden geliyor (karar 0011).
+- Gradio demo (bitti): cevap + **çağrılan araçlar tablosu** + araç çıktısındaki koordinatların haritası. FastAPI (bitti): `/ask`, `/health`. Dockerfile yazıldı ama **derlenemedi** (bu makinede Docker daemon kapalı).
+- README (bitti): mimari diyagram, kurulum adımları, ölçüm tabloları, iki önce/sonra tablosu, veri tazeliği tablosu ve bilinen sınırlamalar.
+- Ek: araçlar depo kurulmamışken ham `IOException` yerine ne çalıştırılacağını söylüyor (karar 0011/3).
 
 **Bitti tanımı:** Yeni bir makinede README'yi izleyen biri projeyi çalıştırabiliyor; README'de en az iki "önce/sonra" tablosu var.
+
+**Sonuç:** README'deki her komutun hedefi var (betik/modül/dosya olarak doğrulandı); kurulum adımı atlanırsa araçlar ne çalıştırılacağını söylüyor; `/health` eksik veriyi raporluyor. İki önce/sonra tablosu: kaynaksız cevap koruması ve bağlam penceresi. **Docker yolu doğrulanmadı.**
 
 ### Faz 6 (opsiyonel) — Rota motoru
 - GTFS üzerinden gerçek A→B toplu taşıma rotası: `r5py` veya OpenTripPlanner, `plan_trip` aracı olarak.

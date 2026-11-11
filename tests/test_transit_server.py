@@ -314,3 +314,40 @@ class TestModeParameter:
     def test_lines_at_stop_refuses_an_unknown_mode_too(self):
         result = transit_server.get_lines_at_stop("Kadıköy", mode="uçak")
         assert result.error == "gecersiz_mod"
+
+
+class TestStoreGuard:
+    """Depo kurulmamışken araçlar ham istisna değil, yapılacak işi döner.
+
+    Kurulum adımını atlayan biri (README adım 4) ham bir DuckDB
+    `IOException` görüyordu; bu, MCP üzerinden yığın izi olarak dönüyor ve
+    kullanıcıya ne yapacağını söylemiyordu (karar 0011).
+    """
+
+    @pytest.fixture
+    def no_store(self, monkeypatch, tmp_path):
+        from istanbul_agent.store import db
+
+        monkeypatch.setattr(db, "database_path", lambda: tmp_path / "yok.duckdb")
+        return tmp_path
+
+    @pytest.mark.parametrize(
+        ("name", "args"),
+        [
+            ("geocode_place", ("Kadıköy",)),
+            ("find_nearby_stops", ("Kadıköy",)),
+            ("get_lines_at_stop", ("Kadıköy",)),
+            ("get_line_route", ("500T",)),
+            ("get_rail_travel_time", ("Kadıköy", "Taksim")),
+            ("get_next_departures", ("M4",)),
+        ],
+    )
+    def test_every_tool_reports_the_missing_store(self, no_store, name, args):
+        result = getattr(transit_server, name)(*args)
+        assert result.ok is False
+        assert result.error == "depo_yok"
+        assert "ingest" in result.message
+
+    def test_the_message_names_the_database(self, no_store):
+        result = transit_server.geocode_place("Kadıköy")
+        assert "yok.duckdb" in result.message

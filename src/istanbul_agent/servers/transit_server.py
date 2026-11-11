@@ -363,11 +363,36 @@ class LineRoutesOut(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class StoreNotReady(BaseModel):
+    """Yerel veri deposu kurulmamış.
+
+    Araçların hepsi `data/transit.duckdb` üzerinden çalışıyor. Depo yokken
+    DuckDB ham bir `IOException` atıyordu ve bu, kurulum adımını atlayan
+    kullanıcıya yığın izi olarak dönüyordu. Artık ne çalıştıracağını
+    söyleyen tipli bir hata dönüyor (karar 0011).
+    """
+
+    ok: Literal[False] = False
+    error: Literal["depo_yok"] = "depo_yok"
+    message: str
+
+
+def _store_guard() -> StoreNotReady | None:
+    """Depo kurulu değilse araçların döndüreceği hata."""
+    from istanbul_agent.store.db import missing_store_message, store_ready
+
+    if store_ready():
+        return None
+    return StoreNotReady(message=missing_store_message())
+
+
 # ----------------------------------------------------------------- araçlar
 
 
 @mcp.tool()
-def get_rail_travel_time(from_station: str, to_station: str) -> TravelTimeOut | StationNotFound:
+def get_rail_travel_time(
+    from_station: str, to_station: str
+) -> TravelTimeOut | StationNotFound | StoreNotReady:
     """İki raylı sistem istasyonu arasındaki yolculuk süresini ve güzergâhı verir.
 
     Metro, tramvay, füniküler, teleferik ve Marmaray'ı kapsar. Gerekirse
@@ -397,6 +422,9 @@ def get_rail_travel_time(from_station: str, to_station: str) -> TravelTimeOut | 
     - Anlık gecikme veya arıza durumu için kullanma; süreler tarife
       verisinden gelir, canlı değildir.
     """
+    guard = _store_guard()
+    if guard is not None:
+        return guard
     network = load_network()
     for raw in (from_station, to_station):
         match = find_station(network, raw)
@@ -480,7 +508,7 @@ def _direction_out(info: DepartureInfo, station: str | None) -> DirectionOut:
 @mcp.tool()
 def get_next_departures(
     line: str, station: str | None = None, at: str | None = None
-) -> DeparturesOut | LineNotFound | StationNotFound:
+) -> DeparturesOut | LineNotFound | StationNotFound | StoreNotReady:
     """Bir raylı sistem hattının ilk/son seferini ve şu anki sefer aralığını verir.
 
     Yön bazında cevap verir: her yön için ilk sefer, son sefer, o saatteki
@@ -514,6 +542,9 @@ def get_next_departures(
     - İki istasyon arası gidiş için kullanma; tek hat hakkında bilgi verir,
       güzergâh kurmaz.
     """
+    guard = _store_guard()
+    if guard is not None:
+        return guard
     moment: datetime | None = None
     if at:
         for shape in ("%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
@@ -612,7 +643,9 @@ def _place_out(cluster: object) -> PlaceOut:
 
 
 @mcp.tool()
-def geocode_place(query: str, mode: str | None = None) -> GeocodeOut | PlaceNotFound | InvalidMode:
+def geocode_place(
+    query: str, mode: str | None = None
+) -> GeocodeOut | PlaceNotFound | InvalidMode | StoreNotReady:
     """Bir durak, istasyon veya iskele adını konuma (enlem/boylam) çevirir.
 
     Otobüs durakları, metro/tramvay/füniküler/teleferik istasyonları,
@@ -643,6 +676,9 @@ def geocode_place(query: str, mode: str | None = None) -> GeocodeOut | PlaceNotF
     - Yolculuk süresi veya sefer saati için kullanma; bu araç saat ve süre
       vermez.
     """
+    guard = _store_guard()
+    if guard is not None:
+        return guard
     resolved_mode, mode_error = resolve_mode(mode)
     if mode_error:
         return InvalidMode(
@@ -685,7 +721,7 @@ def find_nearby_stops(
     radius_m: float = 500.0,
     mode: str | None = None,
     limit: int = 10,
-) -> NearbyOut | PlaceNotFound | InvalidMode:
+) -> NearbyOut | PlaceNotFound | InvalidMode | StoreNotReady:
     """Bir yerin çevresindeki durak, istasyon ve iskeleleri yakından uzağa listeler.
 
     Parametreler:
@@ -712,6 +748,9 @@ def find_nearby_stops(
     - Otopark, şarj istasyonu veya bisiklet noktası için kullanma; bu araç
       yalnızca toplu taşıma noktalarını bilir.
     """
+    guard = _store_guard()
+    if guard is not None:
+        return guard
     resolved_mode, mode_error = resolve_mode(mode)
     if mode_error:
         return InvalidMode(
@@ -772,7 +811,7 @@ def find_nearby_stops(
 @mcp.tool()
 def get_lines_at_stop(
     stop: str, mode: str | None = None
-) -> StopLinesOut | PlaceNotFound | InvalidMode:
+) -> StopLinesOut | PlaceNotFound | InvalidMode | StoreNotReady:
     """Bir duraktan veya istasyondan geçen hatları listeler.
 
     Otobüste hat kodu, güzergâh adı, yön levhaları ve haftalık tarifedeki
@@ -801,6 +840,9 @@ def get_lines_at_stop(
     - Otobüsün şu an nerede olduğunu sormak için kullanma; bu araç tarife
       verisini okur, canlı konum vermez.
     """
+    guard = _store_guard()
+    if guard is not None:
+        return guard
     resolved_mode, mode_error = resolve_mode(mode)
     if mode_error:
         return InvalidMode(
@@ -841,7 +883,9 @@ def get_lines_at_stop(
 
 
 @mcp.tool()
-def get_line_route(line: str, direction: str | None = None) -> LineRoutesOut | LineNotFound:
+def get_line_route(
+    line: str, direction: str | None = None
+) -> LineRoutesOut | LineNotFound | StoreNotReady:
     """Bir hattın sıralı duraklarını, yönlerini ve servis penceresini verir.
 
     Otobüs hatlarında her yön ayrı döner: sıralı durak listesi, yön levhası,
@@ -873,6 +917,9 @@ def get_line_route(line: str, direction: str | None = None) -> LineRoutesOut | L
       `get_rail_travel_time` kullan; buradaki süre hattın tamamını gezmenin
       süresidir.
     """
+    guard = _store_guard()
+    if guard is not None:
+        return guard
     routes = _get_line_route(line, direction=direction)
     if not routes:
         return LineNotFound(

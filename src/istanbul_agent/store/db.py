@@ -15,7 +15,13 @@ import duckdb
 
 from istanbul_agent.config import get_settings
 
-__all__ = ["connect", "database_path", "read_only_connection"]
+__all__ = [
+    "connect",
+    "database_path",
+    "missing_store_message",
+    "read_only_connection",
+    "store_ready",
+]
 
 
 def database_path() -> Path:
@@ -42,3 +48,23 @@ def read_only_connection(path: Path | None = None) -> Iterator[duckdb.DuckDBPyCo
         yield connection
     finally:
         connection.close()
+
+
+def store_ready(path: Path | None = None) -> bool:
+    """Yerel depo kurulu mu?"""
+    return (path or database_path()).exists()
+
+
+def missing_store_message(path: Path | None = None) -> str:
+    """Depo yoksa kullanıcıya ne yapacağını söyleyen metin.
+
+    Ham `IOException` yerine bu metin dönüyor: depoyu kurmayı atlayan biri
+    yığın izi değil çalıştıracağı komutu görmeli (README kurulum adımı 4).
+    """
+    target = path or database_path()
+    return (
+        f"Yerel veri deposu kurulmamış ({target.name} yok). Kurulum: "
+        "uv run python -m istanbul_agent.store.ingest_rail && "
+        "uv run python -m istanbul_agent.store.ingest_timetable && "
+        "uv run python -m istanbul_agent.store.ingest"
+    )

@@ -147,6 +147,7 @@ def check(scenario: Scenario, run: Any) -> dict[str, Any]:
     return {
         "id": scenario.id,
         "question": scenario.question,
+        "expects_no_tool": scenario.expects_no_tool,
         "tools_called": names,
         "tools_ok": tools_ok,
         "order_ok": order_ok,
@@ -166,6 +167,45 @@ def check(scenario: Scenario, run: Any) -> dict[str, Any]:
             # Kaynaksız cevap, araç beklenmeyen senaryolar dışında hatadır.
             and (scenario.expects_no_tool or not run.unverified)
         ),
+    }
+
+
+def summarise(rows: list[dict[str, Any]], *, provider: str) -> dict[str, Any]:
+    """Satır listesinden oranları hesapla.
+
+    Hem canlı koşu için hem de birleştirilmiş kayıt için aynı fonksiyon:
+    kısmi bir koşudan sonra özetin yalnızca o koşuyu anlatması, dosyada
+    duran satırlarla çelişiyordu.
+    """
+    if not rows:
+        return {"provider": provider, "scenarios": 0}
+    ordered = [row for row in rows if row.get("order_ok") is not None]
+    mentions = [row for row in rows if row.get("mention_ok") is not None]
+    unverified = [row for row in rows if row.get("unverified") and not row.get("expects_no_tool")]
+    times = [row["seconds"] for row in rows]
+    steps = [len(row.get("tools_called") or []) for row in rows]
+    return {
+        "provider": provider,
+        "scenarios": len(rows),
+        "passed": sum(1 for row in rows if row["passed"]),
+        "pass_rate": round(sum(1 for row in rows if row["passed"]) / len(rows), 3),
+        "tool_accuracy": round(sum(1 for row in rows if row["tools_ok"]) / len(rows), 3),
+        "order_accuracy": (
+            round(sum(1 for row in ordered if row["order_ok"]) / len(ordered), 3)
+            if ordered
+            else None
+        ),
+        "mention_accuracy": (
+            round(sum(1 for row in mentions if row["mention_ok"]) / len(mentions), 3)
+            if mentions
+            else None
+        ),
+        "unverified_answers": len(unverified),
+        "nudged": sum(1 for row in rows if row.get("nudged")),
+        "errors": sum(1 for row in rows if row.get("error")),
+        "latency_median_s": round(statistics.median(times), 1),
+        "steps_median": round(statistics.median(steps), 1),
+        "steps_max": max(steps),
     }
 
 
@@ -243,11 +283,14 @@ async def main_async(args: argparse.Namespace) -> int:
     rows: list[dict[str, Any]] = []
     from_cache = 0
 
-    for scenario in scenarios:
+    for index, scenario in enumerate(scenarios):
         run, cached = await run_scenario(
             scenario, args.provider, refresh=args.refresh, max_steps=args.max_steps
         )
         from_cache += 1 if cached else 0
+        # Bekleme yalnızca gerçekten LLM'e gidildiyse ve son senaryo değilse.
+        if args.delay and not cached and index < len(scenarios) - 1:
+            await asyncio.sleep(args.delay)
         row = check(scenario, run)
         row["cached"] = cached
         rows.append(row)
@@ -270,73 +313,63 @@ async def main_async(args: argparse.Namespace) -> int:
             flush=True,
         )
 
-    passed = [row for row in rows if row["passed"]]
-    tool_ok = [row for row in rows if row["tools_ok"]]
-    ordered = [row for row in rows if row["order_ok"] is not None]
-    mentions = [row for row in rows if row["mention_ok"] is not None]
-    unverified = [
-        row
-        for row, scenario in zip(rows, scenarios, strict=True)
-        if row["unverified"] and not scenario.expects_no_tool
-    ]
-    # Gecikme **bütün** satırlardan hesaplanıyor: önbellekten gelen satır da
-    # ölçüldüğü andaki süreyi taşıyor. İlk sürüm yalnızca yeni çalışan
-    # satırları sayıyordu ve her şey önbellekten gelince "0.0 s" yazıyordu.
-    times = [row["seconds"] for row in rows] or [0.0]
+    summary = summarise(rows, provider=args.provider)
 
-    summary = {
-        "provider": args.provider,
-        "scenarios": len(rows),
-        "passed": len(passed),
-        "pass_rate": round(len(passed) / len(rows), 3),
-        "tool_accuracy": round(len(tool_ok) / len(rows), 3),
-        "order_accuracy": (
-            round(sum(1 for row in ordered if row["order_ok"]) / len(ordered), 3)
-            if ordered
-            else None
-        ),
-        "mention_accuracy": (
-            round(sum(1 for row in mentions if row["mention_ok"]) / len(mentions), 3)
-            if mentions
-            else None
-        ),
-        "unverified_answers": len(unverified),
-        "nudged": sum(1 for row in rows if row["nudged"]),
-        "errors": sum(1 for row in rows if row["error"]),
-        "latency_median_s": round(statistics.median(times), 1),
-        "from_cache": from_cache,
-        "total_seconds": round(time.perf_counter() - started, 1),
-    }
+    def report(title: str, data: dict[str, Any], scope: str) -> None:
+        print(f"\n=== {title} ===")
+        print(
+            f"  geçen senaryo      {data['passed']}/{data['scenarios']} ({data['pass_rate']:.1%})"
+        )
+        print(f"  araç doğruluğu     {data['tool_accuracy']:.1%}")
+        if data["order_accuracy"] is not None:
+            print(f"  sıra doğruluğu     {data['order_accuracy']:.1%}")
+        if data["mention_accuracy"] is not None:
+            print(f"  ifade doğruluğu    {data['mention_accuracy']:.1%}")
+        print(f"  kaynaksız cevap    {data['unverified_answers']}")
+        print(f"  uyarılan tur       {data['nudged']}")
+        print(f"  hata               {data['errors']}")
+        print(f"  adım ortanca       {data['steps_median']} (en çok {data['steps_max']})")
+        print(f"  gecikme ortanca    {data['latency_median_s']} s")
+        print(f"  kapsam             {scope}")
 
-    print("\n=== özet ===")
-    print(
-        f"  geçen senaryo      {summary['passed']}/{summary['scenarios']} ({summary['pass_rate']:.1%})"
+    report(
+        "bu koşu",
+        summary,
+        f"{len(rows)} senaryo, {from_cache} önbellekten, {time.perf_counter() - started:.0f} s",
     )
-    print(f"  araç doğruluğu     {summary['tool_accuracy']:.1%}")
-    if summary["order_accuracy"] is not None:
-        print(f"  sıra doğruluğu     {summary['order_accuracy']:.1%} ({len(ordered)} senaryoda)")
-    if summary["mention_accuracy"] is not None:
-        print(f"  ifade doğruluğu    {summary['mention_accuracy']:.1%} ({len(mentions)} senaryoda)")
-    print(f"  kaynaksız cevap    {summary['unverified_answers']}")
-    print(f"  uyarılan tur       {summary['nudged']}")
-    print(f"  hata               {summary['errors']}")
-    print(f"  gecikme ortanca    {summary['latency_median_s']} s")
 
+    # Satırlar **senaryo bazında** birleştirilir: kısmi bir koşu (ör. kota
+    # yüzünden 3 senaryoluk gemini turu) daha önce ölçülen satırları
+    # silmemeli. Özet birleştirilmiş satırlardan yeniden hesaplanır.
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    merged: dict[str, dict[str, Any]] = {}
+    stored: dict[str, dict[str, dict[str, Any]]] = {}
     if RESULTS_PATH.exists():
         previous = json.loads(RESULTS_PATH.read_text(encoding="utf-8"))
         for run_summary in previous.get("runs", []):
-            merged[str(run_summary.get("provider"))] = run_summary
-    merged[args.provider] = {
-        **summary,
-        "ran_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "rows": rows,
-    }
+            provider = str(run_summary.get("provider"))
+            stored[provider] = {row["id"]: row for row in run_summary.get("rows", [])}
+    merged_rows = stored.setdefault(args.provider, {})
+    for row in rows:
+        merged_rows[row["id"]] = row
+
+    runs = []
+    for provider in sorted(stored):
+        provider_rows = [stored[provider][key] for key in sorted(stored[provider])]
+        runs.append(
+            {
+                **summarise(provider_rows, provider=provider),
+                "ran_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "rows": provider_rows,
+            }
+        )
     RESULTS_PATH.write_text(
-        json.dumps({"runs": [merged[key] for key in sorted(merged)]}, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+        json.dumps({"runs": runs}, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+
+    total = next(run for run in runs if run["provider"] == args.provider)
+    if total["scenarios"] != summary["scenarios"]:
+        report("kayıttaki tüm senaryolar", total, f"{total['scenarios']} senaryo")
+
     print(f"  sonuç: {RESULTS_PATH}")
     return 0 if not summary["errors"] else 1
 
@@ -347,6 +380,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--id", action="append", default=None)
     parser.add_argument("--refresh", action="store_true", help="önbelleği yok say")
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=0.0,
+        help=(
+            "senaryolar arası bekleme (saniye). Gemini ücretsiz katmanı dakikada 5 istek "
+            "kabul ediyor ve her senaryo 2-4 istek harcıyor; kota hatasına düşmemek için "
+            "gemini ile 15-20 saniye ver (karar 0006)"
+        ),
+    )
     parser.add_argument("--max-steps", type=int, default=8)
     args = parser.parse_args(argv)
     return asyncio.run(main_async(args))

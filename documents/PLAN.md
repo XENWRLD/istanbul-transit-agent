@@ -176,6 +176,32 @@ Başarısız 8 senaryo üç gruba düşüyor: araca bakmadan "bende yok" demek (
 
 **Sonuç:** README'deki her komutun hedefi var (betik/modül/dosya olarak doğrulandı); kurulum adımı atlanırsa araçlar ne çalıştırılacağını söylüyor; `/health` eksik veriyi raporluyor. İki önce/sonra tablosu: kaynaksız cevap koruması ve bağlam penceresi. **Docker yolu doğrulanmadı.**
 
+### Ölçümün güncel hali (12 Kasım 2026)
+
+Yukarıdaki Faz 4 ve Faz 5 sonuçları o tarihlerin tutanağıdır; senaryo
+sayısı ve oranlar o günden beri değişti. **Güncel ölçüm:**
+
+| Ölçüt | Faz 4 (10 Kas) | Karar 0014 (11 Kas) | Karar 0015 (12 Kas) |
+|---|---|---|---|
+| kapsam | 49 senaryo | 54 senaryo | 54 senaryo |
+| geçen senaryo | 41/49 (%83.7) | 47/54 (%87.0) | **50/54 (%92.6)** |
+| araç doğruluğu | %87.8 | %88.9 | **%94.4** |
+| kaynaksız cevap | 3 | 3 | **1** |
+| gecikme ortancası | 44 s | 36.0 s | 37.2 s |
+
+Sağlayıcı karşılaştırması da değişti: Faz 5'te "ortak 6 senaryoda Gemini
+6/6, yerel model 3/6" yazıyor, ama o iki sayı **farklı prompt'larla**
+ölçülmüştü (Gemini satırları önbellekten ve bir önceki prompt özetiyle).
+Aynı prompt üzerinde ölçülen ortak senaryolarda ikisi de 3/3; ayrışan tek
+şey hız (44.5 s vs 6.1 s). Altı ortak senaryonun üçü Gemini kotası
+(`GoogleRateLimitError`) nedeniyle ölçülemedi ve karşılaştırmadan çıkarıldı.
+
+Açık kalan işler: `chain-05`/`route-05` (model araç çıktısını veri seti
+gibi tanıtıyor — prompt kuralı yazıldı, paket halinde ölçülünce geri
+alındı, tek başına ölçülmeyi bekliyor), `near-04` (senaryo katılığı
+olabilir), `rail-04` (yinelenmiyor), RAGAS, `find_mobility_options`,
+Docker doğrulaması.
+
 ### Faz 6 (opsiyonel) — Rota motoru
 - GTFS üzerinden gerçek A→B toplu taşıma rotası: `r5py` veya OpenTripPlanner, `plan_trip` aracı olarak.
 - Not: Dolmuş/vapur GTFS'i eski olduğu için rota sonuçlarında bu modlar uyarıyla gösterilir.

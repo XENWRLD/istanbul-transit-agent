@@ -148,31 +148,44 @@ Reranker bu korpusta **kazanç sağlamıyor**: recall@1'i düzeltiyor ama
 recall@5'i düşürüyor ve gecikmeyi 26 katına çıkarıyor. CPU'da varsayılan
 kapalı, CUDA varsa açık (karar 0009).
 
-### Agent senaryoları (49 senaryo)
+### Agent senaryoları (54 senaryo)
 
-| Ölçüt | yerel `qwen3.5:4b` | `gemini-3.5-flash` |
-|---|---|---|
-| kapsam | 49 senaryo | 6 senaryo (kota: günde 20 istek) |
-| geçen senaryo | 41/49 (%83.7) | 6/6 |
-| araç doğruluğu | %87.8 | %100 |
-| kaynaksız cevap | 3 | 0 |
-| gecikme (ortanca) | 44 s | 25.9 s |
+| Ölçüt | yerel `qwen3.5:4b` |
+|---|---|
+| kapsam | 54 senaryo, hepsi taze |
+| geçen senaryo | **50/54 (%92.6)** |
+| araç doğruluğu | %94.4 |
+| sıra doğruluğu | %50.0 (2 senaryoda) |
+| ifade doğruluğu | %92.3 |
+| kaynaksız cevap | 1 |
+| uyarılan tur | 9 |
+| hata | 0 |
+| gecikme (ortanca) | 37.2 s |
 
-Aynı 6 senaryoda yan yana (`eval/compare_providers.py`):
+Kalan dört başarısızlık: `chain-05` ve `route-05` (doğru aracı çağırıp
+çıktıyı cevap yerine **veri seti gibi tanıtıyor**), `near-04` (doğru ve
+kaynaklı cevap, ama senaryonun şart koştuğu araçtan değil), `rail-04`
+(sıfır araç, `unverified`). Ayrıntılar: `documents/decisions/0015-olu-mod-degerleri.md`.
+
+Sağlayıcı karşılaştırması **ortak ve ölçülebilen** senaryolar üzerinden
+yapılır (`eval/compare_providers.py`). Gemini ücretsiz katmanı günde 20
+istek kabul ettiği için altı ortak senaryonun üçü `GoogleRateLimitError`
+ile düştü; betik hata taşıyan satırı karşılaştırmadan **çıkarır** — kota
+sınırını model başarısızlığı gibi göstermek yanıltma olurdu.
 
 | Ölçüt | ollama | gemini |
 |---|---|---|
-| geçen senaryo | 3/6 | **6/6** |
-| adım (toplam araç çağrısı) | 17 | **10** |
-| gecikme (ortanca) | 53.1 s | **25.9 s** |
+| kapsam | 3 ortak senaryo | 3 ortak senaryo (3'ü kota hatasıyla dışarıda) |
+| geçen senaryo | 3/3 | 3/3 |
+| adım (toplam araç çağrısı) | 3 | 3 |
+| gecikme (ortanca) | 44.5 s | **6.1 s** |
 
-Yerel modelin kaçırdığı üç senaryo: iki araç gerektiren soru (8 çağrı yapıp
-adım sınırına çarptı), iskele hat sorusunda yanlış araç, vapur tarifesi
-sorusunda yokluğu söylememe.
+Bu kapsamda iki model aynı araçları seçiyor; ayrışan tek şey hız. Daha
+geniş bir kıyas için Gemini kotasının yenilenmesi gerekiyor.
 
 ## Önce / sonra
 
-Bu projedeki iki düzeltme, ölçümle önce-sonra olarak kayıtlı.
+Bu projedeki üç düzeltme, ölçümle önce-sonra olarak kayıtlı.
 
 ### 1. Kaynaksız cevap koruması
 
@@ -197,6 +210,30 @@ araç çağırmayı bıraktı. Ölçüm: sistem prompt'u 6 515 + yedi aracın ş
 |---|---|---|
 | **8192 (önce)** | ~2 300 token — 66 duraklı bir güzergâh tek başına aşıyor | **0/2** |
 | **16384 (sonra)** | ~10 500 token | **2/2** |
+
+### 3. Yokluk da bir araç çıktısına dayanmak zorunda
+
+Üç senaryo **hiç araç çağırmadan** "bende yok" diyordu. Sebep uyarı
+metninin son cümlesiydi: *"araçlardan hiçbiri bu soruyu cevaplayamıyorsa
+'bu bilgi elimdeki kaynaklarda yok' de."* Model, aracı çağırmak yerine
+**araç açıklamasını okuyup** o dalı seçiyordu.
+
+| | `refuse-08` — "Şu an Taksim'e arabayla mı metroyla mı?" |
+|---|---|
+| **önce** | 0 araç çağrısı, `unverified`. *"Elindeki araçlardan sadece İstanbul genelini kapsayan bir trafik indeksi var, belirli bir güzergâhın…"* — doğru bir muhakeme, ama kaynaksız. |
+| **sonra** | `get_traffic_status` çağrılıyor: *"Şu an İstanbul genelinde trafik akıcı durumda (indeks 2). Ancak bu veri sadece şehir genelidir."* |
+
+| Ölçüt | önce | sonra |
+|---|---|---|
+| geçen senaryo | 47/54 (%87.0) | **50/54 (%92.6)** |
+| araç doğruluğu | %88.9 | **%94.4** |
+| kaynaksız cevap | 3 | **1** |
+
+Düzelen üç senaryo (`route-04`, `refuse-08`, `rail-06`) tabanda sıfır araç
+çağırıyordu; yeni düşen yok. **Ölçümün kendi dersi:** bu değişiklik ilk
+turda iki prompt eklemesiyle **birlikte** yapıldı ve paket 45/54 verdi —
+`refuse-08` hiç düzelmedi, iki senaryo düştü, biri uydurmaya başladı.
+Değişikliği yalnız ölçmek kazancı ortaya çıkardı (karar 0015).
 
 ## Veri tazeliği
 
@@ -283,10 +320,31 @@ Düşen yedi senaryonun hepsi **araç seçimi**: model özel araç yerine `geoco
   uç noktaları **sunucu taraflı bozuk** (43/43 deneme istisna); bu veriler
   GTFS'ten geliyor.
 - **Dockerfile derlenip denenmedi** (bu makinede Docker daemon kapalı).
-- Yerel model bazı cevaplarda araç çıktısını kullanıcıdan gelmiş gibi
-  anlatıyor (*"verdiğiniz JSON verisi…"*). Cevap yanlış değil ama kullanıcıya
-  dönük değil; prompt düzeltmesi 49 senaryonun yeniden ölçülmesini
-  gerektirdiği için Faz 2 turuna bırakıldı (karar 0011).
+- **Yerel model araç çıktısını kullanıcıdan gelmiş gibi anlatıyor**
+  (*"Verdiğiniz JSON verisi, İstanbul İETT'nin… GTFS formatında hazırlanmış
+  olup"*) ve soruyu cevaplamayı bırakıp veri setini tanıtıyor. Kalan dört
+  başarısızlığın **ikisi** bu (`chain-05`, `route-05`); ikisinde de kaynak
+  aynı, `get_line_route(500T)` çıktısı. Bunu hedefleyen prompt kuralı
+  yazıldı ama iki başka değişiklikle **paket halinde** ölçülünce net −2
+  verdi ve geri alındı; tek başına ölçülmesi sırada bekliyor (karar 0015).
+- **Gemini ile tam karşılaştırma yapılamadı:** ücretsiz katman günde 20
+  istek kabul ediyor ve altı ortak senaryonun üçü `GoogleRateLimitError`
+  ile düştü. Karşılaştırma betiği hata taşıyan satırı dışarıda bırakıyor,
+  yani kıyas üç senaryo üzerinden.
+- **`rail-04` senaryosu yinelenmiyor:** aynı girdiyle dört koşuda üç farklı
+  davranış (doğru araç → geçti; iki `geocode_place`, istasyon adı
+  "Sultanbeyler" yazıldı → düştü; sıfır araç → düştü). Sıcaklık 0.0 ama
+  tohum yok; `llama.cpp` kısmi GPU boşaltmayla bit düzeyinde yinelenebilir
+  değil. Tek senaryoluk bir koşudan "düzeldi" sonucu çıkarılamaz.
+- **Değerlendirme önbelleği araç şemalarını kapsamıyor.** Anahtar
+  `sağlayıcı-model-(prompt+uyarı)özeti-senaryo`; araç açıklaması ya da
+  çıktısı değişince önbellek kendini geçersiz kılmaz, ölçümü `--refresh`
+  ile koşmak gerekir (kararlar 0014, 0015).
+- **`--concurrency` 1'de duruyor.** Ölçüldü: eval'in yanında başka iş
+  çalıştırmak tek bir LLM isteğini 120 saniyelik zaman aşımının üstüne
+  çıkarıp bir senaryoyu **sahte** biçimde başarısız gösteriyor
+  (`rail-02`: çekişmeyle 144.9 s hata, sessiz makinede 14.4 s geçti).
+  Değerlendirme koşarken aynı makinede başka iş çalıştırılmaz (karar 0014).
 
 ## Komutlar
 
@@ -296,7 +354,7 @@ uv run ruff check . && uv run ruff format .
 
 uv run python -m istanbul_agent.cli "soru" [--provider ollama] [--quiet]
 uv run python eval/run_rag_eval.py             # getirme metrikleri (LLM'siz)
-uv run python eval/run_agent_eval.py           # 49 senaryo (önbellekli)
+uv run python eval/run_agent_eval.py           # 54 senaryo (önbellekli)
 uv run python eval/run_agent_eval.py --provider gemini --delay 18 --id rail-01
 uv run python eval/compare_providers.py        # iki sağlayıcı, ortak senaryolar
 

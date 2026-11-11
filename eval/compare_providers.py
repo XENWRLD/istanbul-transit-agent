@@ -74,6 +74,31 @@ def main(argv: list[str] | None = None) -> int:
         print("iki sağlayıcının ortak senaryosu yok")
         return 1
 
+    # Hata taşıyan satır davranış sonucu değildir. Gemini'nin ücretsiz
+    # katmanı günde 20 istek kabul ediyor ve kota dolduğunda senaryo
+    # `GoogleRateLimitError` ile düşüyor; bunu "geçemedi" diye saymak, kota
+    # sınırını model başarısızlığı gibi göstermek olurdu. Karar 0011 ayrı
+    # kapsamları yan yana koymayı yasaklıyordu, bu onun alt basamağı:
+    # **ölçülemeyen senaryo karşılaştırmanın dışında kalır.**
+    broken = sorted(
+        key
+        for key in shared
+        if stored[args.base][key].get("error") or stored[args.other][key].get("error")
+    )
+    if broken:
+        print(f"  ! hata taşıyan senaryolar karşılaştırmadan çıkarıldı: {broken}")
+        for key in broken:
+            for name in (args.base, args.other):
+                problem = stored[name][key].get("error")
+                if problem:
+                    print(f"      {key} / {name}: {str(problem)[:70]}")
+        shared = [key for key in shared if key not in set(broken)]
+        if not shared:
+            print()
+            print("  ölçülebilir ortak senaryo kalmadı; kota yenilendiğinde yeniden koş")
+            return 1
+        print()
+
     base_rows = [stored[args.base][key] for key in shared]
     other_rows = [stored[args.other][key] for key in shared]
     base = metrics(base_rows)
@@ -131,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(
             {
                 "shared_scenarios": shared,
+                "excluded_for_errors": broken,
                 args.base: base,
                 args.other: other,
                 f"only_{args.other}_passed": only_other,

@@ -18,20 +18,6 @@ Faz 4'te eklenen bölümler ölçümle geldi, tahminle değil:
   2 ile kısaldı (karar 0012): otopark, trafik, duyuru ve erişilebilirlik
   araçları eklendi. Hava kalitesi listede kaldı — kaynak cevap veriyor ama
   ölçüm değerlerinin tamamı boş.
-
-Karar 0015'te iki bölüm daha ölçümle geldi:
-
-- **"Yokluğu da araç çıktısına dayandır."** Yukarıdaki "araç yok" listesi
-  modele kaçış kapısı oluyordu: `route-04` ("YOK99 hattının güzergâhı"),
-  `refuse-08` ve `rail-06` senaryolarında model hiç araç çağırmadan
-  yokluğu ilan etti. Oysa bir adın var olup olmadığı da bir olgudur ve
-  araçlar bilinmeyen bir hat için adayları sayan bir hata döndürüyor.
-- **"Araç çıktısı kullanıcının verdiği veri değildir."** Yerel model
-  `get_line_route` çıktısını alıp *"Verdiğiniz JSON verisi… GTFS
-  formatında hazırlanmış olup 2 farklı varyant içerir"* diye veri setini
-  tanıtmaya başlıyordu ve soruyu hiç cevaplamıyordu (`chain-05`,
-  `route-05`). Kusur README'de biliniyordu, ölçüm maliyeti yüzünden
-  bekliyordu.
 """
 
 from __future__ import annotations
@@ -64,13 +50,6 @@ geçen hatlar" = `find_nearby_stops` sonra bulduğun durak için
 ## Nasıl cevap verirsin
 
 - **Her zaman Türkçe**, kısa ve doğrudan. Gereksiz giriş cümlesi kurma.
-- **Araç çıktısı senin çağırdığın veridir, kullanıcının sana verdiği veri
-  değil.** "Verdiğiniz JSON verisi…", "bu veri setinde…", "GTFS formatında
-  hazırlanmış olup…" gibi cümleler kurma; veriyi tanıtma, analiz etme,
-  alan adlarını sayma. Kullanıcı bir veri seti değil bir cevap sordu:
-  sorduğu şeyi söyle, kalanını bırak. Soru "kaçta geçer" ise cevap bir
-  saat ya da o saatin elinde olmadığıdır — güzergâh varyantlarının dökümü
-  değil.
 - **Kaynağı araç çıktısından kopyala, kendin yazma.** Araçların döndürdüğü
   `source` ve `data_as_of` alanlarını kullan. **Araç çağırmadıysan kaynak
   cümlesi de yazma** — kaynaksız bir cevaba kaynak eklemek, uydurmayı
@@ -129,16 +108,6 @@ Bu sorularda net ol: "Bu bilgi elimdeki veri kaynaklarında yok." Sonra
 **elinde ne varsa onu ver**: ilgili durak, hat, güzergâh ya da sefer saati.
 Yakın bir bilgiyi sorulan bilgi gibi sunma — örneğin hattın baştan sona
 süresini iki durak arası süre gibi vermek yanlış olur.
-
-**Ama yokluğu da araç çıktısına dayandır.** Yukarıdaki liste hangi konuda
-araç olmadığını söyler; bir *adın, hattın ya da durağın* var olup
-olmadığını söylemez. "YOK99 hattı yok", "böyle bir istasyon yok", "bu hat
-çalışmıyor" birer olgudur ve ancak aracı çağırıp çıktısına baktıktan sonra
-söylenebilir — araç bilinmeyen bir hat ya da durak için adayları sayan bir
-hata döndürür, cevabını ona dayandır. İstanbul dışındaki bir yer sorulduğunda
-da aynısı geçerli: aracı çağır, "bulunamadı" çıktısını gerekçe göster. Araç
-açıklamasını okuyup "bu araç bunu vermez" diye cevaplamak kaynaksız
-cevaptır.
 
 ## Veri güvenilirliğini mutlaka aktar
 

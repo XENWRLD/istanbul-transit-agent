@@ -96,11 +96,92 @@ Tek tek değerleri değil **ilişkiyi** tutan dört test eklendi:
 yakalıyor. Tablo yeni bir mod kazanırsa (ör. vapur hatları ayrılırsa)
 ikinci test düşer ve sözlük güncellenmeye zorlanır.
 
-## Agent üzerindeki etkisi: henüz ölçülmedi
+## Agent üzerindeki etkisi: ölçüldü, ve hipotezim yanlış çıktı
 
-Bu düzeltme üç aracın açıklamasını da değiştirdi; CLAUDE.md'nin kuralına
-göre bu bir davranış değişikliğidir ve 54 senaryonun yeniden koşulmasını
-gerektirir. `rail-04`'ün bu yüzden düştüğü **makul** ama kanıtlanmış değil:
-modelin hangi mod değerini verdiği eval kaydında görünmüyor (yalnızca araç
-adları kaydediliyor — ayrı bir eksik). Etki, prompt düzeltmeleriyle birlikte
-tek bir temiz koşuda ölçülecek.
+Bu düzeltme üç aracın açıklamasını da değiştirdi, yani 54 senaryo yeniden
+koşuldu. Aynı turda eval kayıtlarına **araç argümanları** da eklendi; ilk
+faydası bu notun kendi hipotezini çürütmek oldu.
+
+`rail-04`'ün ölü mod değeri yüzünden düştüğünü varsaymıştım. Kayıt bunu
+söylemiyor:
+
+```
+geocode_place(query="Üsküdar",      mode="metro")
+geocode_place(query="Sultanbeyler", mode="metro")
+```
+
+Model `rayli` ya da `tren` değil **`metro`** verdi — o değer düzeltmeden
+önce de çalışıyordu. Senaryonun düşme sebebi istasyon adını yanlış
+yazması: "Sultanbeyli" yerine **"Sultanbeyler"**. Araç haklı olarak
+bulamadı, model de vazgeçip kullanıcıya doğru adı sormayı önerdi.
+
+Yani bu notun düzelttiği hata gerçek ve veri katmanında kanıtlı (yukarıdaki
+önce/sonra tablosu), ama **ölçülen senaryo başarısızlıklarının hiçbirine
+sebep olduğu gösterilemedi.** İki ayrı şey: bir kusurun var olması ile o
+kusurun ölçümde görünmesi. Düzeltme, aracın belgelediği bir parametrenin
+hiç çalışmaması olduğu için kendi başına haklı.
+
+Bir kenar bulgu: aynı koşuda `rail-04` iki kez farklı davrandı — tek
+senaryoluk kontrolde `get_rail_travel_time`'a gidip geçti (82.7 s), tam
+koşuda aynı girdiyle iki `geocode_place` çağırıp düştü (31.8 s). Karar
+0014 *"davranış tekrarlanıyor, oynayan tek şey süre"* demişti; bu ona
+karşı bir kanıt. Sıcaklık 0.0 ama tohum yok ve `llama.cpp` kısmi GPU
+boşaltmayla bit düzeyinde yinelenebilir değil. Tek senaryoluk sonuçtan
+"düzeldi" diye rapor etmek bu yüzden yanlıştı.
+
+## Aynı turdaki prompt değişiklikleri: net −2, geri alındı
+
+Mod düzeltmesiyle birlikte üç prompt/nudge değişikliği de yapıldı
+(commit `58e61ee`):
+
+1. **Nudge'ın kaçış kapısı kapatıldı** — "araçlardan hiçbiri cevaplayamıyorsa
+   yok de" cümlesi, model uyarıyı aldıktan sonra da araç çağırmamasına izin
+   veriyordu. Yerine: yokluk da bir araç çıktısına dayanmak zorunda.
+2. Aynı kural prompt'a da bir bölüm olarak eklendi.
+3. **"Araç çıktısı kullanıcının verdiği veri değildir"** kuralı eklendi —
+   model `get_line_route` çıktısını alıp veri setini tanıtmaya başlıyordu.
+
+Üçü **aynı anda** değiştirildi ve tek ölçüm alındı. Bu bir yöntem hatası:
+hangi değişikliğin neyi kazandırdığı ayırt edilemiyor. Karar 0014 tam bu
+dersi veriyordu.
+
+| Ölçüt | Önce (0014) | Sonra |
+|---|---|---|
+| geçen senaryo | 47/54 (%87.0) | **45/54 (%83.3)** |
+| araç doğruluğu | %88.9 | %87.0 |
+| ifade doğruluğu | %92.3 | %88.5 |
+| **kaynaksız cevap** | 3 | **1** |
+| uyarılan tur | 8 | 10 |
+| gecikme ortancası | 36.0 s | 33.7 s |
+
+Düzelen: `route-04`. Yeni düşen: `lines-03`, `know-06`, `refuse-05`.
+
+Ölçüm iki yönlü ve bu yüzden tek sayıyla özetlenemez:
+
+- **Kazanç gerçek.** Kaynaksız cevap 3'ten 1'e indi. `route-04` ("YOK99
+  hattının güzergâhı") artık aracı çağırıp adaylara bakarak cevaplıyor.
+  `rail-06` ("Paris'ten Taksim'e") de davranış olarak düzeldi — *"Araç
+  'Paris' adında bir metro istasyonu olmadığını gösterdi ve İstanbul'daki
+  adayları (Çarşı, Parseller, Darıca) döndürdü"* — ama senaryo
+  `get_rail_travel_time`'ı ve "bulunamadı/bulamadım/yok" kelimelerini şart
+  koştuğu için yine düşük sayılıyor. Model "olmadığını" demiş.
+- **Kayıp da gerçek ve daha ağır.** `lines-03` eskiden doğru cevap
+  veriyordu ("iskeleler için hat bilgisi yok"); şimdi **uyduruyor**: *"F1
+  fünikler hattı Kadıköy'den Taksim-Kabataş'a gidiyor… Kadıköy ŞH.'den
+  kalkan vapurlar genellikle Marmaray hattını kullanır."* Projenin önlemeye
+  çalıştığı kusurun tam kendisi. `refuse-05` düşünce zincirini cevap olarak
+  yazıyor ve 685 saniye sürüyor.
+
+**Karar: prompt ve nudge değişiklikleri geri alındı.** Ölçülmüş bir
+gerileme tutulmaz. Mod düzeltmesi ve argüman kaydı kalıyor — ikisi de bu
+ölçümden bağımsız olarak doğru. Nudge değişikliği tek başına, kendi
+ölçümüyle yeniden denenecek.
+
+## Önbellek anahtarı nudge metnini de kapsamalı
+
+Nudge'ı tek başına ölçmek, anahtarın onu da kapsamasını gerektiriyor:
+anahtar yalnızca `SYSTEM_PROMPT`'un özetini alıyordu, yani `graph.py`
+içindeki uyarı metnini değiştirip prompt'a dokunmamak önbelleği geçersiz
+kılmıyordu ve ölçüm sessizce eski cevapları raporlardı. Anahtar artık
+prompt + nudge üzerinden hesaplanıyor. Araç şemaları hâlâ anahtarın dışında
+(karar 0014'te açılan boşluk, kapanmadı).

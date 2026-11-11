@@ -49,6 +49,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from istanbul_agent.agent.graph import NUDGE
 from istanbul_agent.agent.prompt import SYSTEM_PROMPT
 from istanbul_agent.config import PROJECT_ROOT
 from istanbul_agent.console import enable_unicode_output
@@ -99,12 +100,19 @@ def load_scenarios() -> list[Scenario]:
 
 
 def cache_key(scenario: Scenario, provider: str, model: str) -> str:
-    """Soru + sağlayıcı + model + prompt özeti.
+    """Soru + sağlayıcı + model + (prompt + uyarı) özeti.
 
     Prompt özeti anahtarda: sistem prompt'u değiştiğinde davranış değişir
     (CLAUDE.md kuralı), eski cevabı yeniden kullanmak ölçümü yalanlar.
+
+    **Uyarı metni de özete giriyor** (karar 0015). Önceden yalnızca
+    `SYSTEM_PROMPT` hashleniyordu, yani `graph.py` içindeki `NUDGE`'ı
+    değiştirip prompt'a dokunmamak önbelleği geçersiz kılmıyordu: uyarıyı
+    tek başına ölçmek istendiğinde betik sessizce eski cevapları
+    raporlardı. Araç şemaları hâlâ dışarıda (karar 0014'ün açtığı boşluk) —
+    araç çıktısı ya da açıklaması değişince ölçümü `--refresh` ile koş.
     """
-    digest = hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest()[:12]
+    digest = hashlib.sha256((SYSTEM_PROMPT + NUDGE).encode("utf-8")).hexdigest()[:12]
     stem = f"{provider}-{model}-{digest}-{scenario.id}"
     return stem.replace("/", "_").replace(":", "_")
 

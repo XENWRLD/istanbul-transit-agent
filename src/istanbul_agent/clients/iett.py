@@ -171,6 +171,31 @@ class Announcement:
         """Mesajda anılan saatler."""
         return tuple(f"{hour.zfill(2)}:{minute}" for hour, minute in _TIME.findall(self.message))
 
+    @property
+    def recorded_clock(self) -> str | None:
+        """Kayıt saati, yalnızca `"HH:MM"` olarak; yoksa `None`.
+
+        Kaynaktaki alan `"Kayit Saati: 16:07"` biçiminde ve **gün bilgisi
+        taşımıyor** (ölçülen alanlar: HATKODU, HAT, TIP, GUNCELLEME_SAATI,
+        MESAJ).
+        """
+        found = _TIME.search(self.recorded_at)
+        if not found:
+            return None
+        return f"{found.group(1).zfill(2)}:{found.group(2)}"
+
+    def recorded_after(self, clock: str) -> bool:
+        """Kayıt saati verilen saatten ileride mi?
+
+        İleride olması duyurunun **önceki bir güne** ait olduğunu gösterir:
+        besleme gün yazmadığı için 12:57'de görülen "Kayit Saati: 16:07"
+        bugün olamaz. Ölçüm (11 Kasım 2026, 12:57): 204 duyurunun 114'ü
+        04:05-04:08 arasında kaydedilmiş (sabah toplu yükleme), bir kısmı
+        ise o anın ilerisinde saat taşıyordu (karar 0013).
+        """
+        mine = self.recorded_clock
+        return bool(mine and mine > clock)
+
 
 def parse_announcements(rows: list[dict[str, Any]]) -> list[Announcement]:
     announcements: list[Announcement] = []
@@ -257,9 +282,27 @@ def fetch_planned_departures(line: str) -> list[PlannedDeparture]:
 # ------------------------------------------------- sefer saatlerinin özeti
 
 
+# Bu saatten önceki kalkışlar günün başlangıcı değil, gece servisidir.
+# Raylı sistemde ölçülmüş kural (karar 0005, `store/timetable.py`:
+# NIGHT_END_S) burada da geçerli: besleme cuma gecesinin 00:20 seferini
+# `24:20` değil `00:20` diye yazıyor, dolayısıyla en erken kalkışı olduğu
+# gibi almak "500T'nin ilk seferi 00:00" cevabını veriyor — gerçek ilk
+# gündüz seferi 04:10 iken. Ölçüm (11 Kasım 2026): 500T'nin D yönünde
+# 234 kalkıştan yalnızca ikisi 04:00 öncesi (00:00, 00:20) ve araç
+# pencereyi "00:00-23:45" diye raporluyordu. Gündüz ve gece ayrı alanlarda
+# duruyor (karar 0013).
+NIGHT_END_MINUTES = 4 * 60
+
+
 @dataclass(frozen=True)
 class BusServiceWindow:
-    """Bir hattın bir yön + gün tipindeki servis penceresi."""
+    """Bir hattın bir yön + gün tipindeki servis penceresi.
+
+    `first` ve `last` **gündüz** servisini gösterir; 04:00 öncesi kalkışlar
+    `night_first`/`night_last` alanlarına gider. Bir yön yalnızca gece
+    çalışıyorsa gündüz penceresi yoktur ve iki alan çifti aynı saatleri
+    taşır — `night_only` bunu söyler.
+    """
 
     direction: str
     day_type: str
@@ -268,6 +311,20 @@ class BusServiceWindow:
     trips: int
     headway_minutes: int | None
     route_codes: tuple[str, ...]
+    night_first: str | None = None
+    night_last: str | None = None
+
+    @property
+    def night_only(self) -> bool:
+        """Bu yönde gündüz servisi hiç yok mu?"""
+        return self.night_first is not None and self.first == self.night_first
+
+    @property
+    def night_service(self) -> str | None:
+        """Gece penceresi, raylı sistemdeki biçimde: `"00:00-00:20"`."""
+        if self.night_first is None or self.night_last is None:
+            return None
+        return f"{self.night_first}-{self.night_last}"
 
     @property
     def day_label(self) -> str:
@@ -294,6 +351,10 @@ def summarise_departures(
     uzun gece boşluklarından etkileniyor. Dört kalkıştan az veriden aralık
     üretilmiyor — karar 0005'te metro için konan kuralın aynısı; üç
     kalkıştan "her 40 dakikada bir" çıkarmak uydurma olur.
+
+    Gündüz ve gece servisi ayrı raporlanıyor (`NIGHT_END_MINUTES`); aralık
+    pencerenin kendi kalkışlarından ölçülüyor, gece seferleri gündüz
+    aralığını bozmuyor.
     """
     import statistics
     from itertools import pairwise
@@ -307,9 +368,13 @@ def summarise_departures(
     windows: list[BusServiceWindow] = []
     for (direction, day), rows in sorted(grouped.items()):
         times = sorted({row.time for row in rows}, key=lambda value: _minutes(value) or 0)
+        times = [time for time in times if _minutes(time) is not None]
         if not times:
             continue
-        minutes = [value for value in (_minutes(time) for time in times) if value is not None]
+        night = [time for time in times if (_minutes(time) or 0) < NIGHT_END_MINUTES]
+        daytime = [time for time in times if (_minutes(time) or 0) >= NIGHT_END_MINUTES]
+        window = daytime or night
+        minutes = [value for value in (_minutes(time) for time in window) if value is not None]
         headway: int | None = None
         if len(minutes) >= 4:
             gaps = [
@@ -323,11 +388,13 @@ def summarise_departures(
             BusServiceWindow(
                 direction=direction,
                 day_type=day,
-                first=times[0],
-                last=times[-1],
+                first=window[0],
+                last=window[-1],
                 trips=len(times),
                 headway_minutes=headway,
                 route_codes=tuple(sorted({row.route_code for row in rows if row.route_code})),
+                night_first=night[0] if night else None,
+                night_last=night[-1] if night else None,
             )
         )
     return windows

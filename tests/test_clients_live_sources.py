@@ -156,6 +156,35 @@ class TestPlannedDepartures:
         assert iett.parse_planned_departures([{"SHATKODU": "X", "DT": ""}]) == []
 
 
+class TestAnnouncementClock:
+    """Kayıt saati: gün bilgisi yok (karar 0013)."""
+
+    def make(self, recorded_at: str) -> iett.Announcement:
+        return iett.Announcement(
+            line="500T", line_name="X", kind="Sefer", recorded_at=recorded_at, message="m"
+        )
+
+    def test_the_clock_is_read_out_of_the_label(self):
+        assert self.make("Kayit Saati: 16:07").recorded_clock == "16:07"
+
+    def test_a_single_digit_hour_is_padded(self):
+        assert self.make("Kayit Saati: 4:05").recorded_clock == "04:05"
+
+    def test_a_label_without_a_time_has_no_clock(self):
+        assert self.make("Kayit Saati:").recorded_clock is None
+        assert self.make("").recorded_clock is None
+
+    def test_a_clock_after_now_means_an_earlier_day(self):
+        """12:57'de 16:07 kaydı bugün olamaz; besleme gün yazmıyor."""
+        assert self.make("Kayit Saati: 16:07").recorded_after("12:57") is True
+
+    def test_a_clock_before_now_is_today_as_far_as_we_know(self):
+        assert self.make("Kayit Saati: 04:05").recorded_after("12:57") is False
+
+    def test_without_a_clock_no_claim_is_made(self):
+        assert self.make("").recorded_after("12:57") is False
+
+
 class TestDepartureSummary:
     def make(self, times: list[str], direction: str = "D") -> list[iett.PlannedDeparture]:
         return [
@@ -181,10 +210,43 @@ class TestDepartureSummary:
         )[0]
         assert window.headway_minutes == 10
 
-    def test_times_past_midnight_sort_last(self):
+    def test_times_written_past_24_stay_at_the_end_of_the_day(self):
+        """`24:10` günün sonu; `00:05` ise gece servisi, günün başı değil."""
         window = iett.summarise_departures(self.make(["23:50", "24:10", "00:05"]))[0]
-        assert window.first == "00:05"
-        assert window.last == "24:10"
+        assert (window.first, window.last) == ("23:50", "24:10")
+        assert window.night_service == "00:05-00:05"
+
+    def test_departures_before_four_are_night_service(self):
+        """Ölçüm: 500T'nin D yönü "00:00-23:45" diye raporlanıyordu.
+
+        Besleme cuma gecesinin seferini `24:20` değil `00:20` yazdığı için
+        en erken kalkışı olduğu gibi almak "ilk sefer 00:00" diyordu;
+        gerçek ilk gündüz seferi 04:10 (karar 0013).
+        """
+        window = iett.summarise_departures(
+            self.make(["00:00", "00:20", "04:10", "04:20", "04:30", "23:45"])
+        )[0]
+        assert (window.first, window.last) == ("04:10", "23:45")
+        assert window.night_service == "00:00-00:20"
+        assert window.night_only is False
+        assert window.trips == 6, "gece seferleri de sefer sayısına girer"
+
+    def test_a_direction_running_only_at_night_says_so(self):
+        window = iett.summarise_departures(self.make(["00:10", "01:10", "02:10"]))[0]
+        assert (window.first, window.last) == ("00:10", "02:10")
+        assert window.night_only is True
+
+    def test_a_day_without_night_service_has_no_night_window(self):
+        window = iett.summarise_departures(self.make(["06:00", "06:10", "06:20"]))[0]
+        assert window.night_service is None
+        assert window.night_only is False
+
+    def test_the_headway_ignores_the_night_departures(self):
+        """Gece seferi gündüz aralığını bozmamalı."""
+        window = iett.summarise_departures(
+            self.make(["00:00", "06:00", "06:10", "06:20", "06:30"])
+        )[0]
+        assert window.headway_minutes == 10
 
     def test_directions_are_reported_separately(self):
         departures = [*self.make(["06:00", "06:10"], "D"), *self.make(["07:00"], "G")]
@@ -229,6 +291,28 @@ class TestCarParks:
     def test_occupancy_is_none_without_capacity(self):
         park = parse_car_parks([{"parkID": 1, "parkName": "X", "capacity": None}])[0]
         assert park.occupancy_percent is None
+
+    def test_zero_empty_is_unknown_not_full(self):
+        """Ölçüm: 239 açık otoparkın 51'i 0 döndürüyor (karar 0013).
+
+        Sıfırlar ilçeye ve tipe göre kümeleniyor (Bayrampaşa 9/10, yol
+        üstü 0/47) ve 1310 kapasiteli bir otopark tam tamına 0 bildiriyor.
+        Kaynak "dolu" ile "bildirmiyor" arasını ayırmadığı için %100
+        demek uydurma olur.
+        """
+        park = parse_car_parks(
+            [{"parkID": 1, "parkName": "X", "capacity": 1310, "emptyCapacity": 0}]
+        )[0]
+        assert park.empty == 0, "ham değer saklanır"
+        assert park.reports_occupancy is False
+        assert park.occupancy_percent is None
+
+    def test_one_empty_space_is_still_a_reading(self):
+        park = parse_car_parks(
+            [{"parkID": 1, "parkName": "X", "capacity": 100, "emptyCapacity": 1}]
+        )[0]
+        assert park.reports_occupancy is True
+        assert park.occupancy_percent == 99
 
     def test_a_park_without_coordinates_is_kept(self):
         """Adı ve doluluğu yine işe yarar; yalnızca mesafe hesabına girmez."""

@@ -211,6 +211,26 @@ araç çağırmayı bıraktı. Ölçüm: sistem prompt'u 6 515 + yedi aracın ş
 | Güncel bilet fiyatı (canlı API) | çekildiği gün | güncel |
 | Bilet fiyatı tarihçesi | 2022-06-10 | `is_stale: true` (soru geçmişi sormuyorsa güncel kaynak öne alınır) |
 
+## Canlı verinin doğruluğu
+
+Canlı kaynaklar gerçekten çağrılarak ölçüldü (`scripts/probe_live_freshness.py`,
+11 Kasım 2026): hepsi ayakta, gecikme 2-3 dakika, metro arıza sayıları
+çağrılar arasında değişiyor. Ölçüm dört **sessiz yanlış** ortaya çıkardı —
+araç hata vermiyor, testleri geçiyor, ama doğru olmayan bir şey söylüyor —
+ve dördü de düzeltildi (karar 0013):
+
+| Kusur | Nasıl görünüyordu | Şimdi |
+|---|---|---|
+| İSPARK `empty: 0` | "%100 dolu" | `occupancy_known: false`, yüzde üretilmiyor |
+| Otobüsün ilk seferi | 500T için "00:00" | `ilk=05:40`, `gece=00:00-00:20` |
+| İETT duyurusunun yaşı | sessiz; alanda tarih yok | `recorded_day_known`, `from_earlier_day` |
+| Metro servis durumu | "anlık" (26 gün önce güncellenmiş) | `age_days` + eskiye not |
+| Duyuru kırpması | servis durumu listeden düşüyordu | önceliğe göre, kayıp nota yazılı |
+
+Ortak kök hepsinde aynı: *bir değerin yokluğunu bir değer sanmak.* Fixture
+tabanlı birim testler bunların hiçbirini yakalayamaz, çünkü dördü de kodun
+kendi varsayımıyla tutarlıydı — biri testle **doğrulanmıştı** bile.
+
 ## Bilinen sınırlamalar
 
 - **Hava kalitesi verisi yok.** Uç nokta cevap veriyor, 28 istasyonu listeliyor,
@@ -220,6 +240,13 @@ araç çağırmayı bıraktı. Ölçüm: sistem prompt'u 6 515 + yedi aracın ş
   uzakta.
 - **Otobüsün ara durak saatleri yok**: hem GTFS beslemesi hem canlı servis yalnızca
   ilk duraktan kalkışı veriyor (kararlar 0007, 0012).
+- **İSPARK otoparkların beşte birinde doluluk okunamıyor.** 239 açık otoparkın
+  51'i 0 boş yer bildiriyor ve bu "dolu" değil "bildirmiyor" demek olabilir;
+  kaynak ikisini ayırt etmiyor (karar 0013). Araç bu otoparklarda doluluk
+  yüzdesi üretmiyor, bilinmediğini söylüyor.
+- **İETT duyurularının hangi güne ait olduğu bilinemiyor**: kaynakta kayıt saati
+  var, tarih yok. Saati şu andan ileride olan duyuru önceki bir güne aittir ama
+  kaç gün öncesi olduğu belirsiz.
 - **Canlı araç konumu askıya alındı:** uç nokta çalışıyor ama konum tek
   başına bir soruyu cevaplamıyor (durağa varış tahmini gerekir, o model
   projede yok).

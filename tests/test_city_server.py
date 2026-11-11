@@ -93,6 +93,24 @@ class TestFindParking:
         )
         result = server.find_parking(around="Taksim")
         assert result.parks[0].occupancy_percent == 80
+        assert result.parks[0].occupancy_known is True
+
+    def test_a_park_reporting_zero_is_not_called_full(self, monkeypatch):
+        """Araç "%100 dolu" demek yerine doluluğun bilinmediğini söyler."""
+        monkeypatch.setattr(
+            server,
+            "fetch_car_parks",
+            lambda: [park("Sessiz", 41.0370, 28.9870, capacity=1310, empty=0)],
+        )
+        result = server.find_parking(around="Taksim")
+        option = result.parks[0]
+        assert option.empty == 0
+        assert option.occupancy_known is False
+        assert option.occupancy_percent is None
+        note = " ".join(result.notes)
+        assert "Sessiz" in note
+        assert "doluluk bildirmediği" in note
+        assert "'dolu' deme" in note
 
     def test_closed_parks_are_hidden_by_default(self, monkeypatch):
         monkeypatch.setattr(

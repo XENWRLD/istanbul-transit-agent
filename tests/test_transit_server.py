@@ -358,14 +358,19 @@ class TestStoreGuard:
 class TestServiceAlerts:
     """Canlı duyurular: kaynak ayrımı, mod çıkarımı, kısmi başarısızlık."""
 
-    def bus_alert(self, line: str = "500T", message: str = "Sefer yapilamayacaktir.") -> object:
+    def bus_alert(
+        self,
+        line: str = "500T",
+        message: str = "Sefer yapilamayacaktir.",
+        recorded_at: str = "Kayit Saati: 04:05",
+    ) -> object:
         from istanbul_agent.clients.iett import Announcement
 
         return Announcement(
             line=line,
             line_name="X",
             kind="Sefer",
-            recorded_at="Kayit Saati: 04:05",
+            recorded_at=recorded_at,
             message=message,
         )
 
@@ -423,6 +428,99 @@ class TestServiceAlerts:
     def test_a_cancellation_is_flagged(self, stub):
         result = transit_server.get_service_alerts(line="500T")
         assert result.alerts[0].is_cancellation is True
+
+    def test_a_service_status_survives_the_cut(self, stub):
+        """Ölçüm: 219 İETT duyurusu listeyi doldurup servis durumunu düşürüyordu."""
+        from istanbul_agent.clients.metro import ServiceStatus
+
+        stub["bus"] = [
+            self.bus_alert(line=f"{index}") for index in range(transit_server.MAX_ALERTS + 60)
+        ]
+        stub["status"] = [
+            ServiceStatus(
+                line="M7",
+                description="Teknik arıza nedeniyle mekik seferi.",
+                is_active=True,
+                updated_at="2026-11-11T09:00:00.000",
+            )
+        ]
+        result = transit_server.get_service_alerts()
+        assert len(result.alerts) == transit_server.MAX_ALERTS
+        kinds = [alert.kind for alert in result.alerts]
+        assert kinds[0] == "servis durumu", "servis durumu kırpmadan kurtulur"
+        assert any("listelenmedi" in note for note in result.notes)
+
+    def test_nothing_is_dropped_silently(self, stub):
+        stub["bus"] = [
+            self.bus_alert(line=f"{index}") for index in range(transit_server.MAX_ALERTS + 5)
+        ]
+        result = transit_server.get_service_alerts()
+        note = " ".join(result.notes)
+        # 45 otobüs + 1 metro duyurusu = 46; 40'ı listelenir.
+        assert f"{46 - transit_server.MAX_ALERTS} duyuru listelenmedi" in note
+        assert f"Kaynaklarda {46} duyuru var" in note
+
+    def test_a_short_list_gets_no_truncation_note(self, stub):
+        result = transit_server.get_service_alerts()
+        assert not any("listelenmedi" in note for note in result.notes)
+
+    def test_an_iett_alert_admits_it_carries_no_date(self, stub):
+        """Kaynaktaki alan yalnızca "Kayit Saati: 04:05" (karar 0013)."""
+        result = transit_server.get_service_alerts(line="500T")
+        alert = result.alerts[0]
+        assert alert.recorded_day_known is False
+        assert any("tarih yok" in note for note in result.notes)
+
+    def test_an_alert_timed_after_now_belongs_to_an_earlier_day(self, stub, monkeypatch):
+        """12:57'de görülen "Kayit Saati: 16:07" bugün olamaz."""
+        monkeypatch.setattr(transit_server, "_now_clock", lambda: "12:57")
+        stub["bus"] = [self.bus_alert(recorded_at="Kayit Saati: 16:07")]
+        result = transit_server.get_service_alerts(line="500T")
+        assert result.alerts[0].from_earlier_day is True
+        assert any("önceki bir güne ait" in note for note in result.notes)
+
+    def test_an_alert_timed_before_now_is_not_flagged(self, stub, monkeypatch):
+        monkeypatch.setattr(transit_server, "_now_clock", lambda: "12:57")
+        result = transit_server.get_service_alerts(line="500T")
+        assert result.alerts[0].from_earlier_day is False
+
+    def test_an_old_service_status_carries_its_age(self, stub):
+        """Ölçüm: yayındaki iki servis durumu 26 ve 23 gün önce güncellenmişti."""
+        from datetime import datetime, timedelta
+
+        from istanbul_agent.clients.metro import ServiceStatus
+
+        when = (datetime.now() - timedelta(days=26)).isoformat(timespec="milliseconds")
+        stub["status"] = [
+            ServiceStatus(
+                line="M7",
+                description="Teknik arıza nedeniyle mekik seferi.",
+                is_active=True,
+                updated_at=when,
+            )
+        ]
+        result = transit_server.get_service_alerts(line="M7")
+        status = next(alert for alert in result.alerts if alert.kind == "servis durumu")
+        assert status.age_days == 26
+        note = " ".join(result.notes)
+        assert "günden eski" in note
+        assert "yürürlükte olabilir" in note
+
+    def test_a_fresh_service_status_raises_no_age_note(self, stub):
+        from datetime import datetime
+
+        from istanbul_agent.clients.metro import ServiceStatus
+
+        stub["status"] = [
+            ServiceStatus(
+                line="M7",
+                description="Bugün düzenleme var.",
+                is_active=True,
+                updated_at=datetime.now().isoformat(timespec="milliseconds"),
+            )
+        ]
+        result = transit_server.get_service_alerts(line="M7")
+        assert not any("günden eski" in note for note in result.notes)
 
     def test_a_line_without_alerts_says_so(self, stub):
         stub["bus"] = []
@@ -566,6 +664,34 @@ class TestBusDepartures:
         window = result.windows[0]
         assert (window.first_departure, window.last_departure) == ("05:00", "05:30")
         assert window.headway_minutes == 10
+
+    def test_night_departures_do_not_become_the_first_service(self, stub, monkeypatch):
+        """Ölçüm: 500T'nin D yönü "00:00-23:45" diye raporlanıyordu (karar 0013)."""
+        from istanbul_agent.clients import iett
+
+        times = ("00:00", "00:20", "04:10", "04:20", "04:30", "23:45")
+        monkeypatch.setattr(
+            iett,
+            "fetch_planned_departures",
+            lambda line: [
+                iett.PlannedDeparture(
+                    "500T", "TUZLA - CEVİZLİBAĞ", "r1", "D", "hafta_ici", "Normal", time
+                )
+                for time in times
+            ],
+        )
+        result = transit_server.get_next_departures("500T")
+        window = result.windows[0]
+        assert window.first_departure == "04:10"
+        assert window.last_departure == "23:45"
+        assert window.night_service == "00:00-00:20"
+        assert window.night_only is False
+        assert any("gece servisi" in note for note in result.notes)
+
+    def test_a_line_without_night_service_gets_no_night_note(self, stub):
+        result = transit_server.get_next_departures("500T")
+        assert result.windows[0].night_service is None
+        assert not any("gece servisi" in note for note in result.notes)
 
     def test_the_answer_says_the_times_are_from_the_first_stop(self, stub):
         result = transit_server.get_next_departures("500T")

@@ -86,11 +86,33 @@ class CarPark:
     distance_m: float | None = None
 
     @property
+    def reports_occupancy(self) -> bool:
+        """Bu otoparkın doluluğu okunabilir mi?
+
+        `emptyCapacity: 0` iki ayrı şey demek olabilir: otopark gerçekten
+        dolu, ya da bu otopark doluluk bildirmiyor. Kaynak ikisini
+        **ayırt etmiyor** ve ölçüm ikincisine işaret ediyor (11 Kasım
+        2026): 239 açık otoparkın 51'i sıfır döndürüyor, sıfırlar ilçeye
+        ve tipe göre kümeleniyor (Bayrampaşa 9/10, Bağcılar 7/11, buna
+        karşılık Beşiktaş 1/23; kapalı otopark 40/85 sıfır, yol üstü
+        0/47). 1310 kapasiteli bir otoparkın tam tamına 0 boş yer
+        bildirmesi doluluk değil, suskunluk. Detay ucu da aynı sıfırı
+        veriyor; zaman damgası taze çünkü damga tüm partiye basılıyor.
+
+        Bu yüzden sıfır "belirsiz" sayılıyor: `occupancy_percent` None
+        döner, ham `empty` değeri yine açıkta durur. Yüzde uydurmak
+        yerine bilinmediğini söylemek projenin kuralı (karar 0013).
+        """
+        if self.capacity is None or self.empty is None:
+            return False
+        return self.empty > 0
+
+    @property
     def occupancy_percent(self) -> int | None:
-        """Doluluk yüzdesi; kapasite bilinmiyorsa `None`."""
-        if not self.capacity or self.empty is None:
+        """Doluluk yüzdesi; kapasite yoksa ya da doluluk belirsizse `None`."""
+        if not self.capacity or not self.reports_occupancy:
             return None
-        used = max(0, self.capacity - self.empty)
+        used = max(0, self.capacity - (self.empty or 0))
         return round(100 * used / self.capacity)
 
 

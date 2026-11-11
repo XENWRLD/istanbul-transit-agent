@@ -79,7 +79,16 @@ class CarParkOut(BaseModel):
     park_type: str = Field(description="KAPALI OTOPARK | AÇIK OTOPARK | YOL ÜSTÜ vb.")
     capacity: int | None
     empty: int | None = Field(description="Anlık boş kapasite")
-    occupancy_percent: int | None = Field(None, description="Doluluk yüzdesi")
+    occupancy_known: bool = Field(
+        True,
+        description=(
+            "Doluluk okunabiliyor mu? `empty: 0` dönen otoparklarda false: "
+            "kaynak 'dolu' ile 'doluluk bildirmiyor' arasını ayırmıyor"
+        ),
+    )
+    occupancy_percent: int | None = Field(
+        None, description="Doluluk yüzdesi; `occupancy_known` false ise None"
+    )
     is_open: bool
     work_hours: str
     free_minutes: int | None = Field(None, description="Ücretsiz süre (dakika)")
@@ -153,6 +162,13 @@ def find_parking(
             Kapalıları da görmek için false ver.
 
     `distance_m` kuş uçuşu mesafedir, yürüme mesafesi değil.
+
+    **Doluluk her otoparkta okunamıyor.** `empty: 0` dönen bir otopark ya
+    gerçekten dolu ya da doluluk bildirmiyor; kaynak ikisini ayırt etmiyor
+    (ölçüm: 239 açık otoparkın 51'i sıfır döndürüyor ve sıfırlar ilçeye
+    göre kümeleniyor, karar 0013). Böyle otoparklarda `occupancy_known`
+    false ve `occupancy_percent` None gelir — kullanıcıya "dolu" değil
+    "doluluk bilinmiyor" denmeli.
 
     NE ZAMAN KULLANMA:
     - Toplu taşıma durağı aramak için kullanma — `find_nearby_stops`
@@ -235,6 +251,14 @@ def find_parking(
     missing_capacity = sum(1 for park in located if park.capacity is None)
     if missing_capacity:
         notes.append(f"{missing_capacity} otoparkta kapasite bilgisi yok, doluluk hesaplanamadı.")
+    unknown = [park for park in located[:count] if park.capacity and not park.reports_occupancy]
+    if unknown:
+        notes.append(
+            f"{len(unknown)} otopark 0 boş yer bildiriyor ({', '.join(p.name for p in unknown)}). "
+            "Bu ya gerçekten dolu olduğu ya da o otoparkın doluluk bildirmediği anlamına gelir; "
+            "İSPARK ikisini ayırt etmiyor. Bu otoparklar için 'dolu' deme, "
+            "doluluğun bilinmediğini söyle."
+        )
 
     return ParkingOut(
         around=origin_name,
@@ -248,6 +272,7 @@ def find_parking(
                 park_type=park.park_type,
                 capacity=park.capacity,
                 empty=park.empty,
+                occupancy_known=park.reports_occupancy,
                 occupancy_percent=park.occupancy_percent,
                 is_open=park.is_open,
                 work_hours=park.work_hours,

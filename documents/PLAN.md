@@ -92,7 +92,16 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 **Sonuç (10 Kasım 2026): bitti.** Kabul sorularının **5/5**'inde doğru araç seçildi (yerel model `qwen3.5:4b`, ölçüm karar 0008). Araç sayısı 6; `uv run python -m istanbul_agent.store.ingest` beslemeyi baştan kuruyor (~8 dk); 419 birim testi geçiyor. Faz 1'de açığa çıkan üç araç kusuru düzeltildi: geçersiz mod boş sonuç döndürüyordu, ön ek birkaç adaya uyduğunda reddediyordu, benzerlik eşitliğini keyfî bozuyordu.
 
-### Faz 2 — Canlı veri araçları ✅ bitti (11 Kasım 2026)
+### Faz 2 — Canlı veri araçları ✅ bitti (11 Kasım 2026), canlı kaynakta doğrulandı
+
+**Doğrulama (karar 0013):** araçlar yazıldıktan sonra her canlı kaynak gerçekten
+çağrıldı (`scripts/probe_live_freshness.py`). Hepsi ayakta, gecikme 2-3 dakika.
+Ama dört **sessiz yanlış** çıktı ve düzeltildi: İSPARK'ın `empty: 0` değeri
+"%100 dolu" diye sunuluyordu (oysa "bildirmiyor" olabilir, 51/239 otopark),
+otobüs tarafında 04:00 öncesi kalkışlar günün ilk seferi sayılıyordu (500T:
+"00:00" yerine 05:40), İETT duyurularının tarihsiz olduğu söylenmiyordu, metro
+servis durumunun 26 günlük yaşı gizliydi ve duyuru kırpması servis durumunu
+listeden düşürüyordu. Test sayısı 639 → 662.
 
 **Faz 3-5'ten sonra yapıldı** (kullanıcı kararı; RAG canlı veriye bağlı değildi). Canlı araç konumu askıda kaldı. Sonuç — araç sayısı 7 → **11**:
 

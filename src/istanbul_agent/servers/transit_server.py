@@ -206,9 +206,22 @@ class BusWindowOut(BaseModel):
 
     direction: str = Field(description="Yön kodu (D: gidiş, G: dönüş — beslemenin kodu)")
     day_type: str = Field(description="hafta_ici | cumartesi | pazar")
-    first_departure: str = Field(description="İlk duraktan ilk kalkış")
-    last_departure: str = Field(description="İlk duraktan son kalkış")
-    trips: int = Field(description="O yön ve gün tipindeki sefer sayısı")
+    first_departure: str = Field(
+        description="İlk duraktan ilk **gündüz** kalkışı (04:00 öncesi gece servisidir)"
+    )
+    last_departure: str = Field(description="İlk duraktan son gündüz kalkışı")
+    night_service: str | None = Field(
+        None,
+        description=(
+            'Varsa 04:00 öncesi gece servisi penceresi (`"00:00-00:20"`). '
+            "Bu saatler ilk sefer DEĞİLDİR; 'ilk sefer kaçta' sorusunda "
+            "`first_departure` kullanılır"
+        ),
+    )
+    night_only: bool = Field(
+        False, description="Bu yönde gündüz servisi yok, yalnızca gece seferi var"
+    )
+    trips: int = Field(description="O yön ve gün tipindeki sefer sayısı (gece dahil)")
     headway_minutes: int | None = Field(
         None, description="Kalkışlar arası ortanca süre; 4 seferden az veriden üretilmez"
     )
@@ -544,6 +557,14 @@ def _bus_departures(line: str) -> BusDeparturesOut | LiveDataUnavailable | None:
         "Saatler hattın **ilk durağından** kalkışı gösterir; ara duraklardan geçiş "
         "saatini bu kaynak vermiyor.",
     ]
+    night = [window for window in windows if window.night_service]
+    if night:
+        notes.append(
+            "04:00 öncesi kalkışlar gece servisi sayıldı ve `night_service` alanına "
+            "ayrıldı; `first_departure` günün ilk seferidir. Besleme gece seferini "
+            "`24:20` değil `00:20` diye yazdığı için bunlar en erken kalkış gibi "
+            "görünüyor ama değil."
+        )
     thin = [window for window in windows if window.headway_minutes is None]
     if thin:
         notes.append(
@@ -559,6 +580,8 @@ def _bus_departures(line: str) -> BusDeparturesOut | LiveDataUnavailable | None:
                 day_type=window.day_type,
                 first_departure=window.first,
                 last_departure=window.last,
+                night_service=window.night_service,
+                night_only=window.night_only,
                 trips=window.trips,
                 headway_minutes=window.headway_minutes,
                 route_variants=len(window.route_codes),
@@ -1096,6 +1119,27 @@ class AlertOut(BaseModel):
     kind: str = Field(description="Duyuru tipi (Sefer, servis durumu vb.)")
     text: str
     recorded_at: str | None = None
+    recorded_day_known: bool = Field(
+        True,
+        description=(
+            "`recorded_at` gün bilgisi taşıyor mu? İETT yalnızca saat yazıyor, "
+            "tarih yazmıyor — o duyurularda false"
+        ),
+    )
+    from_earlier_day: bool = Field(
+        False,
+        description=(
+            "Kayıt saati şu andan ileride: duyuru bugüne değil, önceki bir güne ait. "
+            "Bu duyuruya 'şu an' deme"
+        ),
+    )
+    age_days: int | None = Field(
+        None,
+        description=(
+            "Duyurunun kaç gün önce güncellendiği (yalnızca tarihli kaynaklarda). "
+            "Büyük bir sayı duyurunun hâlâ yürürlükte olmayabileceğini gösterir"
+        ),
+    )
     is_cancellation: bool = Field(False, description="Sefer iptali bildiren duyuru")
 
 
@@ -1156,6 +1200,52 @@ def _live_error(problem: Any) -> LiveDataUnavailable:
     return LiveDataUnavailable(source=problem.source, message=problem.message)
 
 
+# Bu kadar gün geçmiş bir servis durumu "anlık" sayılmaz; hâlâ yürürlükte
+# olabilir ama model ona "şu an" demeden önce yaşını görmeli. Ölçüm
+# (11 Kasım 2026): yayındaki iki servis durumu 26 ve 23 gün önce
+# güncellenmişti (karar 0013).
+STALE_STATUS_DAYS = 7
+
+# Cevaba en çok bu kadar duyuru giriyor. Sınır şart: filtresiz sorguda
+# kaynaklar 219 İETT duyurusu döndürüyor ve hepsini modele vermek bağlam
+# penceresini yiyor. Ama **sıra** şart: ilk sürüm ekleme sırasına göre
+# kırpıyordu ve metro servis durumu listeye en son eklendiği için
+# filtresiz sorguda hiç dönmüyordu — "M7'de mekik seferi yapılıyor"
+# bilgisi, yani listedeki en işletmesel kayıt, 219 güzergâh duyurusunun
+# arkasında kalıyordu (ölçüldü, karar 0013).
+MAX_ALERTS = 40
+
+# Küçük sayı önce kırpılmaktan kurtulur: hat bazlı servis durumu ağ
+# genelini anlatır ve sayısı birkaç tanedir, İETT güzergâh duyuruları ise
+# yüzlercedir.
+_ALERT_PRIORITY = {"servis durumu": 0}
+
+
+def _alert_rank(alert: AlertOut) -> int:
+    """Kırpma sırası: servis durumu, sonra iptal, sonra geri kalanı."""
+    if alert.kind in _ALERT_PRIORITY:
+        return _ALERT_PRIORITY[alert.kind]
+    if alert.source != "İETT":
+        return 1
+    return 2 if alert.is_cancellation else 3
+
+
+def _now_clock() -> str:
+    """Şu anın `"HH:MM"` hali; İETT duyurularının saatiyle karşılaştırmak için."""
+    return time.strftime("%H:%M")
+
+
+def _age_days(stamp: str | None) -> int | None:
+    """ISO zaman damgasının kaç gün önce olduğu; çözülemezse `None`."""
+    if not stamp:
+        return None
+    try:
+        when = datetime.fromisoformat(stamp.strip().replace("Z", ""))
+    except ValueError:
+        return None
+    return max(0, (datetime.now() - when).days)
+
+
 @mcp.tool()
 def get_service_alerts(
     line: str | None = None, mode: str | None = None
@@ -1166,6 +1256,12 @@ def get_service_alerts(
     değişiklikleri) ve Metro İstanbul duyuruları + hat bazlı servis
     durumu. Duyurular tarifeden **daha günceldir**: tarife 23:00'e kadar
     sefer diyorken duyuru iptal diyorsa, duyuru geçerlidir.
+
+    **Her duyuru aynı yaşta değil.** İETT duyurularında yalnızca kayıt
+    saati var, tarih yok; saati şu andan ileride olan bir duyuru önceki
+    bir güne aittir (`from_earlier_day`) ve ona "şu an" denemez. Metro
+    servis durumları tarihli ama kaynakta aylarca kalabiliyor (ölçüm: 26
+    ve 23 gün); `age_days` büyükse güncellenme tarihini de söyle.
 
     Parametreler:
         line: hat kodu ile süz — otobüste `500T`, `34`; raylı sistemde
@@ -1231,6 +1327,8 @@ def get_service_alerts(
                         kind=item.kind or "duyuru",
                         text=item.message,
                         recorded_at=item.recorded_at or None,
+                        recorded_day_known=False,
+                        from_earlier_day=item.recorded_after(_now_clock()),
                         is_cancellation=item.is_cancellation,
                     )
                 )
@@ -1275,6 +1373,7 @@ def get_service_alerts(
                         kind="servis durumu",
                         text=status.description,
                         recorded_at=status.updated_at or None,
+                        age_days=_age_days(status.updated_at),
                     )
                 )
         except LiveDataError as problem:
@@ -1291,6 +1390,37 @@ def get_service_alerts(
                 + ". Duyuru olup olmadığı bilinmiyor."
             ),
         )
+    dropped = max(0, len(alerts) - MAX_ALERTS)
+    alerts = sorted(alerts, key=_alert_rank)[:MAX_ALERTS]
+    if dropped:
+        notes.append(
+            f"Kaynaklarda {total} duyuru var, cevaba en önemli {len(alerts)} tanesi girdi "
+            f"({dropped} duyuru listelenmedi). Servis durumları ve sefer iptalleri önce "
+            "geliyor. Belirli bir hattı soruyorsan `line` ver, o hattın hepsi gelir."
+        )
+    undated = [alert for alert in alerts if not alert.recorded_day_known]
+    if undated:
+        earlier = [alert for alert in undated if alert.from_earlier_day]
+        note = (
+            f"{len(undated)} İETT duyurusunda yalnızca kayıt **saati** var, tarih yok: "
+            "bu duyurunun hangi güne ait olduğu kaynaktan bilinemiyor."
+        )
+        if earlier:
+            note += (
+                f" Bunların {len(earlier)} tanesinin saati şu andan ileride, yani "
+                "önceki bir güne ait (`from_earlier_day: true`); onlara 'şu an' deme."
+            )
+        notes.append(note)
+    old_statuses = [
+        alert for alert in alerts if alert.age_days and alert.age_days > STALE_STATUS_DAYS
+    ]
+    if old_statuses:
+        notes.append(
+            f"{len(old_statuses)} servis durumu {STALE_STATUS_DAYS} günden eski "
+            f"(en eskisi {max(alert.age_days or 0 for alert in old_statuses)} gün). "
+            "Kaynak bunları yayından kaldırmamış; hâlâ yürürlükte olabilir ama "
+            "kesin değil — cevapta güncellenme tarihini birlikte söyle."
+        )
     if failed:
         notes.append(
             "Şu kaynaklara ulaşılamadı, o kaynakların duyuruları bu listede yok: "
@@ -1302,7 +1432,7 @@ def get_service_alerts(
     return AlertsOut(
         asked_line=wanted_line,
         asked_mode=wanted_mode,
-        alerts=alerts[:40],
+        alerts=alerts,
         total=total,
         sources_ok=ok_sources,
         sources_failed=failed,

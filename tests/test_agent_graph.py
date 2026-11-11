@@ -21,6 +21,7 @@ from istanbul_agent.agent.graph import (
     ToolCall,
     _collect,
     _text,
+    ask,
 )
 
 
@@ -128,3 +129,85 @@ class TestText:
     def test_empty_content(self):
         assert _text(None) == ""
         assert _text([]) == ""
+
+
+class TestAsk:
+    """`ask()` açık bir agent'la çalışır; yığını açmak çağıranın işi.
+
+    Yığını senaryo başına açmak 15.0 s'ye mal oluyordu (üç sunucu,
+    `knowledge_server` BGE-M3'ü açılışta yükler) ve 54 senaryoda bunun
+    ~13 dakikası sadece yeniden yüklemeydi. `ask()` modele giden girdiyi
+    değiştirmiyor, yalnızca kimin yığın açtığını (karar 0014).
+    """
+
+    class FakeAgent:
+        """`ainvoke` çağrılarını sayan ve hazır durum döndüren agent."""
+
+        def __init__(self, *states: dict) -> None:
+            self.states = list(states)
+            self.calls: list[list] = []
+
+        async def ainvoke(self, payload: dict) -> dict:
+            self.calls.append(list(payload["messages"]))
+            return self.states[min(len(self.calls) - 1, len(self.states) - 1)]
+
+    def with_tool(self) -> dict:
+        return {
+            "messages": [
+                HumanMessage("soru"),
+                AIMessage(
+                    content="",
+                    tool_calls=[{"name": "geocode_place", "args": {}, "id": "a"}],
+                ),
+                ToolMessage(content="{}", tool_call_id="a"),
+                AIMessage(content="Kadıköy bulundu."),
+            ]
+        }
+
+    def without_tool(self) -> dict:
+        return {"messages": [HumanMessage("soru"), AIMessage(content="Bence 20 dakika.")]}
+
+    async def test_it_uses_the_agent_it_is_given(self):
+        agent = self.FakeAgent(self.with_tool())
+        run = await ask(agent, "Kadıköy nerede?", provider="ollama", model="m")
+        assert len(agent.calls) == 1, "yığın yeniden açılmaz, tek tur koşar"
+        assert run.answer == "Kadıköy bulundu."
+        assert run.tool_names == ["geocode_place"]
+        assert run.unverified is False
+
+    async def test_the_provider_and_model_are_carried_through(self):
+        agent = self.FakeAgent(self.with_tool())
+        run = await ask(agent, "s", provider="gemini", model="gemini-3.5-flash")
+        assert (run.provider, run.model) == ("gemini", "gemini-3.5-flash")
+
+    async def test_an_answer_without_a_tool_is_nudged_once(self):
+        agent = self.FakeAgent(self.without_tool(), self.with_tool())
+        run = await ask(agent, "Metroya bisikletle binebilir miyim?", provider="ollama", model="m")
+        assert len(agent.calls) == 2
+        assert run.nudged is True
+        assert run.unverified is False
+        assert any(
+            "Metroya bisikletle binebilir miyim?" in getattr(message, "content", "")
+            for message in agent.calls[1]
+        ), "uyarı soruyu yeniden yazar"
+
+    async def test_two_toolless_turns_mark_the_answer_unverified(self):
+        agent = self.FakeAgent(self.without_tool())
+        run = await ask(agent, "s", provider="ollama", model="m")
+        assert len(agent.calls) == 2
+        assert (run.nudged, run.unverified) == (True, True)
+
+    async def test_the_nudge_can_be_switched_off(self):
+        agent = self.FakeAgent(self.without_tool())
+        run = await ask(agent, "s", provider="ollama", model="m", nudge=False)
+        assert len(agent.calls) == 1
+        assert (run.nudged, run.unverified) == (False, True)
+
+    async def test_a_failing_agent_becomes_an_errored_run(self):
+        class Broken:
+            async def ainvoke(self, payload: dict) -> dict:
+                raise RuntimeError("model runner has unexpectedly stopped")
+
+        run = await ask(Broken(), "s", provider="ollama", model="m")
+        assert run.error and "model runner" in run.error
+        assert run.answer == ""

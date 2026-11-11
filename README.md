@@ -231,6 +231,22 @@ Ortak kök hepsinde aynı: *bir değerin yokluğunu bir değer sanmak.* Fixture
 tabanlı birim testler bunların hiçbirini yakalayamaz, çünkü dördü de kodun
 kendi varsayımıyla tutarlıydı — biri testle **doğrulanmıştı** bile.
 
+## Ölçüm
+
+54 senaryo, yerel model (`qwen3.5:4b`), hepsi taze — 11 Kasım 2026:
+
+| Ölçü | Değer |
+|---|---|
+| Geçen senaryo | **47/54 (%87.0)** |
+| Araç doğruluğu | %88.9 |
+| İfade doğruluğu | %92.3 |
+| Kaynaksız cevap | 3 |
+| Hata | 0 |
+| Gecikme ortancası | 36.0 s |
+| Tam koşu | 57.2 dk (seri) |
+
+Düşen yedi senaryonun hepsi **araç seçimi**: model özel araç yerine `geocode_place` çağırıyor ya da hiç çağırmıyor. Karar 0013'ün araç alanları şema yüzeyini %9.6 büyüttü ve bu seçimi kaydırdı — iki senaryo düzeldi, üç tanesi düştü (net −1). Ayrıntılar: karar 0014.
+
 ## Bilinen sınırlamalar
 
 - **Hava kalitesi verisi yok.** Uç nokta cevap veriyor, 28 istasyonu listeliyor,

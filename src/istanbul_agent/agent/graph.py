@@ -204,53 +204,56 @@ def _collect(messages: list[BaseMessage]) -> list[ToolCall]:
     return [calls[identifier] for identifier in order]
 
 
-async def answer(
+async def ask(
+    agent: Any,
     question: str,
-    provider: str | None = None,
     *,
-    max_steps: int = 8,
-    servers: Sequence[str] = DEFAULT_SERVERS,
+    provider: str = "?",
+    model: str = "?",
     nudge: bool = True,
 ) -> AgentRun:
-    """Ask one question and return the answer with what it took to get it.
+    """Ask one question on an **already open** agent.
+
+    `answer()` bunu her soru için yeni bir MCP yığını açarak çağırıyor;
+    aynı yığına çok soru soracak çağıranlar (değerlendirme betiği) bu
+    fonksiyonu doğrudan kullanıyor. Ölçüm: yığını açmak 15.0 s sürüyor
+    (üç sunucu; `knowledge_server` gömme modelini açılışta yüklemek
+    zorunda, karar 0010) ve senaryo başına 46.8 s'lik medyanın üçte biri
+    buydu. Modele giden girdi aynı kaldığı için bunu bir kez açmak
+    doğruluğu değiştirmiyor, yalnızca süreyi (karar 0014).
 
     `nudge` açıkken araç çağırmayan bir cevap bir kez geri çevrilir (bkz.
     `NUDGE`). İkinci turda da araç çağrılmazsa sonuç `unverified=True`
-    döner: kaynaksız bir cevabı sessizce doğru gibi sunmak, kaynak gösteren
-    bir sistemde kabul edilemez.
+    döner: kaynaksız bir cevabı sessizce doğru gibi sunmak, kaynak
+    gösteren bir sistemde kabul edilemez.
     """
     import time
 
     started = time.monotonic()
-    async with istanbul_agent(provider, max_steps=max_steps, servers=servers) as (
-        agent,
-        used,
-        model_name,
-    ):
-        history: list[BaseMessage] = [SystemMessage(SYSTEM_PROMPT), HumanMessage(question)]
-        nudged = False
-        try:
-            state = await agent.ainvoke({"messages": history})
-            if nudge and not _collect(list(state["messages"])):
-                # Araç çağrılmadı: bir kez uyar ve yeniden sor.
-                nudged = True
-                state = await agent.ainvoke(
-                    {
-                        "messages": [
-                            *list(state["messages"]),
-                            HumanMessage(NUDGE.format(question=question)),
-                        ]
-                    }
-                )
-        except Exception as problem:
-            return AgentRun(
-                question=question,
-                answer="",
-                provider=used,
-                model=model_name,
-                seconds=time.monotonic() - started,
-                error=f"{type(problem).__name__}: {problem}",
+    history: list[BaseMessage] = [SystemMessage(SYSTEM_PROMPT), HumanMessage(question)]
+    nudged = False
+    try:
+        state = await agent.ainvoke({"messages": history})
+        if nudge and not _collect(list(state["messages"])):
+            # Araç çağrılmadı: bir kez uyar ve yeniden sor.
+            nudged = True
+            state = await agent.ainvoke(
+                {
+                    "messages": [
+                        *list(state["messages"]),
+                        HumanMessage(NUDGE.format(question=question)),
+                    ]
+                }
             )
+    except Exception as problem:
+        return AgentRun(
+            question=question,
+            answer="",
+            provider=provider,
+            model=model,
+            seconds=time.monotonic() - started,
+            error=f"{type(problem).__name__}: {problem}",
+        )
 
     messages = list(state["messages"])
     final = next(
@@ -265,11 +268,32 @@ async def answer(
     return AgentRun(
         question=question,
         answer=final,
-        provider=used,
-        model=model_name,
+        provider=provider,
+        model=model,
         seconds=time.monotonic() - started,
         tool_calls=calls,
         messages=messages,
         nudged=nudged,
         unverified=not calls,
     )
+
+
+async def answer(
+    question: str,
+    provider: str | None = None,
+    *,
+    max_steps: int = 8,
+    servers: Sequence[str] = DEFAULT_SERVERS,
+    nudge: bool = True,
+) -> AgentRun:
+    """Ask one question, opening and closing its own MCP stack.
+
+    Tek soruluk yol: CLI, FastAPI ve Gradio bunu kullanıyor. Çok soru
+    soracaksan `istanbul_agent()` ile yığını bir kez aç ve `ask()` çağır.
+    """
+    async with istanbul_agent(provider, max_steps=max_steps, servers=servers) as (
+        agent,
+        used,
+        model_name,
+    ):
+        return await ask(agent, question, provider=used, model=str(model_name), nudge=nudge)

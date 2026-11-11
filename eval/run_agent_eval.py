@@ -210,10 +210,22 @@ def summarise(rows: list[dict[str, Any]], *, provider: str) -> dict[str, Any]:
 
 
 async def run_scenario(
-    scenario: Scenario, provider: str, *, refresh: bool, max_steps: int
+    scenario: Scenario,
+    provider: str,
+    *,
+    refresh: bool,
+    max_steps: int,
+    agent: Any = None,
+    model_name: str | None = None,
 ) -> tuple[Any, bool]:
-    """Senaryoyu çalıştır ya da önbellekten oku; `(run, önbellekten_mi)`."""
-    from istanbul_agent.agent.graph import AgentRun, answer
+    """Senaryoyu çalıştır ya da önbellekten oku; `(run, önbellekten_mi)`.
+
+    `agent` verilirse o açık agent kullanılır ve MCP yığını yeniden
+    açılmaz — koşu başına 15 saniyelik gömme modeli yüklemesi bir kez
+    ödenir (karar 0014). Verilmezse eski yol: her senaryo kendi yığınını
+    açar.
+    """
+    from istanbul_agent.agent.graph import AgentRun, answer, ask
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     # Model adını öğrenmek için ayarlara bakıyoruz; LLM kurmak gerekmiyor.
@@ -243,7 +255,10 @@ async def run_scenario(
         ]
         return cached, True
 
-    run = await answer(scenario.question, provider, max_steps=max_steps)
+    if agent is None:
+        run = await answer(scenario.question, provider, max_steps=max_steps)
+    else:
+        run = await ask(agent, scenario.question, provider=provider, model=model_name or model)
     path.write_text(
         json.dumps(
             {
@@ -278,22 +293,16 @@ async def main_async(args: argparse.Namespace) -> int:
         print("senaryo seçilmedi")
         return 1
 
-    print(f"=== {len(scenarios)} senaryo, sağlayıcı {args.provider} ===", flush=True)
+    lanes = max(1, int(args.concurrency))
+    print(
+        f"=== {len(scenarios)} senaryo, sağlayıcı {args.provider}"
+        + (f", {lanes} paralel" if lanes > 1 else "")
+        + " ===",
+        flush=True,
+    )
     started = time.perf_counter()
-    rows: list[dict[str, Any]] = []
-    from_cache = 0
 
-    for index, scenario in enumerate(scenarios):
-        run, cached = await run_scenario(
-            scenario, args.provider, refresh=args.refresh, max_steps=args.max_steps
-        )
-        from_cache += 1 if cached else 0
-        # Bekleme yalnızca gerçekten LLM'e gidildiyse ve son senaryo değilse.
-        if args.delay and not cached and index < len(scenarios) - 1:
-            await asyncio.sleep(args.delay)
-        row = check(scenario, run)
-        row["cached"] = cached
-        rows.append(row)
+    def report_row(scenario: Scenario, row: dict[str, Any], cached: bool) -> None:
         mark = "✓" if row["passed"] else "✗"
         extra = []
         if not row["tools_ok"]:
@@ -312,6 +321,57 @@ async def main_async(args: argparse.Namespace) -> int:
             + (f"  — {'; '.join(extra)}" if extra else ""),
             flush=True,
         )
+
+    from istanbul_agent.agent.graph import istanbul_agent
+
+    # Yığın koşu başına **bir kez** açılıyor. Ölçüm: üç sunucuyu açmak
+    # 15.0 s sürüyor (`knowledge_server` BGE-M3'ü açılışta yüklemek
+    # zorunda, karar 0010) ve senaryo başına yeniden açmak 54 senaryoda
+    # ~13 dakikayı sadece model yüklemeye harcıyordu. Modele giden girdi
+    # aynı kaldığı için bu doğruluğu değiştirmiyor (karar 0014).
+    async with istanbul_agent(args.provider, max_steps=args.max_steps) as (
+        agent,
+        _used,
+        model_name,
+    ):
+        results: dict[str, tuple[dict[str, Any], bool]] = {}
+        lane = asyncio.Semaphore(lanes)
+
+        async def one(index: int, scenario: Scenario) -> None:
+            async with lane:
+                run, cached = await run_scenario(
+                    scenario,
+                    args.provider,
+                    refresh=args.refresh,
+                    max_steps=args.max_steps,
+                    agent=agent,
+                    model_name=str(model_name),
+                )
+                # Bekleme yalnızca gerçekten LLM'e gidildiyse ve son senaryo
+                # değilse. Gemini kotası için; paralel koşuda da geçerli.
+                if args.delay and not cached and index < len(scenarios) - 1:
+                    await asyncio.sleep(args.delay)
+            row = check(scenario, run)
+            row["cached"] = cached
+            results[scenario.id] = (row, cached)
+            if lanes == 1:
+                report_row(scenario, row, cached)
+
+        if lanes == 1:
+            for index, scenario in enumerate(scenarios):
+                await one(index, scenario)
+        else:
+            await asyncio.gather(
+                *(one(index, scenario) for index, scenario in enumerate(scenarios))
+            )
+            # Paralel koşuda satırlar bitiş sırasına göre gelirdi; senaryo
+            # sırasında basılıyor ki iki koşunun çıktısı karşılaştırılabilsin.
+            for scenario in scenarios:
+                row, cached = results[scenario.id]
+                report_row(scenario, row, cached)
+
+    rows = [results[scenario.id][0] for scenario in scenarios]
+    from_cache = sum(1 for scenario in scenarios if results[scenario.id][1])
 
     summary = summarise(rows, provider=args.provider)
 
@@ -374,7 +434,8 @@ async def main_async(args: argparse.Namespace) -> int:
     return 0 if not summary["errors"] else 1
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Komut satırı seçenekleri; testten de kurulabilsin diye ayrı."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--provider", choices=("ollama", "gemini"), default="ollama")
     parser.add_argument("--limit", type=int, default=None)
@@ -391,7 +452,22 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--max-steps", type=int, default=8)
-    args = parser.parse_args(argv)
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help=(
+            "kaç senaryo aynı anda koşsun. Senaryolar bağımsız olduğu için doğruluğu "
+            "etkilemez, ama yerel modelde kaynak tavanı var: 4 GB VRAM'de her paralel "
+            "slot kendi KV önbelleğini istiyor ve model çalıştırıcısı çökebilir "
+            "(karar 0014). Varsayılan 1"
+        ),
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     return asyncio.run(main_async(args))
 
 

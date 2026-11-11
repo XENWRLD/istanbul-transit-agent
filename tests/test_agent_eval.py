@@ -203,3 +203,21 @@ class TestScenarioFile:
     def test_every_scenario_has_a_note(self, scenarios):
         for item in scenarios:
             assert item.note, item.id
+
+
+class TestOptions:
+    """Koşuyu hızlandıran seçenek doğruluğu değiştirmiyor; yardım bunu yazıyor."""
+
+    def test_concurrency_defaults_to_serial(self):
+        assert harness.build_parser().parse_args([]).concurrency == 1
+
+    def test_concurrency_can_be_raised(self):
+        assert harness.build_parser().parse_args(["--concurrency", "2"]).concurrency == 2
+
+    def test_the_help_text_names_the_resource_ceiling(self):
+        """Risk yanlış cevap değil, çöken model çalıştırıcısı (karar 0014)."""
+        action = next(
+            item for item in harness.build_parser()._actions if item.dest == "concurrency"
+        )
+        assert "doğruluğu" in (action.help or "")
+        assert "VRAM" in (action.help or "")

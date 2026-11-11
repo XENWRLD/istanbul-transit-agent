@@ -1,6 +1,6 @@
 """MCP sunucusu: toplu taşıma araçları.
 
-Şu an altı araç sunuyor:
+Şu an sekiz araç sunuyor:
 
 - `geocode_place` — ad → konum (durak, istasyon, iskele)
 - `find_nearby_stops` — bir yerin çevresindeki duraklar
@@ -8,10 +8,14 @@
 - `get_line_route` — bir hattın sıralı durakları ve servis penceresi
 - `get_rail_travel_time` — iki istasyon arası süre ve güzergâh
 - `get_next_departures` — bir hattın ilk/son seferi ve sefer aralığı
+- `get_service_alerts` — canlı sefer duyuruları (İETT + Metro İstanbul)
+- `get_station_accessibility` — asansör/yürüyen merdiven sayısı ve anlık arızalar
 
 Tarife ve süre verisi yerel depodan (`data/transit.duckdb`) geliyor;
-`get_next_departures` buna ek olarak Metro İstanbul duyurularını canlı
-çekiyor (çekemezse cevabına bunu yazıyor). Araç açıklamaları agent'ın araç
+son üç araç canlı API'den (`clients/`) okuyor: ortak zaman aşımı, geçici
+hatada yeniden deneme, kaynak bazlı TTL önbellek. Canlı kaynağa
+ulaşılamazsa araç bunu **açıkça** döner; boş liste döndürmek "duyuru yok"
+demekle aynı şey olurdu (karar 0012). Araç açıklamaları agent'ın araç
 seçimini belirliyor,
 bu yüzden her açıklamada ne yaptığı, parametreleri ve **ne zaman
 kullanılmaması gerektiği** yazıyor (CLAUDE.md kuralı).
@@ -21,9 +25,10 @@ kullanılmaması gerektiği** yazıyor (CLAUDE.md kuralı).
 
 from __future__ import annotations
 
+import re
 import time
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -91,6 +96,19 @@ class StationNotFound(BaseModel):
             "En yakın 3 istasyon adı; istasyon başka bir hatta varsa onun yerine o hatların kodları"
         ),
     )
+    message: str
+
+
+class LiveDataUnavailable(BaseModel):
+    """Canlı kaynağa ulaşılamadı.
+
+    Boş liste yerine hata dönüyor: "duyuru yok" ile "duyurulara
+    ulaşamadım" aynı şey değil (karar 0012).
+    """
+
+    ok: Literal[False] = False
+    error: Literal["canli_veri_yok"] = "canli_veri_yok"
+    source: str
     message: str
 
 
@@ -181,6 +199,34 @@ class DirectionOut(BaseModel):
             "bu yönü kullanma, diğer yönü kullan."
         ),
     )
+
+
+class BusWindowOut(BaseModel):
+    """Bir otobüs hattının bir yön + gün tipindeki servis penceresi."""
+
+    direction: str = Field(description="Yön kodu (D: gidiş, G: dönüş — beslemenin kodu)")
+    day_type: str = Field(description="hafta_ici | cumartesi | pazar")
+    first_departure: str = Field(description="İlk duraktan ilk kalkış")
+    last_departure: str = Field(description="İlk duraktan son kalkış")
+    trips: int = Field(description="O yön ve gün tipindeki sefer sayısı")
+    headway_minutes: int | None = Field(
+        None, description="Kalkışlar arası ortanca süre; 4 seferden az veriden üretilmez"
+    )
+    route_variants: int = Field(description="Bu yönde kaç güzergâh varyantı var")
+
+
+class BusDeparturesOut(BaseModel):
+    """`get_next_departures` cevabı, otobüs hatları için."""
+
+    ok: Literal[True] = True
+    line: str
+    line_name: str | None = None
+    mode: Literal["otobus"] = "otobus"
+    today: str = Field(description="Bugünün gün tipi")
+    windows: list[BusWindowOut]
+    source: str = "İETT Planlanan Sefer Saati (veri seti 350, canlı SOAP)"
+    data_as_of: str
+    notes: list[str] = Field(default_factory=list)
 
 
 class DeparturesOut(BaseModel):
@@ -475,6 +521,55 @@ def get_rail_travel_time(
     )
 
 
+def _bus_departures(line: str) -> BusDeparturesOut | LiveDataUnavailable | None:
+    """İETT'den otobüs sefer saatleri; hat bilinmiyorsa `None`.
+
+    `None` dönmesi "bu bir otobüs hattı değil" demek; çağıran o zaman
+    raylı sistem için hat bulunamadı hatası döndürüyor.
+    """
+    from istanbul_agent.clients import iett
+    from istanbul_agent.clients.base import LiveDataError
+
+    code = line.strip().upper()
+    try:
+        departures = iett.fetch_planned_departures(code)
+    except LiveDataError as problem:
+        return _live_error(problem)
+    if not departures:
+        return None
+
+    today = iett.today_day_type()
+    windows = iett.summarise_departures(departures)
+    notes = [
+        "Saatler hattın **ilk durağından** kalkışı gösterir; ara duraklardan geçiş "
+        "saatini bu kaynak vermiyor.",
+    ]
+    thin = [window for window in windows if window.headway_minutes is None]
+    if thin:
+        notes.append(
+            f"{len(thin)} yön/gün tipinde 4 seferden az kayıt var, sefer aralığı üretilmedi."
+        )
+    return BusDeparturesOut(
+        line=code,
+        line_name=departures[0].line_name or None,
+        today=today,
+        windows=[
+            BusWindowOut(
+                direction=window.direction,
+                day_type=window.day_type,
+                first_departure=window.first,
+                last_departure=window.last,
+                trips=window.trips,
+                headway_minutes=window.headway_minutes,
+                route_variants=len(window.route_codes),
+            )
+            for window in windows
+        ],
+        data_as_of=time.strftime("%Y-%m-%d %H:%M"),
+        notes=notes,
+    )
+
+
 def _direction_out(info: DepartureInfo, station: str | None) -> DirectionOut:
     """One direction of the answer, as the tool reports it.
 
@@ -508,8 +603,15 @@ def _direction_out(info: DepartureInfo, station: str | None) -> DirectionOut:
 @mcp.tool()
 def get_next_departures(
     line: str, station: str | None = None, at: str | None = None
-) -> DeparturesOut | LineNotFound | StationNotFound | StoreNotReady:
-    """Bir raylı sistem hattının ilk/son seferini ve şu anki sefer aralığını verir.
+) -> (
+    DeparturesOut
+    | BusDeparturesOut
+    | LineNotFound
+    | StationNotFound
+    | StoreNotReady
+    | LiveDataUnavailable
+):
+    """Bir hattın ilk/son seferini ve sefer aralığını verir (raylı sistem ve otobüs).
 
     Yön bazında cevap verir: her yön için ilk sefer, son sefer, o saatteki
     sefer aralığı, servisin şu an çalışıp çalışmadığı ve ortalama bekleme.
@@ -561,11 +663,21 @@ def get_next_departures(
     by_code = {known.upper(): known for known in known_lines}
     code = by_code.get(line.strip().upper(), line.strip().upper())
     if code not in known_lines:
+        # Raylı sistemde yok: otobüs hattı olabilir. Otobüs tarifesi yerel
+        # depoda değil, İETT'nin canlı servisinde (karar 0007: GTFS
+        # beslemesi ara duraklara saat vermiyor, yalnızca sefer başına iki
+        # saat veriyor).
+        bus = _bus_departures(line)
+        if bus is not None:
+            return bus
         return LineNotFound(
             error="hat_bulunamadi",
             asked=line,
             candidates=known_lines,
-            message=f"'{line}' diye bir raylı sistem hattı yok.",
+            message=(
+                f"'{line}' ne raylı sistem hattı ne de İETT'de sefer saati olan bir otobüs "
+                "hattı. Raylı sistemde bilinen hatlar adaylarda listeli."
+            ),
         )
 
     if station:
@@ -969,6 +1081,371 @@ def get_line_route(
             )
             for route in routes
         ],
+        notes=notes,
+    )
+
+
+# ------------------------------------------------- canlı araçlar (Faz 2)
+
+
+class AlertOut(BaseModel):
+    """Tek bir duyuru."""
+
+    source: str = Field(description="İETT | Metro İstanbul")
+    line: str | None = Field(None, description="Duyurunun ilgili olduğu hat kodu")
+    kind: str = Field(description="Duyuru tipi (Sefer, servis durumu vb.)")
+    text: str
+    recorded_at: str | None = None
+    is_cancellation: bool = Field(False, description="Sefer iptali bildiren duyuru")
+
+
+class AlertsOut(BaseModel):
+    """`get_service_alerts` cevabı."""
+
+    ok: Literal[True] = True
+    asked_line: str | None = None
+    asked_mode: str | None = None
+    alerts: list[AlertOut]
+    total: int = Field(description="Filtre öncesi toplam duyuru sayısı")
+    sources_ok: list[str] = Field(default_factory=list)
+    sources_failed: list[str] = Field(
+        default_factory=list, description="Ulaşılamayan kaynaklar; cevapta belirt"
+    )
+    data_as_of: str
+    notes: list[str] = Field(default_factory=list)
+
+
+class StationFacilitiesOut(BaseModel):
+    """Bir istasyonun erişilebilirlik donanımı ve arızaları."""
+
+    station: str
+    lines: list[str] = Field(default_factory=list)
+    lifts: int = Field(description="İstasyondaki asansör sayısı")
+    escalators: int = Field(description="Yürüyen merdiven sayısı")
+    wc: bool
+    baby_room: bool
+    faults: list[str] = Field(
+        default_factory=list, description="Bu istasyonda **şu an** arızalı ekipmanlar"
+    )
+
+
+class AccessibilityOut(BaseModel):
+    """`get_station_accessibility` cevabı."""
+
+    ok: Literal[True] = True
+    asked: str | None = None
+    stations: list[StationFacilitiesOut]
+    network_faults: dict[str, int] = Field(
+        default_factory=dict, description="Ağ genelinde arızalı ekipman sayısı (grup bazında)"
+    )
+    data_as_of: str
+    source: str = "Metro İstanbul (GetStations.DetailInfo + GetFaultyEquipmentDetails)"
+    notes: list[str] = Field(default_factory=list)
+
+
+# Raylı sistem hat kodları: M2, M1A, T1, F4, TF2, Marmaray. Otobüs kodları
+# sayıyla başlıyor (34, 500T, 12A) ya da harf+sayı dışında bir desen.
+_RAIL_LINE = re.compile(r"^(?:M\d+[AB]?|T\d+|F\d+|TF\d+|MARMARAY\d?)$", re.IGNORECASE)
+
+
+def _looks_like_rail_line(line: str) -> bool:
+    return bool(_RAIL_LINE.match(line.strip()))
+
+
+def _live_error(problem: Any) -> LiveDataUnavailable:
+    return LiveDataUnavailable(source=problem.source, message=problem.message)
+
+
+@mcp.tool()
+def get_service_alerts(
+    line: str | None = None, mode: str | None = None
+) -> AlertsOut | LiveDataUnavailable:
+    """Otobüs ve raylı sistemdeki **canlı** sefer duyurularını ve arıza bildirimlerini verir.
+
+    İki kaynağı birleştirir: İETT duyuruları (sefer iptalleri, güzergâh
+    değişiklikleri) ve Metro İstanbul duyuruları + hat bazlı servis
+    durumu. Duyurular tarifeden **daha günceldir**: tarife 23:00'e kadar
+    sefer diyorken duyuru iptal diyorsa, duyuru geçerlidir.
+
+    Parametreler:
+        line: hat kodu ile süz — otobüste `500T`, `34`; raylı sistemde
+            `M7`, `T1`, `Marmaray`. Verilmezse bütün duyurular döner
+            (çok olabilir; `mode` ile daralt).
+        mode: kaynağa göre süz — `otobus` yalnızca İETT duyurularını,
+            `rayli` yalnızca Metro İstanbul duyurularını getirir.
+
+    Kaynaklardan biri erişilemezse araç **yine cevap verir** ve
+    `sources_failed` içinde hangisine ulaşılamadığını söyler; o kaynağın
+    duyuruları eksik demektir ve bunu cevapta belirt.
+
+    NE ZAMAN KULLANMA:
+    - Sefer saati sormak için kullanma — `get_next_departures` kullan.
+      Bu araç tarife vermez, tarifedeki **değişikliği** verir.
+    - Asansör/yürüyen merdiven arıza listesi için kullanma —
+      `get_station_accessibility` kullan.
+    - Trafik durumu için kullanma — `get_traffic_status` kullan.
+    - Geçmiş duyuruları aramak için kullanma; kaynak yalnızca güncel
+      duyuruları yayımlıyor.
+    """
+    import time
+
+    from istanbul_agent.clients import iett
+    from istanbul_agent.clients.base import LiveDataError
+
+    notes: list[str] = []
+    wanted_line = (line or "").strip().upper() or None
+    wanted_mode = (mode or "").strip().casefold() or None
+    if wanted_mode in {"otobüs", "bus", "iett"}:
+        wanted_mode = "otobus"
+    if wanted_mode in {"raylı", "metro", "tren", "tramvay"}:
+        wanted_mode = "rayli"
+
+    # Mod verilmediyse hat kodundan çıkar. Olmazsa otobüs hattı sorulurken
+    # ağ geneli bir metro duyurusu da listeye giriyor ("tüm hatlarımızda
+    # kış tarifesi"), çünkü o duyuru hiçbir hat adı taşımıyor ve "her hat"
+    # sayılıyor — ölçümde 500T sorgusunda tam bu oldu.
+    if wanted_mode is None and wanted_line:
+        wanted_mode = "rayli" if _looks_like_rail_line(wanted_line) else "otobus"
+        notes.append(
+            f"{wanted_line} bir {'raylı sistem' if wanted_mode == 'rayli' else 'otobüs'} "
+            "hattı sayıldı; yalnızca o kaynağın duyuruları tarandı."
+        )
+
+    alerts: list[AlertOut] = []
+    ok_sources: list[str] = []
+    failed: list[str] = []
+    total = 0
+
+    if wanted_mode in (None, "otobus"):
+        try:
+            bus_alerts = iett.fetch_announcements()
+            ok_sources.append("İETT duyuruları")
+            total += len(bus_alerts)
+            for item in bus_alerts:
+                if wanted_line and item.line.upper() != wanted_line:
+                    continue
+                alerts.append(
+                    AlertOut(
+                        source="İETT",
+                        line=item.line or None,
+                        kind=item.kind or "duyuru",
+                        text=item.message,
+                        recorded_at=item.recorded_at or None,
+                        is_cancellation=item.is_cancellation,
+                    )
+                )
+        except LiveDataError as problem:
+            failed.append(f"İETT duyuruları ({problem.source})")
+
+    if wanted_mode in (None, "rayli"):
+        try:
+            metro_alerts = fetch_announcements()
+            ok_sources.append("Metro İstanbul duyuruları")
+            total += len(metro_alerts)
+            for item in metro_alerts:
+                if wanted_line and item.lines and wanted_line not in item.lines:
+                    continue
+                alerts.append(
+                    AlertOut(
+                        source="Metro İstanbul",
+                        line=", ".join(sorted(item.lines)) or None,
+                        kind="tarife" if item.is_schedule_related else "duyuru",
+                        text=item.summary(),
+                        recorded_at=None,
+                    )
+                )
+        except LiveDataError as problem:
+            failed.append(f"Metro İstanbul duyuruları ({problem.source})")
+        except Exception as problem:
+            failed.append(f"Metro İstanbul duyuruları ({type(problem).__name__})")
+
+        try:
+            from istanbul_agent.clients.metro import fetch_service_statuses
+
+            statuses = fetch_service_statuses()
+            ok_sources.append("Metro İstanbul servis durumu")
+            total += len(statuses)
+            for status in statuses:
+                if wanted_line and status.line.upper() != wanted_line:
+                    continue
+                alerts.append(
+                    AlertOut(
+                        source="Metro İstanbul",
+                        line=status.line or None,
+                        kind="servis durumu",
+                        text=status.description,
+                        recorded_at=status.updated_at or None,
+                    )
+                )
+        except LiveDataError as problem:
+            failed.append(f"Metro İstanbul servis durumu ({problem.source})")
+        except Exception as problem:
+            failed.append(f"Metro İstanbul servis durumu ({type(problem).__name__})")
+
+    if not ok_sources:
+        return LiveDataUnavailable(
+            source="duyurular",
+            message=(
+                "Hiçbir duyuru kaynağına ulaşılamadı: "
+                + "; ".join(failed)
+                + ". Duyuru olup olmadığı bilinmiyor."
+            ),
+        )
+    if failed:
+        notes.append(
+            "Şu kaynaklara ulaşılamadı, o kaynakların duyuruları bu listede yok: "
+            + "; ".join(failed)
+        )
+    if wanted_line and not alerts:
+        notes.append(f"{wanted_line} için güncel duyuru yok (kaynaklarda {total} duyuru tarandı).")
+
+    return AlertsOut(
+        asked_line=wanted_line,
+        asked_mode=wanted_mode,
+        alerts=alerts[:40],
+        total=total,
+        sources_ok=ok_sources,
+        sources_failed=failed,
+        data_as_of=time.strftime("%Y-%m-%d %H:%M"),
+        notes=notes,
+    )
+
+
+@mcp.tool()
+def get_station_accessibility(
+    station: str | None = None, line: str | None = None
+) -> AccessibilityOut | StationNotFound | LiveDataUnavailable:
+    """Raylı sistem istasyonlarındaki asansör/yürüyen merdiven sayısını ve **anlık arızaları** verir.
+
+    İki şeyi birleştirir: istasyonun donanımı (kaç asansör, kaç yürüyen
+    merdiven, tuvalet, bebek bakım odası) ve Metro İstanbul'un **şu anki**
+    arıza listesi. Tekerlekli sandalye ya da bebek arabası sorularında
+    asansör arızası belirleyicidir.
+
+    Parametreler:
+        station: istasyon adı ("Kadıköy", "Yenikapı"). Verilmezse ağ
+            genelindeki arıza sayıları döner.
+        line: hat kodu ile süz (`M4`, `T1`). İstasyon adı birden çok hatta
+            geçiyorsa bunu ver.
+
+    Arıza listesi yalnızca **bildirilmiş** arızaları içerir; listede
+    olmaması "çalışıyor" garantisi değildir, bunu cevapta söyle.
+
+    NE ZAMAN KULLANMA:
+    - Sefer saati veya süre için kullanma — `get_next_departures` ve
+      `get_rail_travel_time` kullan.
+    - Otobüs/vapur erişilebilirliği için kullanma; kaynak yalnızca raylı
+      sistemi kapsıyor.
+    - İstasyonun nerede olduğunu sormak için kullanma — `geocode_place`
+      kullan.
+    - Tekerlekli sandalyeyle **rota planı** için kullanma; bu araç
+      istasyon donanımını söyler, rota kurmaz.
+    """
+    import time
+
+    from istanbul_agent.clients.base import LiveDataError
+    from istanbul_agent.clients.metro import (
+        ACCESSIBILITY_GROUPS,
+        fetch_equipment_counts,
+        fetch_faulty_equipment,
+        fetch_station_facilities,
+    )
+    from istanbul_agent.store.station_names import normalize
+
+    try:
+        facilities = fetch_station_facilities()
+        counts = fetch_equipment_counts()
+        faults = [
+            fault for group in ACCESSIBILITY_GROUPS for fault in fetch_faulty_equipment(group)
+        ]
+    except LiveDataError as problem:
+        return _live_error(problem)
+    except Exception as problem:
+        return LiveDataUnavailable(
+            source="metro_equipment",
+            message=(
+                f"Metro İstanbul erişilebilirlik verisine ulaşılamadı ({type(problem).__name__}); "
+                "arıza durumu bilinmiyor."
+            ),
+        )
+
+    wanted_line = (line or "").strip().upper() or None
+    network = {
+        count.name: count.inactive
+        for count in counts
+        if count.group in ACCESSIBILITY_GROUPS and count.inactive
+    }
+    notes = [
+        "Arıza listesi yalnızca bildirilmiş arızaları içerir; listede olmaması "
+        "ekipmanın çalıştığı garantisi değildir."
+    ]
+
+    if not station:
+        return AccessibilityOut(
+            asked=None,
+            stations=[],
+            network_faults=network,
+            data_as_of=time.strftime("%Y-%m-%d %H:%M"),
+            notes=[*notes, "İstasyon adı verilmedi; yalnızca ağ geneli arıza sayıları döndü."],
+        )
+
+    key = normalize(station)
+    matched = [
+        item
+        for item in facilities
+        if normalize(item.station) == key and (not wanted_line or item.line.upper() == wanted_line)
+    ]
+    if not matched:
+        candidates = sorted(
+            {item.station for item in facilities if key and key[:4] in normalize(item.station)}
+        )[:3]
+        return StationNotFound(
+            asked=station,
+            candidates=candidates,
+            message=(
+                f"'{station}' adlı istasyon Metro İstanbul istasyon listesinde bulunamadı"
+                + (f" ({wanted_line} hattında)" if wanted_line else "")
+                + ". Adaylar arasından doğru olanı kullanıcıya sor."
+            ),
+        )
+
+    grouped: dict[str, StationFacilitiesOut] = {}
+    for item in matched:
+        existing = grouped.get(normalize(item.station))
+        station_faults = [
+            f"{fault.group} arızası ({fault.date[:10]})"
+            for fault in faults
+            if normalize(fault.station) == normalize(item.station)
+            and (not wanted_line or fault.line.upper() == wanted_line)
+        ]
+        if existing is None:
+            grouped[normalize(item.station)] = StationFacilitiesOut(
+                station=item.station,
+                lines=[item.line] if item.line else [],
+                lifts=item.lifts,
+                escalators=item.escalators,
+                wc=item.wc,
+                baby_room=item.baby_room,
+                faults=sorted(set(station_faults)),
+            )
+        else:
+            if item.line and item.line not in existing.lines:
+                existing.lines.append(item.line)
+            existing.lifts = max(existing.lifts, item.lifts)
+            existing.escalators = max(existing.escalators, item.escalators)
+            existing.faults = sorted(set([*existing.faults, *station_faults]))
+
+    stations = list(grouped.values())
+    if any(item.lifts == 0 for item in stations):
+        notes.append(
+            "Asansör sayısı 0 olan istasyonda asansör bulunmuyor; tekerlekli sandalye "
+            "erişimi için bunu belirt."
+        )
+    return AccessibilityOut(
+        asked=station,
+        stations=stations,
+        network_faults=network,
+        data_as_of=time.strftime("%Y-%m-%d %H:%M"),
         notes=notes,
     )
 

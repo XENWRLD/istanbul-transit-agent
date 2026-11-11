@@ -25,8 +25,8 @@ from istanbul_agent.agent.graph import (
 
 
 class TestServerRegistry:
-    def test_both_servers_are_registered(self):
-        assert set(DEFAULT_SERVERS) == {"transit", "knowledge"}
+    def test_every_server_is_registered(self):
+        assert set(DEFAULT_SERVERS) == {"transit", "knowledge", "city"}
         for name in DEFAULT_SERVERS:
             assert name in SERVER_COMMANDS
 
@@ -38,9 +38,9 @@ class TestServerRegistry:
             assert command["args"][1].startswith("istanbul_agent.servers.")
             assert command["transport"] == "stdio"
 
-    def test_the_city_server_is_not_wired_yet(self):
-        """Faz 2 ertelendi; city_server dosyası yok, listede de olmamalı."""
-        assert "city" not in SERVER_COMMANDS
+    def test_the_city_server_is_wired(self):
+        """Faz 2'de eklendi (karar 0012): otopark ve trafik araçları."""
+        assert SERVER_COMMANDS["city"]["args"][1].endswith("city_server")
 
 
 class TestNudge:

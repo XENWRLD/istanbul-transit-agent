@@ -12,9 +12,8 @@ aramada yeniden yüklemek demekti. Bunun yerine her sunucu için bir oturum
 `AsyncExitStack` ile açılıyor ve araç listeleri birleştiriliyor: sunucu
 süreci bir kez kalkıyor, model bir kez yükleniyor.
 
-Faz 4'te iki sunucu bağlı: `transit` (6 araç) ve `knowledge` (1 araç).
-`city` sunucusu Faz 2 ertelendiği için henüz yok; tanımı burada hazır ve
-dosya ortaya çıktığında listeye eklemek yeterli.
+Üç sunucu bağlı: `transit` (8 araç), `knowledge` (1 araç) ve `city`
+(2 araç) — toplam 11 araç. `city` Faz 2'de eklendi (karar 0012).
 
 LLM yalnızca `istanbul_agent.llm.get_llm()` üzerinden kurulur (proje
 kuralı); sağlayıcı `.env` içindeki `LLM_PROVIDER` ile ya da `provider`
@@ -61,10 +60,10 @@ def _stdio(module: str) -> dict[str, Any]:
 SERVER_COMMANDS: dict[str, dict[str, Any]] = {
     "transit": _stdio("istanbul_agent.servers.transit_server"),
     "knowledge": _stdio("istanbul_agent.servers.knowledge_server"),
-    # "city": _stdio("istanbul_agent.servers.city_server"),  # Faz 2
+    "city": _stdio("istanbul_agent.servers.city_server"),
 }
 
-DEFAULT_SERVERS: tuple[str, ...] = ("transit", "knowledge")
+DEFAULT_SERVERS: tuple[str, ...] = ("transit", "knowledge", "city")
 
 
 @dataclass

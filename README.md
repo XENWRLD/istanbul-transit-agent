@@ -19,15 +19,17 @@ LangGraph ReAct agent  (LLM: Gemini 3.5 Flash | yerel qwen3.5:4b)
       │   ├─ araç çağrılmadıysa bir kez uyarır, yine çağrılmazsa
       │   │  cevabı "kaynaksız" işaretler
       │
-      ├── MCP: transit_server (stdio) ─── 6 araç
+      ├── MCP: transit_server (stdio) ─── 8 araç
       │      ├── DuckDB: GTFS + GeoJSON (otobüs, raylı sistem, durak/iskele)
-      │      └── Metro İstanbul REST (duyurular)
+      │      └── canlı: İETT SOAP (duyuru, sefer saati), Metro REST
+      │               (duyuru, servis durumu, asansör/merdiven arızası)
       │
       ├── MCP: knowledge_server (stdio) ── 1 araç
       │      └── Qdrant (yerel mod) + BGE-M3: SSS, bilet fiyatı, raporlar,
       │          565 veri seti açıklaması
       │
-      └── MCP: city_server ──────────────── ⏸ Faz 2 ertelendi
+      └── MCP: city_server (stdio) ────── 2 araç
+             └── İSPARK (otopark doluluğu), trafik indeksi
 ```
 
 ## Hızlı kurulum
@@ -91,7 +93,7 @@ içermez, `data/` birim olarak bağlanır.
 > için: `docker build -t istanbul-agent .` ve ardından
 > `curl localhost:8000/health`.
 
-## Araçlar (7)
+## Araçlar (11)
 
 | Araç | Ne yapar | Kaynak |
 |---|---|---|
@@ -102,6 +104,10 @@ içermez, `data/` birim olarak bağlanır.
 | `get_rail_travel_time` | iki istasyon arası süre, aktarmalı güzergâh | GTFS `stop_times` + 312/313 referans tabloları |
 | `get_next_departures` | metro/Marmaray ilk/son sefer, sefer aralığı | elle doğrulanmış saatler + GTFS + canlı duyurular |
 | `search_knowledge` | kural, ücret, tanım, veri seti açıklaması | Qdrant + BGE-M3 (853 parça) |
+| `get_service_alerts` | canlı sefer duyuruları, iptaller | İETT SOAP + Metro İstanbul REST |
+| `get_station_accessibility` | asansör/merdiven sayısı ve **anlık arızalar** | Metro İstanbul REST |
+| `find_parking` | otopark ve **anlık boş kapasite** | İSPARK REST |
+| `get_traffic_status` | trafik indeksi ve eğilimi | İBB trafik indeksi |
 
 Her araç çıktısı `source` ve `data_as_of` taşır. Her aracın açıklamasında
 **ne zaman kullanılmaması gerektiği** yazılı; araç seçimi bu metne dayandığı
@@ -207,10 +213,13 @@ araç çağırmayı bıraktı. Ölçüm: sistem prompt'u 6 515 + yedi aracın ş
 
 ## Bilinen sınırlamalar
 
-- **Faz 2 (canlı veri araçları) ertelendi.** Otopark, trafik, hava kalitesi,
-  istasyon erişilebilirliği ve otobüsün ara durak saatleri **yok**. Agent bu
-  sorularda bilginin yokluğunu söylüyor; senaryo setinde 8 senaryo tam bunu
-  ölçüyor.
+- **Hava kalitesi verisi yok.** Uç nokta cevap veriyor, 28 istasyonu listeliyor,
+  tarih parametresini kabul ediyor — ama ölçüm değerlerinin **tamamı boş**
+  (12/12 istasyon, 721 kayıt, 0 dolu). Bu yüzden `get_air_quality` **yazılmadı**
+  (karar 0012); istemci kodu duruyor, veri gelirse araç bir sarmalayıcı kadar
+  uzakta.
+- **Otobüsün ara durak saatleri yok**: hem GTFS beslemesi hem canlı servis yalnızca
+  ilk duraktan kalkışı veriyor (kararlar 0007, 0012).
 - **Canlı araç konumu askıya alındı:** uç nokta çalışıyor ama konum tek
   başına bir soruyu cevaplamıyor (durağa varış tahmini gerekir, o model
   projede yok).
@@ -239,7 +248,7 @@ araç çağırmayı bıraktı. Ölçüm: sistem prompt'u 6 515 + yedi aracın ş
 ## Komutlar
 
 ```bash
-uv run pytest                                  # 538 test
+uv run pytest                                  # 639 test
 uv run ruff check . && uv run ruff format .
 
 uv run python -m istanbul_agent.cli "soru" [--provider ollama] [--quiet]
@@ -250,6 +259,7 @@ uv run python eval/compare_providers.py        # iki sağlayıcı, ortak senaryo
 
 uv run python -m istanbul_agent.servers.transit_server     # MCP (stdio)
 uv run python -m istanbul_agent.servers.knowledge_server
+uv run python -m istanbul_agent.servers.city_server
 ```
 
 Araçlar MCP üzerinden sunulduğu için Claude Desktop gibi bir istemciye de
@@ -264,7 +274,7 @@ birebir aynıdır.
   veri kaynakları (0001), GTFS servis günleri (0002), istasyon eşleştirme
   (0003), raylı süre modeli (0004), sefer saatleri (0005), MCP + agent
   (0006), İETT beslemesi (0007), yer ve hat araçları (0008), RAG hattı
-  (0009), entegrasyon (0010), değerlendirme ve paketleme (0011)
+  (0009), entegrasyon (0010), değerlendirme ve paketleme (0011), canlı veri araçları (0012)
 - `datasets/data-inventory.md` — 39 uç noktanın işaretli envanteri
 - `eval/results/` — ölçüm çıktıları (JSON)
 

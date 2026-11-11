@@ -92,16 +92,29 @@ Tarihsel istatistik veri setleri (saatlik trafik, yolcu sayıları) araç değil
 
 **Sonuç (10 Kasım 2026): bitti.** Kabul sorularının **5/5**'inde doğru araç seçildi (yerel model `qwen3.5:4b`, ölçüm karar 0008). Araç sayısı 6; `uv run python -m istanbul_agent.store.ingest` beslemeyi baştan kuruyor (~8 dk); 419 birim testi geçiyor. Faz 1'de açığa çıkan üç araç kusuru düzeltildi: geçersiz mod boş sonuç döndürüyordu, ön ek birkaç adaya uyduğunda reddediyordu, benzerlik eşitliğini keyfî bozuyordu.
 
-### Faz 2 — Canlı veri araçları  ⏸ ertelendi (10 Kasım 2026)
+### Faz 2 — Canlı veri araçları ✅ bitti (11 Kasım 2026)
 
-**Kullanıcı kararıyla ertelendi, iptal edilmedi.** Faz 3 (RAG) canlı veriye bağlı olmadığı için sıra değiştirildi. Bu fazda yapılacaklar olduğu gibi duruyor: İETT SOAP/REST istemcileri, `get_next_departures` otobüs tarafı (ara durak saatleri yalnızca canlı servisten gelebilir, karar 0007), `get_service_alerts`, `get_station_accessibility`, `find_parking`, `get_traffic_status`, `get_air_quality`.
-- İki API istemcisi: İETT için SOAP, Metro ve diğerleri için REST (`httpx`). Ortak katman: zaman aşımı, yeniden deneme, kaynak bazlı TTL önbellek.
+**Faz 3-5'ten sonra yapıldı** (kullanıcı kararı; RAG canlı veriye bağlı değildi). Canlı araç konumu askıda kaldı. Sonuç — araç sayısı 7 → **11**:
+
+| Araç | Kaynak | Durum |
+|---|---|---|
+| `get_service_alerts` | İETT `GetDuyurular_json` + Metro duyuru/servis durumu | ✅ |
+| `get_station_accessibility` | Metro `GetStations.DetailInfo` + `GetFaultyEquipmentDetails` | ✅ |
+| `get_next_departures` (otobüs) | İETT `GetPlanlananSeferSaati_json` | ✅ |
+| `find_parking` | İSPARK `Park` | ✅ |
+| `get_traffic_status` | Trafik indeksi (548) | ✅ |
+| `get_air_quality` | `GetAQIByStationId` | ❌ **yazılmadı: kaynakta veri yok** — 721 kaydın, 12 istasyonun 12'sinde `AQI: null` (karar 0012/3) |
+| `get_vehicle_positions` | İETT `GetHatOtoKonum_json` | ⏸ askıda (plan kararı) |
+| `find_mobility_options` | bisiklet/şarj katmanları | ⏸ yapılmadı (düşük öncelik) |
+- İki API istemcisi (bitti): İETT için **elle kurulan SOAP zarfı** (`zeep` değil — ölçüm: iki servisten birini hiç açamıyor, açtığında iki kat yavaş; karar 0012/1), Metro ve şehir kaynakları için REST. Ortak katman `clients/base.py`: zaman aşımı, geçici hatada üstel geri çekilmeli yeniden deneme (4xx denenmez), kaynak bazlı TTL önbellek (otopark 60 s, tarife 6 saat).
   - **Risk:** `zeep` dört İETT WSDL'ini açamıyor (350, 349, 172, 171) — `AuthHeader` bildirilmiş ama eşleşen `<message>` tanımı yok. Faz 0'da elle kurulan SOAP zarfı çalıştı. İstemci yöntemi ölçümle seçilecek; karar `documents/decisions/` altına yazılacak.
   - **Metro REST istemcisi sağlık kontrolünü HTTP durumuna değil `Success` alanına dayandırır:** API başarısızlıkta da HTTP 200 + `Success: false` dönüyor.
 - `transit_server` canlı araçları: `get_next_departures` (canlı/otobüs kısmı), `get_service_alerts`, `get_station_accessibility`. `get_vehicle_positions` askıda (bkz. araç tasarımı bölümü).
 - `city_server` araçları: `find_parking`, `get_traffic_status`, `get_air_quality`. `find_mobility_options` düşük öncelikli, en sona.
 
 **Bitti tanımı:** Her canlı araç fixture tabanlı birim testlerinden geçiyor; API kapalıyken araç anlamlı bir hata mesajı dönüyor; agent 10 canlı veri sorusunun en az 8'inde doğru aracı seçiyor.
+
+**Sonuç: bitti.** Canlı kaynaklar ağa çıkmadan, Faz 0 fixture'larıyla test ediliyor (639 test). Kaynağa ulaşılamadığında araç `canli_veri_yok` dönüyor — boş liste değil. Agent üzerinden koşulan 13 canlı/değişen senaryonun **12'si** geçti; başarısız olan `refuse-08` ("arabayla mı metroyla mı") trafik aracını hiç çağırmadı. Ayrıntılar: `documents/decisions/0012-canli-veri-araclari.md`.
 
 ### Faz 3 — RAG hattı ve `search_knowledge` ✅ bitti (10 Kasım 2026)
 - Kaynaklar (bitti): Metro SSS (509, yalnızca TR kayıtlar), güncel bilet fiyatı (canlı API), bilet fiyatı 2017-2022 (541), 34 Dakika indeks belgesi (445 ve 442 **aynı dosya**, bir kez indekslendi), UAP raporu (496), UAP anket formları 2006/2012 (435), 565 veri seti açıklaması. İETT SOAP kullanım dokümanı kapsam dışı (depoda yok).

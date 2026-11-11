@@ -25,6 +25,21 @@ from istanbul_agent.config import PROJECT_ROOT
 
 EVAL_PATH = PROJECT_ROOT / "eval" / "run_agent_eval.py"
 
+# Üç MCP sunucusunun sunduğu araçların tamamı (Faz 2 ile 11 oldu).
+ALL_TOOLS = {
+    "geocode_place",
+    "find_nearby_stops",
+    "get_lines_at_stop",
+    "get_line_route",
+    "get_rail_travel_time",
+    "get_next_departures",
+    "get_service_alerts",
+    "get_station_accessibility",
+    "search_knowledge",
+    "find_parking",
+    "get_traffic_status",
+}
+
 
 def load_module():
     spec = importlib.util.spec_from_file_location("run_agent_eval", EVAL_PATH)
@@ -172,30 +187,14 @@ class TestScenarioFile:
         assert len(ids) == len(set(ids))
 
     def test_every_expected_tool_exists(self, scenarios):
-        known = {
-            "geocode_place",
-            "find_nearby_stops",
-            "get_lines_at_stop",
-            "get_line_route",
-            "get_rail_travel_time",
-            "get_next_departures",
-            "search_knowledge",
-        }
+        known = ALL_TOOLS
         for item in scenarios:
             for name in [*item.expect_tools, *item.expect_order, *item.forbid_tools]:
                 assert name in known, f"{item.id}: bilinmeyen araç {name}"
 
     def test_the_set_covers_every_tool(self, scenarios):
         covered = {name for item in scenarios for name in item.expect_tools}
-        assert covered == {
-            "geocode_place",
-            "find_nearby_stops",
-            "get_lines_at_stop",
-            "get_line_route",
-            "get_rail_travel_time",
-            "get_next_departures",
-            "search_knowledge",
-        }
+        assert covered == ALL_TOOLS
 
     def test_the_set_includes_multi_step_and_refusal_scenarios(self, scenarios):
         assert any(len(item.expect_tools) > 1 for item in scenarios)

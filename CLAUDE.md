@@ -7,9 +7,9 @@ Yol haritası, aşamalar ve "bitti" tanımları: `documents/PLAN.md`. Veri kayna
 ## Mimari (özet)
 
 - `src/istanbul_agent/servers/transit_server.py` → MCP: toplu taşıma araçları (yerel GTFS/GeoJSON + canlı İETT/Metro)
-- `src/istanbul_agent/servers/city_server.py` → MCP: otopark, trafik, yol çalışmaları, hava kalitesi, mikromobilite
+- `src/istanbul_agent/servers/city_server.py` → MCP: otopark (`find_parking`), trafik (`get_traffic_status`). Hava kalitesi aracı **yok**: kaynakta ölçüm yok (karar 0012/3)
 - `src/istanbul_agent/servers/knowledge_server.py` → MCP: `search_knowledge` (RAG); gömme modelini **açılışta** yükler (`warm_up`)
-- `src/istanbul_agent/clients/` → İETT SOAP istemcisi (`zeep`), REST istemcisi (`httpx`), ortak önbellek/yeniden deneme
+- `src/istanbul_agent/clients/` → `base.py` (zaman aşımı, yeniden deneme, kaynak bazlı TTL önbellek), `iett.py` (**elle kurulan SOAP zarfı**, `zeep` değil), `metro.py`, `city.py` (İSPARK, trafik, hava kalitesi)
 - `src/istanbul_agent/store/` → GTFS ve GeoJSON ingest, DuckDB sorguları (`ingest` otobüs + nokta katmanları, `ingest_rail` raylı sistem, `ingest_timetable` sefer saatleri)
 - `src/istanbul_agent/rag/` → ingest, chunking, embedding, hibrit arama, reranking
 - `src/istanbul_agent/agent/` → LangGraph grafı (transit + knowledge sunucularına kalıcı MCP oturumları) ve sistem prompt'u
@@ -97,7 +97,10 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - Sefer saatleri: `datasets/metro_service_hours.yaml` içindeki hatlarda (11 metro kodu + Marmaray) ilk/son sefer YALNIZCA o dosyadan okunur, GTFS saatleri kullanılmaz; gün tipleri pzt_pers/cuma/cumartesi/pazar; ara istasyon saati uç istasyonun sefer süresi kadar kaydırılmışıdır. Saat ve aralık ayrı bayrak taşır: `hours_is_stale` / `headway_is_stale` (aralık Marmaray dışında hâlâ GTFS'ten). Dosyada olmayan hatlarda kaynak hat bazında seçilir (`stop_times` ölçülür, `frequencies` beyan edilir), 04:00 öncesi kalkışlar gece servisidir ve 4 seferden az veriden tarife üretilmez (kararlar 0005/8).
 - Agent ham API'leri görmez: uç noktalar `documents/PLAN.md` araç tablosundaki alan bazlı araçların arkasında birleştirilir. Yeni araç eklemeden önce mevcut bir araca parametre eklemenin yeterli olup olmadığını düşün; toplam araç sayısını ~15'te tut.
 - Her araç çıktısı `source` ve `data_as_of` alanı taşır; 2018-2020 tarihli "Public Transport GTFS" verisinden gelen sonuçlar `is_stale: true` ile işaretlenir.
-- API kapalıysa veya hata verirse araç bunu açıkça döner; asla tahmini veri üretmez.
+- API kapalıysa veya hata verirse araç bunu açıkça döner; asla tahmini veri üretmez. Canlı araçlar bunu `error: "canli_veri_yok"` ile yapar — **boş liste döndürmek "veri yok" demekle aynı şey değildir** (karar 0012/2).
+- İETT SOAP çağrıları `clients/iett.py` üzerinden elle kurulan zarfla yapılır; `zeep` ürün kodunda kullanılmaz (dört WSDL'i açamıyor ve açtığında iki kat yavaş, karar 0012/1). Yanıttaki JSON **XML gövdesinin içindedir** ve önce SOAP `Fault` aranır.
+- Canlı kaynak önbelleği **kaynak bazlıdır** (`SOURCE_TTL`): otopark 60 s, trafik 300 s, otobüs tarifesi 6 saat. Yeni kaynak eklerken TTL'i gerekçesiyle yaz.
+- MCP sunucu modülünde `main()` ve `if __name__` bloğu **dosyanın sonunda** durur; araç tanımı o bloktan sonra gelirse sunucu modül olarak çalıştığında hiç kaydolmaz (karar 0012'de ölçüldü: in-process 8 araç, stdio 6).
 - **Bir aracın boş sonucu parametre hatasını gizlemesin** (kararlar 0006/7a, 0008/3): geçersiz bir mod, bilinmeyen bir hat ya da yanlış yazılmış bir ad "sonuç yok" değil, geçerli değerleri veya adayları sayan bir hata döndürür. Araç eşit puanlı adaylar arasından keyfî seçim yapmaz; hepsini döndürür ya da seçimi kullanıcıya bırakır.
 - Durak/istasyon araması **küme** döndürür: aynı adı taşıyan ve 300 m içindeki noktalar tek yer, uzaktakiler ayrı yer. Durak kimliği ad + konumdur, ad tek başına değil (karar 0008).
 - **Qdrant yerel modunda koleksiyonu silip yeniden oluşturmak eski noktaları geri getiriyor** (ölçüldü, karar 0009): yeniden indeksleme `reset_storage` ile dizini siler. Yerel mod dizini tek sürece kilitler — `knowledge_server` açıkken ingest çalışmaz.

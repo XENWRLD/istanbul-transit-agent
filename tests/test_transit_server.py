@@ -19,6 +19,8 @@ needs_store = pytest.mark.skipif(
 )
 
 TOOLS = (
+    "get_service_alerts",
+    "get_station_accessibility",
     "geocode_place",
     "find_nearby_stops",
     "get_lines_at_stop",
@@ -351,3 +353,240 @@ class TestStoreGuard:
     def test_the_message_names_the_database(self, no_store):
         result = transit_server.geocode_place("Kadıköy")
         assert "yok.duckdb" in result.message
+
+
+class TestServiceAlerts:
+    """Canlı duyurular: kaynak ayrımı, mod çıkarımı, kısmi başarısızlık."""
+
+    def bus_alert(self, line: str = "500T", message: str = "Sefer yapilamayacaktir.") -> object:
+        from istanbul_agent.clients.iett import Announcement
+
+        return Announcement(
+            line=line,
+            line_name="X",
+            kind="Sefer",
+            recorded_at="Kayit Saati: 04:05",
+            message=message,
+        )
+
+    def metro_alert(self, lines: set[str] | None = None) -> object:
+        from istanbul_agent.clients.metro import Announcement as MetroAnnouncement
+
+        return MetroAnnouncement(
+            id=1,
+            title="Sefer düzenlemesi",
+            text="M7 seferleri düzenlendi.",
+            lines=frozenset(lines or set()),
+        )
+
+    @pytest.fixture
+    def stub(self, monkeypatch):
+        import istanbul_agent.clients.metro as metro_client
+        from istanbul_agent.clients import iett
+
+        state = {
+            "bus": [self.bus_alert()],
+            "metro": [self.metro_alert({"M7"})],
+            "status": [],
+        }
+        monkeypatch.setattr(iett, "fetch_announcements", lambda: state["bus"])
+        monkeypatch.setattr(transit_server, "fetch_announcements", lambda: state["metro"])
+        monkeypatch.setattr(metro_client, "fetch_service_statuses", lambda: state["status"])
+        return state
+
+    def test_a_bus_line_only_scans_iett(self, stub):
+        """Ölçümde ağ geneli bir metro duyurusu otobüs sorgusuna sızmıştı."""
+        result = transit_server.get_service_alerts(line="500T")
+        assert result.ok is True
+        assert result.asked_mode == "otobus"
+        assert result.sources_ok == ["İETT duyuruları"]
+        assert {alert.source for alert in result.alerts} == {"İETT"}
+
+    def test_a_rail_line_only_scans_metro(self, stub):
+        result = transit_server.get_service_alerts(line="M7")
+        assert result.asked_mode == "rayli"
+        assert "İETT duyuruları" not in result.sources_ok
+
+    @pytest.mark.parametrize(
+        ("line", "mode"),
+        [
+            ("500T", "otobus"),
+            ("34", "otobus"),
+            ("M2", "rayli"),
+            ("T1", "rayli"),
+            ("Marmaray", "rayli"),
+        ],
+    )
+    def test_the_mode_is_inferred_from_the_line_code(self, stub, line, mode):
+        assert transit_server.get_service_alerts(line=line).asked_mode == mode
+
+    def test_a_cancellation_is_flagged(self, stub):
+        result = transit_server.get_service_alerts(line="500T")
+        assert result.alerts[0].is_cancellation is True
+
+    def test_a_line_without_alerts_says_so(self, stub):
+        stub["bus"] = []
+        result = transit_server.get_service_alerts(line="500T")
+        assert result.alerts == []
+        assert any("duyuru yok" in note for note in result.notes)
+
+    def test_one_failing_source_still_answers_and_says_which(self, stub, monkeypatch):
+        from istanbul_agent.clients import iett
+        from istanbul_agent.clients.base import LiveDataError
+
+        def boom() -> list:
+            raise LiveDataError("iett_alerts", "iett_alerts verisine ulaşılamadı.")
+
+        monkeypatch.setattr(iett, "fetch_announcements", boom)
+        result = transit_server.get_service_alerts()
+        assert result.ok is True
+        assert result.sources_failed
+        assert any("ulaşılamadı" in note for note in result.notes)
+
+    def test_every_source_failing_is_an_error(self, stub, monkeypatch):
+        import istanbul_agent.clients.metro as metro_client
+        from istanbul_agent.clients import iett
+        from istanbul_agent.clients.base import LiveDataError
+
+        def boom(*args: object, **kwargs: object) -> list:
+            raise LiveDataError("x", "ulaşılamadı")
+
+        monkeypatch.setattr(iett, "fetch_announcements", boom)
+        monkeypatch.setattr(transit_server, "fetch_announcements", boom)
+        monkeypatch.setattr(metro_client, "fetch_service_statuses", boom)
+        result = transit_server.get_service_alerts()
+        assert result.ok is False
+        assert result.error == "canli_veri_yok"
+
+
+class TestStationAccessibility:
+    @pytest.fixture
+    def stub(self, monkeypatch):
+        import istanbul_agent.clients.metro as metro_client
+        from istanbul_agent.clients.metro import (
+            EquipmentCount,
+            FaultyEquipment,
+            StationFacilities,
+        )
+
+        state = {
+            "facilities": [
+                StationFacilities(
+                    station="Kadıköy", line="M4", escalators=16, lifts=6, wc=True, baby_room=False
+                ),
+                StationFacilities(
+                    station="Ayrılık Çeşmesi",
+                    line="M4",
+                    escalators=4,
+                    lifts=0,
+                    wc=False,
+                    baby_room=False,
+                ),
+            ],
+            "counts": [
+                EquipmentCount(group="Asansör", name="Asansörler", active=669, inactive=29),
+                EquipmentCount(
+                    group="Yürüyen Merdiven", name="Yürüyen Merdiven", active=1966, inactive=56
+                ),
+            ],
+            "faults": [
+                FaultyEquipment(
+                    group="Asansör",
+                    line="M4",
+                    station="Kadıköy",
+                    location="",
+                    kind="Arıza",
+                    date="2026-11-11T00:00:00.000",
+                    description="M4/AS/1",
+                )
+            ],
+        }
+        monkeypatch.setattr(metro_client, "fetch_station_facilities", lambda: state["facilities"])
+        monkeypatch.setattr(metro_client, "fetch_equipment_counts", lambda: state["counts"])
+        monkeypatch.setattr(metro_client, "fetch_faulty_equipment", lambda group: state["faults"])
+        return state
+
+    def test_a_station_reports_its_equipment_and_faults(self, stub):
+        result = transit_server.get_station_accessibility("Kadıköy")
+        assert result.ok is True
+        station = result.stations[0]
+        assert (station.lifts, station.escalators) == (6, 16)
+        assert station.faults and "Asansör" in station.faults[0]
+
+    def test_a_station_without_a_lift_is_called_out(self, stub):
+        result = transit_server.get_station_accessibility("Ayrılık Çeşmesi")
+        assert result.stations[0].lifts == 0
+        assert any("asansör bulunmuyor" in note.casefold() for note in result.notes)
+
+    def test_without_a_station_only_network_counts_come_back(self, stub):
+        result = transit_server.get_station_accessibility()
+        assert result.stations == []
+        assert result.network_faults["Asansörler"] == 29
+
+    def test_an_unknown_station_returns_candidates(self, stub):
+        result = transit_server.get_station_accessibility("Paris")
+        assert result.ok is False
+        assert result.error == "istasyon_bulunamadi"
+
+    def test_the_answer_warns_that_the_list_is_not_a_guarantee(self, stub):
+        result = transit_server.get_station_accessibility("Kadıköy")
+        assert any("garantisi değildir" in note for note in result.notes)
+
+    def test_an_unreachable_source_is_an_error(self, monkeypatch):
+        import istanbul_agent.clients.metro as metro_client
+        from istanbul_agent.clients.base import LiveDataError
+
+        def boom(*args: object, **kwargs: object) -> list:
+            raise LiveDataError("metro_equipment", "ulaşılamadı")
+
+        monkeypatch.setattr(metro_client, "fetch_station_facilities", boom)
+        result = transit_server.get_station_accessibility("Kadıköy")
+        assert result.ok is False
+        assert result.error == "canli_veri_yok"
+
+
+class TestBusDepartures:
+    @pytest.fixture
+    def stub(self, monkeypatch):
+        from istanbul_agent.clients import iett
+
+        departures = [
+            iett.PlannedDeparture(
+                "500T", "TUZLA - CEVİZLİBAĞ", "r1", "D", "hafta_ici", "Normal", time
+            )
+            for time in ("05:00", "05:10", "05:20", "05:30")
+        ]
+        monkeypatch.setattr(iett, "fetch_planned_departures", lambda line: departures)
+        return departures
+
+    def test_a_bus_line_answers_from_the_live_service(self, stub):
+        result = transit_server.get_next_departures("500T")
+        assert result.ok is True
+        assert result.mode == "otobus"
+        window = result.windows[0]
+        assert (window.first_departure, window.last_departure) == ("05:00", "05:30")
+        assert window.headway_minutes == 10
+
+    def test_the_answer_says_the_times_are_from_the_first_stop(self, stub):
+        result = transit_server.get_next_departures("500T")
+        assert any("ilk durağından" in note for note in result.notes)
+
+    def test_a_line_with_no_departures_is_not_found(self, monkeypatch):
+        from istanbul_agent.clients import iett
+
+        monkeypatch.setattr(iett, "fetch_planned_departures", lambda line: [])
+        result = transit_server.get_next_departures("YOK99")
+        assert result.ok is False
+        assert result.error == "hat_bulunamadi"
+
+    def test_an_unreachable_service_is_reported(self, monkeypatch):
+        from istanbul_agent.clients import iett
+        from istanbul_agent.clients.base import LiveDataError
+
+        def boom(line: str) -> list:
+            raise LiveDataError("iett_timetable", "iett_timetable verisine ulaşılamadı.")
+
+        monkeypatch.setattr(iett, "fetch_planned_departures", boom)
+        result = transit_server.get_next_departures("500T")
+        assert result.ok is False
+        assert result.error == "canli_veri_yok"

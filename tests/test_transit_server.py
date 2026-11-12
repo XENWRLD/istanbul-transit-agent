@@ -221,6 +221,31 @@ class TestNearbyTool:
         result = transit_server.find_nearby_stops(around="Kadıköy", radius_m=800, mode="vapur")
         assert {stop.mode for stop in result.stops} == {"vapur"}
 
+    def test_the_centre_respects_the_mode(self):
+        # Karar 0017: "Bostancı" modsuz arandığında metro istasyonu çıkıyor
+        # ve iskeleler 1.7 km uzakta kalıyordu, yani vapur sorusu varsayılan
+        # yarıçapta boş dönüyordu. Merkez artık önce sorulan modda aranıyor.
+        result = transit_server.find_nearby_stops(around="Bostancı", mode="vapur")
+        assert result.ok is True
+        assert result.stops, "varsayılan yarıçapta iskele dönmeli"
+        assert {stop.mode for stop in result.stops} == {"vapur"}
+        assert result.stops[0].distance_m < 200
+
+    def test_a_centre_without_the_asked_mode_falls_back_and_says_so(self):
+        # Mod eşleşmesi yoksa merkez eski yoldan seçiliyor, ama not bunu
+        # söylüyor — sessizce başka moddan merkez almak yanıltırdı.
+        result = transit_server.find_nearby_stops(
+            around="Sultanbeyli", mode="vapur", radius_m=2000
+        )
+        assert result.ok is True
+        assert any("merkez başka moddan" in note for note in result.notes)
+
+    def test_a_mode_free_search_keeps_its_centre(self):
+        # Düzeltme yalnızca mod verildiğinde devreye girmeli.
+        result = transit_server.find_nearby_stops(around="Bostancı")
+        assert result.ok is True
+        assert any("metro istasyonu" in note for note in result.notes)
+
     def test_neither_name_nor_coordinate_is_refused(self):
         result = transit_server.find_nearby_stops()
         assert result.ok is False

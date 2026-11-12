@@ -878,6 +878,11 @@ def find_nearby_stops(
     Aynı adlı yakın noktalar tek satırda birleşir; `distance_m` sorulan
     konuma uzaklıktır (kuş uçuşu, yürüme mesafesi değil).
 
+    `mode` verildiğinde **merkez de önce o modda aranır**: "Bostancı" +
+    `vapur` metro istasyonunu değil iskeleyi merkez alır (ikisi 1.7 km
+    uzakta). O adda o modda bir yer yoksa merkez başka moddan alınır ve
+    notlar bunu söyler; sonuçlar her durumda sorulan moddadır.
+
     NE ZAMAN KULLANMA:
     - Bir adresin çevresini aramak için kullanma; başlangıç noktası bir
       durak/istasyon/iskele adı ya da koordinat olmalı.
@@ -911,7 +916,18 @@ def find_nearby_stops(
                 asked="",
                 message="Ya `around` (yer adı) ya da `lat` ve `lon` birlikte verilmeli.",
             )
-        search = find_places(around, limit=3)
+        # Mod verildiyse merkez **önce o modda** aranıyor (karar 0017).
+        # Modsuz arama "Bostancı"yı metro istasyonu olarak buluyor, iskeleler
+        # ise 1.7 km uzakta: vapur sorusu varsayılan 500 m yarıçapta boş
+        # dönüyordu. `geocode_place` modu arama aşamasında zaten geçiriyordu,
+        # bu çağrı yeri geçirmiyordu.
+        search = None
+        if resolved_modes:
+            scoped = find_places(around, modes=resolved_modes, limit=3)
+            if scoped.found:
+                search = scoped
+        if search is None:
+            search = find_places(around, limit=3)
         if not search.found:
             return PlaceNotFound(
                 asked=around,
@@ -926,6 +942,11 @@ def find_nearby_stops(
         origin_name = anchor.name
         origin_lat, origin_lon = anchor.lat, anchor.lon
         notes = [f"Merkez olarak '{anchor.name}' ({anchor.mode_label}) alındı."]
+        if resolved_modes and anchor.mode not in resolved_modes:
+            notes.append(
+                "Sorulan moda uyan bu adda bir yer yok; merkez başka moddan alındı, "
+                "sonuçlar yine sorulan modda."
+            )
         if len(search.clusters) > 1:
             notes.append("Bu ada uyan başka yerler de var; merkezin doğru olduğunu cevapta belirt.")
 

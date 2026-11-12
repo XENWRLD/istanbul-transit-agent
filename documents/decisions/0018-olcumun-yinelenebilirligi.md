@@ -1,7 +1,7 @@
-# 0018 — Ölçüm koşular arası %22 oranında kararsız: ±3 gürültü bandının içinde
+# 0018 — Gürültü bandı ölçüldü: dar çıktı, ve bu ilk okumamı çürüttü
 
 **Tarih:** 12 Kasım 2026
-**Durum:** bulgu kayda geçti, yöntem düzeltmesi **ölçülmeyi bekliyor**
+**Durum:** band ölçüldü; ilk yorum düzeltildi, nedensellik deneyi **sırada**
 **İlgili:** [0014](0014-degerlendirmeyi-hizlandirma.md) ("davranış tekrarlanıyor, oynayan tek şey süre"), [0015](0015-olu-mod-degerleri.md) (`rail-04` dört koşuda üç davranış; nudge +3), [0017](0017-mod-merkez-secimi.md) (bu bulguyu ortaya çıkaran koşu)
 
 ## Bağlam
@@ -84,3 +84,82 @@ senaryonun dizisi tekrarlar arasında değiştiği sayılır. Maliyet ~35-40
 dakika sessiz makine. Bu yapılana kadar `near-04`, `chain-05` ve kalan
 prompt deneyleri **bekliyor**: hepsi ±3 mertebesinde karar istiyor ve o
 mertebe şu an ölçülemiyor.
+
+---
+
+## Band ölçüldü ve yukarıdaki ilk yorumum yanlıştı
+
+Bu notun ilk hâli "%22 kararsız" diyordu. O sayı, 0017'nin **iki farklı
+araç yüzeyi** altındaki iki koşusunu karşılaştırmaktan geliyordu — yani
+"docstring değişikliğinin etkisi" ile "koşular arası gürültü" hiç
+ayrışmamıştı. Kendi kuralımı (tek koşudan sonuç çıkarma) başka bir biçimde
+çiğnemiş oldum: tek **karşılaştırmadan** nedensellik okudum.
+
+`eval/measure_variance.py` ile band iki düzeyde ölçüldü.
+
+### Süreç içi tekrar (9 senaryo × 3 tekrar, tek yığın)
+
+| Ölçüt | Sonuç |
+|---|---|
+| imzası sabit | 8/9 |
+| geçme durumu oynayan | 0 |
+| tekrar başına geçen | 2, 2, 2 |
+| **oran bandı** | **±0** |
+
+Gecikmeler bile tekrar ediyor: `near-04` üç kez 25.7 s, `rail-03`
+86.8 / 87.0 / 86.9 s. Tek oynayan `know-08` (aynı aracı 1 ya da 6 kez
+çağırıyor, üçünde de düşüyor).
+
+Bu ölçümün kendi kusuru da ortaya çıktı: aynı süreçte, açık oturumlar ve
+ısınmış modelle yapılan tekrarlar aranan varyansı örneklemiyor. Betik
+bu yüzden ikiye ayrıldı (`--repeats` süreç içi, `--aggregate` süreçler
+arası).
+
+### Süreçler arası (4 ayrı süreç, 9 ortak senaryo)
+
+| Ölçüt | Sonuç |
+|---|---|
+| imzası sabit | 8/9 |
+| geçme durumu oynayan | 0 |
+| tur başına geçen | 2, 2, 2, 2 |
+| **oran bandı** | **±0** |
+
+Yani band dar. Dokuz senaryonun sekizi dört ayrı süreçte aynı araçları
+aynı sırayla çağırıyor ve geçme durumu hiç oynamıyor.
+
+## Bunun sonucu: 47/54 muhtemelen gerçek bir gerileme
+
+Band ±0 ise, 0017'deki 12 senaryoluk davranış değişimi gürültüyle
+açıklanamaz. Geriye tek aday kalıyor: **`find_nearby_stops`
+docstring'ine eklenen dört satır.** Araç yüzeyi her senaryonun prompt'una
+giriyor, yani o aracı hiç çağırmayan senaryoların seçimi de kayıyor.
+
+Bir kenar bulgu bandın sıfır olmadığını da gösteriyor: `rail-03`
+0017'nin koşusunda **sıfır araç** çağırmıştı, aynı yüzeyle koşulan dört
+turda ise dördünde de `get_line_route` çağırdı. O satır yinelenmiyor.
+Yani band ±0 "hiç oynama yok" demek değil, "ölçülen dokuz senaryoda oran
+oynamıyor" demek.
+
+## Düzeltilen kurallar
+
+İlk hâlindeki dört kuraldan ikisi değişiyor:
+
+1. ~~Tek koşudan ±3 mertebesinde sonuç çıkarılmaz.~~ → **Band ölçülür, sonra
+   karşılaştırılır.** Bu altküme için band ±0 olduğundan 3 senaryoluk fark
+   anlamlıdır. Band, araç yüzeyi ya da sağlayıcı değişince yeniden
+   ölçülür.
+2. **Bir karşılaştırmanın iki ucu aynı araç yüzeyinde olmalı.** 0017'nin
+   öncesi ve sonrası farklı yüzeylerdeydi; o karşılaştırma değişikliğin
+   *kodunu* değil *açıklamasını* da içeriyordu ve ikisi ayrışmadı.
+3. Niteliksel kanıt sayıdan güçlüdür — **duruyor** (`lines-03`'ün uydurmaya
+   geçmesi orana bakmaz).
+4. Araç gövdesi düzeltmeleri oranla savunulmaz — **duruyor** (0017'nin
+   gerekçesi veri katmanındaki önce/sonra tablosu).
+
+## Sırada: docstring'i tek değişken olarak ölçmek
+
+Dört satır geri alınır (kod düzeltmesi kalır), etkilenen dört senaryo
+(`rail-03`, `rail-06`, `know-06`, `know-08`) artı iki kontrol
+(`route-02`, `live-02`) koşulur. Yüzey özeti eski değere (`1d626e3dea52`)
+döneceği için taban satırları önbellekte hazır duruyor; karşılaştırma
+aynı yüzey üzerinde yapılabilir. Maliyet ~10 dakika, 57 değil.

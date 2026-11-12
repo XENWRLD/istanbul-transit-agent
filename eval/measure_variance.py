@@ -9,6 +9,19 @@ sonucu yorumlanamaz.
 Betik tek şey yapar: seçilen senaryoları **aynı kodla N kez** koşar ve kaç
 senaryonun davranışının tekrarlar arasında oynadığını sayar.
 
+**İki ayrı band var ve betiğin ilk sürümü yanlışını ölçtü.** Tek süreç
+içinde, yığın açıkken yapılan tekrarlar neredeyse deterministik çıktı
+(9 senaryonun 8'i birebir aynı imza, oran bandı ±0, gecikmeler bile aynı:
+25.7 / 25.7 / 25.7 s). Oysa karar 0017'nin tam koşusu aynı senaryolarda
+başka davranışlar göstermişti (`rail-03` sıfır araç, `rail-04` geçti).
+Demek ki varyans **süreçler arasında** yaşıyor: ısınmış model, açık
+oturumlar ve aynı süreç durumu tekrarları birbirine kilitliyor.
+
+Bu yüzden `--repeats` **tek sürecin içindeki** tekrarı, `--aggregate` ise
+**ayrı süreçlerde** koşulmuş turların birleşik bandını verir. Süreçler arası
+bandı ölçmek için betik birkaç kez `--repeats 1` ile koşulur, sonra
+`--aggregate` ile okunur.
+
 İki tasarım kararı, ikisi de sonucu geçersiz kılmamak için:
 
 - **Önbellek hiç kullanılmıyor.** `run_agent_eval.py` cevapları
@@ -25,7 +38,8 @@ ve `knowledge_server` BGE-M3'ü açılışta yüklüyor.
 Kullanım:
 
     uv run python eval/measure_variance.py                      # 9 senaryo x 3 tekrar
-    uv run python eval/measure_variance.py --repeats 5
+    uv run python eval/measure_variance.py --repeats 1          # tek tur (sureclerarasi olcum icin)
+    uv run python eval/measure_variance.py --aggregate          # kayitli turlarin birlesik bandi
     uv run python eval/measure_variance.py --ids rail-04 near-04 --repeats 4
 
 **Değerlendirme koşarken makinede başka iş çalıştırılmaz** (karar 0014):
@@ -164,6 +178,40 @@ def summarise(
     }
 
 
+def aggregate_runs(provider: str) -> dict[str, Any] | None:
+    """Kayıtlı turların **süreçler arası** bandı.
+
+    `variance_rows.jsonl` her satırda `run_id` taşıyor; aynı `run_id` aynı
+    süreç demek. Burada her senaryodan **tur başına bir** satır alınıyor
+    (turun ilk tekrarı), çünkü ölçülmek istenen şey süreç içindeki tekrar
+    değil turlar arasındaki fark — ikisini karıştırmak tek sürecin
+    determinizmini band diye raporlamak olurdu.
+    """
+    if not ROWS_PATH.exists():
+        return None
+    by_run: dict[str, dict[str, dict[str, Any]]] = {}
+    for line in ROWS_PATH.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        run = str(row.get("run_id") or "bilinmiyor")
+        if int(row.get("repeat", 1)) != 1:
+            continue
+        by_run.setdefault(run, {})[row["id"]] = row
+    if len(by_run) < 2:
+        return {"runs": len(by_run), "enough": False}
+
+    runs = sorted(by_run)
+    shared = set.intersection(*(set(by_run[run]) for run in runs))
+    per_scenario = {name: [by_run[run][name] for run in runs] for name in sorted(shared)}
+    summary = summarise(per_scenario, provider=provider, repeats=len(runs))
+    summary["enough"] = True
+    summary["runs"] = len(runs)
+    summary["run_ids"] = runs
+    summary["scope"] = "süreçler arası (tur başına ilk tekrar)"
+    return summary
+
+
 def report(summary: dict[str, Any]) -> None:
     print("\n=== gürültü bandı ===")
     print(f"  senaryo            {summary['scenarios']} x {summary['repeats']} tekrar")
@@ -203,7 +251,8 @@ async def main_async(args: argparse.Namespace) -> int:
         return 1
 
     selected = [scenarios[name] for name in wanted]
-    repeats = max(2, int(args.repeats))
+    repeats = max(1, int(args.repeats))
+    run_id = time.strftime("%Y%m%dT%H%M%S")
     print(
         f"=== {len(selected)} senaryo x {repeats} tekrar, sağlayıcı {args.provider}, "
         "önbellek kullanılmıyor ===",
@@ -236,6 +285,10 @@ async def main_async(args: argparse.Namespace) -> int:
                 row = harness.check(scenario, run)
                 row["repeat"] = index + 1
                 row["surface"] = surface
+                # Süreçler arası bandı `--aggregate` bu alandan çıkarıyor:
+                # aynı `run_id` aynı süreç demek, o yüzden ayrı turlar
+                # birbirine karışmıyor.
+                row["run_id"] = run_id
                 per_scenario[scenario.id].append(row)
                 append_row(row)
                 mark = "✓" if row["passed"] else "✗"
@@ -268,7 +321,30 @@ def main() -> int:
     parser.add_argument("--repeats", type=int, default=3, help="her senaryo kaç kez koşulacak")
     parser.add_argument("--ids", nargs="*", default=None, help="senaryo kimlikleri")
     parser.add_argument("--max-steps", type=int, default=8)
+    parser.add_argument(
+        "--aggregate",
+        action="store_true",
+        help="LLM'e gitmeden kayıtlı turların süreçler arası bandını raporla",
+    )
     args = parser.parse_args()
+    if args.aggregate:
+        summary = aggregate_runs(args.provider)
+        if summary is None:
+            print(f"kayıt yok: {ROWS_PATH}")
+            return 1
+        if not summary.get("enough"):
+            print(
+                f"süreçler arası band için en az iki tur gerekiyor, kayıtta {summary['runs']} var; "
+                "betiği `--repeats 1` ile birkaç kez koş."
+            )
+            return 1
+        print(f"=== {summary['runs']} ayrı süreç, {summary['scenarios']} ortak senaryo ===")
+        report(summary)
+        across_path = RESULTS_PATH.with_name("variance_across_runs.json")
+        across_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        print()
+        print(f"  sonuç              {across_path}")
+        return 0
     return asyncio.run(main_async(args))
 
 

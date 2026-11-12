@@ -28,8 +28,9 @@ LangGraph ReAct agent  (LLM: Gemini 3.5 Flash | yerel qwen3.5:4b)
       │      └── Qdrant (yerel mod) + BGE-M3: SSS, bilet fiyatı, raporlar,
       │          565 veri seti açıklaması
       │
-      └── MCP: city_server (stdio) ────── 2 araç
-             └── İSPARK (otopark doluluğu), trafik indeksi
+      └── MCP: city_server (stdio) ────── 3 araç
+             └── İSPARK (otopark doluluğu), trafik indeksi, mikromobilite
+                 (bisiklet/scooter parkı, şarj istasyonu, bisiklet yolu)
 ```
 
 ## Hızlı kurulum
@@ -54,11 +55,13 @@ uv run python scripts/download_stop_geojson.py
 uv run python scripts/download_rail_reference.py
 uv run python scripts/download_rail_geojson.py
 uv run python scripts/download_knowledge.py
+uv run python scripts/download_mobility.py
 
 # 4. Yerel depoyu kur (DuckDB)
 uv run python -m istanbul_agent.store.ingest_rail
 uv run python -m istanbul_agent.store.ingest_timetable
 uv run python -m istanbul_agent.store.ingest          # ~6 dk (6.1 M satır akıtılıyor)
+uv run python -m istanbul_agent.store.ingest_mobility # ~3 dk
 
 # 5. Metin indeksini kur (Qdrant + BGE-M3; model ilk çağrıda ~2.3 GB indirilir)
 uv run python -m istanbul_agent.rag.ingest            # ~6 dk (CPU)
@@ -186,11 +189,16 @@ Reranker bu korpusta **kazanç sağlamıyor**: recall@1'i düzeltiyor ama
 recall@5'i düşürüyor ve gecikmeyi 26 katına çıkarıyor. CPU'da varsayılan
 kapalı, CUDA varsa açık (karar 0009).
 
-### Agent senaryoları (54 senaryo)
+### Agent senaryoları
+
+Senaryo dosyası **57 senaryo** taşıyor (`eval/agent_scenarios.jsonl`).
+Aşağıdaki en iyi tam koşu **54 senaryo** üzerinde yapıldı (12 Kasım 2026,
+karar 0015); mikromobilite senaryoları (`mob-01/02/03`) sonradan eklendi ve
+**tek tek** ölçüldü, tam koşuya girmedi.
 
 | Ölçüt | yerel `qwen3.5:4b` |
 |---|---|
-| kapsam | 54 senaryo, hepsi taze |
+| kapsam | 54 senaryo, hepsi taze, 12 Kasım 2026 |
 | geçen senaryo | **50/54 (%92.6)** |
 | araç doğruluğu | %94.4 |
 | sıra doğruluğu | %50.0 (2 senaryoda) |
@@ -201,9 +209,16 @@ kapalı, CUDA varsa açık (karar 0009).
 | gecikme (ortanca) | 37.2 s |
 
 Kalan dört başarısızlık: `chain-05` ve `route-05` (doğru aracı çağırıp
-çıktıyı cevap yerine **veri seti gibi tanıtıyor**), `near-04` (doğru ve
-kaynaklı cevap, ama senaryonun şart koştuğu araçtan değil), `rail-04`
-(sıfır araç, `unverified`). Ayrıntılar: `documents/decisions/0015-olu-mod-degerleri.md`.
+çıktıyı cevap yerine **veri seti gibi tanıtıyor**), `near-04` (senaryonun
+şart koştuğu araç o soruyu varsayılan yarıçapta cevaplayamıyordu — kusur
+araçtaydı ve düzeltildi, karar 0017), `rail-04` (sıfır araç, `unverified`).
+
+> **Mevcut kodun tam koşu sayısı yok.** Bu tablodan sonra iki değişiklik
+> yapıldı: `find_nearby_stops` merkez seçimi düzeltildi (0017) ve bir araç
+> eklendi (0019). Araç yüzeyi değiştiği için eski sayıyla karşılaştırma
+> geçerli değil (0018: karşılaştırmanın iki ucu aynı yüzeyde ve aynı
+> pencerede olmalı) ve dürüst bir sayı için taban da yeniden koşulmalı
+> (~2 saat). Yapılan ölçüm pencere içi altı senaryoluk karşılaştırmalar.
 
 Sağlayıcı karşılaştırması **ortak ve ölçülebilen** senaryolar üzerinden
 yapılır (`eval/compare_providers.py`). Gemini ücretsiz katmanı günde 20
@@ -306,21 +321,27 @@ Ortak kök hepsinde aynı: *bir değerin yokluğunu bir değer sanmak.* Fixture
 tabanlı birim testler bunların hiçbirini yakalayamaz, çünkü dördü de kodun
 kendi varsayımıyla tutarlıydı — biri testle **doğrulanmıştı** bile.
 
-## Ölçüm
+## Ölçümün geçmişi
 
-54 senaryo, yerel model (`qwen3.5:4b`), hepsi taze — 11 Kasım 2026:
+Sayıların yanında tarih ve kapsam duruyor, çünkü bir süre README'de hiçbir
+ölçümün karşılamadığı bir sayı yazdı (bkz. "Bu proje ne öğretti", 10.
+madde). Hepsi yerel model (`qwen3.5:4b`), hepsi taze koşu:
 
-| Ölçü | Değer |
-|---|---|
-| Geçen senaryo | **47/54 (%87.0)** |
-| Araç doğruluğu | %88.9 |
-| İfade doğruluğu | %92.3 |
-| Kaynaksız cevap | 3 |
-| Hata | 0 |
-| Gecikme ortancası | 36.0 s |
-| Tam koşu | 57.2 dk (seri) |
+| Tarih | Kapsam | Geçen | Araç doğruluğu | Kaynaksız | Karar |
+|---|---|---|---|---|---|
+| 10 Kas 2026 | 49 senaryo | 41/49 (%83.7) | %87.8 | 3 | 0010 |
+| 11 Kas 2026 | 54 senaryo | 47/54 (%87.0) | %88.9 | 3 | 0014 |
+| 12 Kas 2026 | 54 senaryo | **50/54 (%92.6)** | %94.4 | 1 | 0015 (yalnızca uyarı metni) |
+| 12 Kas 2026 | 54 senaryo | 47/54 (%87.0) | %88.9 | 2 | 0017 (araç düzeltmesi + dört satırlık docstring) |
 
-Düşen yedi senaryonun hepsi **araç seçimi**: model özel araç yerine `geocode_place` çağırıyor ya da hiç çağırmıyor. Karar 0013'ün araç alanları şema yüzeyini %9.6 büyüttü ve bu seçimi kaydırdı — iki senaryo düzeldi, üç tanesi düştü (net −1). Ayrıntılar: karar 0014.
+Son satır bir **gerileme** ve sebebi ölçüldü: dört satırlık docstring, o
+aracı hiç çağırmayan iki senaryonun araç seçimini bozuyordu. Metin tek
+cümleye indirildi ve aynı pencerede altı senaryoda 2/6 → 4/6 düzelme
+ölçüldü (0018), ama **54 senaryo bir daha koşulmadı**.
+
+Karar 0014'ün bulgusu da burada duruyor: karar 0013'ün araç alanları şema
+yüzeyini %9.6 büyüttü ve araç seçimini kaydırdı. Araç yüzeyinin her
+büyümesi davranış değişikliğidir — bu projede üç kez ölçüldü.
 
 ## Bilinen sınırlamalar
 
@@ -389,6 +410,92 @@ Düşen yedi senaryonun hepsi **araç seçimi**: model özel araç yerine `geoco
   (`rail-02`: çekişmeyle 144.9 s hata, sessiz makinede 14.4 s geçti).
   Değerlendirme koşarken aynı makinede başka iş çalıştırılmaz (karar 0014).
 
+## Bu proje ne öğretti
+
+Her madde ölçülmüş bir olaya dayanıyor; ayrıntısı `documents/decisions/`
+altındaki nottadır. Sıra önemlilik sırası.
+
+**1. Boş sonuç, hatanın en iyi saklandığı yerdir.** Üç araç belgeledikleri
+bir parametreyi (`mode="tren"`, `mode="rayli"`) kabul ediyor ve her zaman
+boş dönüyordu — tabloda o modda tek satır yok (0015). `find_nearby_stops`
+"Bostancı çevresindeki iskeleler" sorusunda boş liste + *"yarıçapı
+artırmayı dene"* diyordu; sebep merkezi modsuz aramak, iskeleler 1.7 km
+uzakta (0017). İkisi de "sonuç yok" gibi görünüyordu, ikisi de kusurdu.
+Kural: geçersiz girdi boş liste değil, geçerli değerleri sayan bir hata
+döndürür.
+
+**2. Sıfır "bilinmiyor" demek değildir.** İSPARK 51 otoparkta `empty: 0`
+dönüyor ve kaynak "dolu" ile "bildirmiyor" arasını ayırmıyor (0013). Şarj
+soketi dosyasının 30 073/38 950 satırı istasyonsuz, yani istasyon başına
+soket sayısı **alt sınır** (0019). Araç çıktısı bu ikisini ayrı alanlarda
+söyler: `occupancy_known`, `socket_count_at_least`.
+
+**3. Tazelik damgası ölçümün varlığını kanıtlamaz.** İSPARK damgayı tüm
+partiye basıyor, veri bildirmeyen otopark da taze görünüyor (0013). Aynı
+araç iki tazelikte veri döndürebilir: mikromobilite park verisi 2026-11,
+şarj verisi 2025-05 — `is_stale` bu yüzden **kayıt bazında** taşınıyor
+(0019).
+
+**4. Veri setinin adı ne döndürdüğünü söylemez.** "Bisiklet Yolları" veri
+setinin 477 kaydının 212'si henüz yol değil: UTK kararı, etüt, proje,
+inşaat. Alan adları projeden söz etmiyor, yalnızca `PRJ_ASAMA` söylüyor
+(0019). Kaynağa bakmadan yazılan bir araç, yapılmamış bir yolu "var" diye
+sunardı.
+
+**5. Araç açıklaması davranıştır — ve bu ölçüldü.** `find_nearby_stops`
+docstring'ine eklenen dört satır, o aracı **hiç çağırmayan** iki senaryonun
+araç seçimini bozdu (aynı pencerede 4/6 → 2/6). Aynı bilgi tek cümleye
+indirilince bedel kalktı (0018). Araç yüzeyi her senaryonun prompt'una
+giriyor.
+
+**6. Fixture tabanlı test kodun kendi varsayımını doğrular, kaynağı
+doğrulamaz.** Karar 0013'teki dört canlı veri kusurunun hiçbirini test
+yakalamadı; biri testle *doğrulanmıştı* bile. Mod sözlüğü de test
+ediliyordu — eşanlamlının kendi adına çevrildiğini doğruluyor, o adın
+tabloda karşılığı olup olmadığını sormuyordu (0015). Gradio haritası
+aylarca boştu ve testler geçiyordu, çünkü testler fonksiyonu düz JSON ile
+çağırıyordu; hata yalnızca gerçek araç çıktısı biçiminde ortaya çıkıyor
+(0016/4). Çözüm: değerleri değil **ilişkiyi** tutan testler — "her
+eşanlamlı tabloda duran modlara açılmak zorunda", "hata mesajının saydığı
+her sözcük kabul edilmek zorunda".
+
+**7. Tek koşudan sonuç çıkarmak ölçümü yalanlar.** Üç prompt değişikliği
+aynı turda ölçüldü ve "net −2" çıktı; ayrıştırıldığında uyarı metninin tek
+başına **+3** getirdiği, prompt eklemelerinin bunu hem maskelediği hem iki
+senaryo kaybettirdiği görüldü (0015). Sonra bandın kendisi ölçüldü: aynı
+kodla 4 ayrı süreçte 9 senaryonun 8'i birebir aynı, oran bandı **±0**
+(0018). Ama pencereler arası kayma var — iki senaryo saatler önceki tabanda
+geçerken aynı yüzeyde düştü. Kural: **taban, karşılaştırmayla aynı
+pencerede koşulur.**
+
+**8. Ölçümün altyapısı da ölçülmeli.** Değerlendirme önbelleği araç
+yüzeyini anahtarına almıyordu, yani araç açıklaması değişince eski cevaplar
+"yeni ölçüm" diye raporlanıyordu (0016/1). Önbellek anahtarı artık ad +
+açıklama + şema özetini taşıyor; düzeltmenin faydası hemen görüldü —
+0017'nin docstring değişikliği anahtarı kendiliğinden geçersiz kıldı.
+
+**9. Duvar saati ilerleme kanıtı değil.** Docker imajı 45 dakika
+"derleniyor" göründü; süreçlerin CPU'suna bakmak kilitlendiğini gösterdi
+(istemciler 0 saniyede bekliyordu). Sebep imajın boyutuydu: 20 GB imaj +
+20 GB build cache diski doldurup daemon'u kilitledi (0016/3).
+
+**10. Belgelenmemiş bir ölçüm, yapılmamış bir ölçümdür.** README bir süre
+"49 senaryo, 41 geçiyor" yazdı; o sayıya uyan bir ölçüm aylar önce
+kalmıştı. Sağlayıcı karşılaştırması "Gemini 6/6, yerel 3/6" diyordu — iki
+yarı **farklı prompt'larla** ölçülmüştü. İkisi de düzeltildi; sayıların
+yanına tarih ve kapsam yazılıyor.
+
+### Farklı yapardım
+
+- **Bandı en başta ölçerdim.** 0014 ve 0015'in karşılaştırmaları
+  varsayılmış bir gürültü bandı üzerine kuruldu; band ±0 çıktı ama bunu
+  bilmek üç turluk yanlış yorumu önlerdi.
+- **CPU-only torch'u baştan seçerdim.** İmajın ağırlığının neredeyse
+  tamamı konteynerde hiç kullanılmayan CUDA paketleri ve bu bir kez
+  kurulumu durdurdu.
+- **Arayüzü araç çıktısının gerçek biçimiyle test ederdim.** Harita
+  hatası, birim testlerin gerçek akışı hiç görmemesinden geldi.
+
 ## Komutlar
 
 ```bash
@@ -397,7 +504,7 @@ uv run ruff check . && uv run ruff format .
 
 uv run python -m istanbul_agent.cli "soru" [--provider ollama] [--quiet]
 uv run python eval/run_rag_eval.py             # getirme metrikleri (LLM'siz)
-uv run python eval/run_agent_eval.py           # 54 senaryo (önbellekli)
+uv run python eval/run_agent_eval.py           # 57 senaryo (önbellekli)
 uv run python eval/run_agent_eval.py --provider gemini --delay 18 --id rail-01
 uv run python eval/compare_providers.py        # iki sağlayıcı, ortak senaryolar
 

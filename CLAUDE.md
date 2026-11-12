@@ -71,7 +71,7 @@ uv run uvicorn istanbul_agent.api:app --reload        # FastAPI: /ask, /health
 uv run python eval/compare_providers.py               # iki sağlayıcı, ortak senaryolar
 uv run python eval/measure_variance.py                # olcumun gurultu bandi: 9 senaryo x 3 tekrar
 uv run python eval/run_rag_eval.py
-uv run python eval/run_agent_eval.py --refresh        # 54 senaryo, hepsi taze (~57 dk, seri)
+uv run python eval/run_agent_eval.py --refresh        # 57 senaryo, hepsi taze (~60 dk, seri)
 uv run python eval/run_agent_eval.py --provider gemini --limit 5   # kota: günde 20 istek
 ```
 

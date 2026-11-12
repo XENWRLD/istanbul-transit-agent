@@ -190,13 +190,24 @@ koşulmadı, imaj tek makinede derlendi.
 Yukarıdaki Faz 4 ve Faz 5 sonuçları o tarihlerin tutanağıdır; senaryo
 sayısı ve oranlar o günden beri değişti. **Güncel ölçüm:**
 
-| Ölçüt | Faz 4 (10 Kas) | Karar 0014 (11 Kas) | Karar 0015 (12 Kas) |
-|---|---|---|---|
-| kapsam | 49 senaryo | 54 senaryo | 54 senaryo |
-| geçen senaryo | 41/49 (%83.7) | 47/54 (%87.0) | **50/54 (%92.6)** |
-| araç doğruluğu | %87.8 | %88.9 | **%94.4** |
-| kaynaksız cevap | 3 | 3 | **1** |
-| gecikme ortancası | 44 s | 36.0 s | 37.2 s |
+| Ölçüt | Faz 4 (10 Kas) | 0014 (11 Kas) | 0015 (12 Kas) | 0017 (12 Kas) |
+|---|---|---|---|---|
+| kapsam | 49 senaryo | 54 senaryo | 54 senaryo | 54 senaryo |
+| geçen senaryo | 41/49 (%83.7) | 47/54 (%87.0) | **50/54 (%92.6)** | 47/54 (%87.0) |
+| araç doğruluğu | %87.8 | %88.9 | **%94.4** | %88.9 |
+| kaynaksız cevap | 3 | 3 | **1** | 2 |
+| gecikme ortancası | 44 s | 36.0 s | 37.2 s | 38.0 s |
+
+Son sütun bir gerilemedir ve sebebi ölçülmüştür: `find_nearby_stops`
+docstring'ine eklenen dört satır, o aracı hiç çağırmayan iki senaryonun
+araç seçimini bozuyordu. Metin tek cümleye indirildi, aynı pencerede altı
+senaryoda 2/6 → 4/6 ölçüldü (karar 0018).
+
+**Senaryo dosyası artık 57 senaryo** (mikromobilite için üç senaryo
+eklendi, karar 0019); üçü tek tek ölçüldü, tam koşuya girmedi.
+**Mevcut kodun tam koşu sayısı yoktur:** 0017 ve 0019 araç yüzeyini
+değiştirdi, karar 0018 gereği karşılaştırmanın iki ucu aynı yüzeyde ve aynı
+pencerede olmalı, yani dürüst bir sayı taban ile birlikte ~2 saat ister.
 
 Sağlayıcı karşılaştırması da değişti: Faz 5'te "ortak 6 senaryoda Gemini
 6/6, yerel model 3/6" yazıyor, ama o iki sayı **farklı prompt'larla**
@@ -205,12 +216,18 @@ Aynı prompt üzerinde ölçülen ortak senaryolarda ikisi de 3/3; ayrışan tek
 şey hız (44.5 s vs 6.1 s). Altı ortak senaryonun üçü Gemini kotası
 (`GoogleRateLimitError`) nedeniyle ölçülemedi ve karşılaştırmadan çıkarıldı.
 
-Açık kalan işler: `chain-05`/`route-05` (model araç çıktısını veri seti
-gibi tanıtıyor — prompt kuralı yazıldı, paket halinde ölçülünce geri
-alındı, tek başına ölçülmeyi bekliyor), `near-04` (senaryo katılığı
-olabilir), `rail-04` (yinelenmiyor), RAGAS.
-İmajın CUDA'lı torch taşıması (CPU-only torch `uv.lock`'un yeniden
-çözülmesini gerektiriyor, karar 0016).
+### Açık kalan işler (12 Kasım 2026 itibarıyla)
+
+| İş | Durum | Maliyet |
+|---|---|---|
+| 57 senaryoluk tam ölçüm, taban ile aynı pencerede | **yapılmadı**; mevcut kodun oranı bilinmiyor | ~2 saat |
+| `chain-05` / `route-05`: model araç çıktısını veri seti gibi tanıtıyor | prompt kuralı yazıldı, paket halinde ölçülüp geri alındı; tek başına ölçülmeyi bekliyor (0015, 0018) | ~1 saat |
+| `near-04`: model `geocode_place` çağırıyor, senaryo `find_nearby_stops` şart koşuyor | araçtaki kusur düzeltildi (0017), senaryo ölçütü hâlâ karara bağlı | karar |
+| `rail-04`: aynı girdiyle farklı davranıyor | pencereler arası kayma kapsamında (0018) | — |
+| RAGAS (cevap sadakati) | hiç ölçülmedi; LLM kotası | kota |
+| CPU-only torch | önerildi, `uv.lock` yeniden çözülmeli (0016/3) | ~1 saat |
+| Konteyner içinde ingest | denenmedi (0016/2) | ~20 dk |
+| Pencereler arası kaymanın sebebi | ölçülmedi: Ollama durumu, GPU bölünmesi, bellek baskısı adaylar (0018) | ölçüm |
 
 ### Faz 6 (opsiyonel) — Rota motoru
 - GTFS üzerinden gerçek A→B toplu taşıma rotası: `r5py` veya OpenTripPlanner, `plan_trip` aracı olarak.

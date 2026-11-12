@@ -162,3 +162,124 @@ bir öneri olarak duruyor.
   kurulum komutu denenmedi; depo bu makinede hazır olduğu için bağlandı.
 - **İmaj yalnızca bu makinede derlendi.** "Yeni bir makinede çalışır"
   iddiası hâlâ tek makinelik bir ölçüme dayanıyor.
+
+## 3. İmajın boyutu teorik bir rahatsızlık değil: diski doldurup daemon'u kilitledi
+
+Yukarıdaki 2. bölüm imajın 6.78 GB katman toplamı + 20.4 GB disk ayak izi +
+20.4 GB build cache taşıdığını ölçmüş ve CPU-only torch'u "ayrı bir karara
+bırakıldı" diye geçmişti. Aynı gün o boyut **kurulumu durdurdu**.
+
+Olay sırası, hepsi ölçülü:
+
+1. Yeni araç (karar 0019) eklendikten sonra imaj yeniden derlendi.
+2. Derleme yarı yolda **kilitlendi**: 45 dakika "sürüyor" göründü, oysa
+   `docker` istemcileri 0 saniye CPU'da bekliyordu ve buildx 4 saniyede
+   durmuştu. Sebep disk: imaj + cache 40 GB'ı aşmış durumdaydı.
+3. Daemon da kilitlendi — `docker version` bile 25 saniyede dönmedi.
+4. Süreçleri zorla kapatmak **ikinci bir arıza üretti**: `wsl --shutdown`
+   yapılmadığı için `docker-desktop` dağıtımı çalışır kalıp veri diskini
+   tuttu ve Docker Desktop yeniden açılırken
+   `preparing block device /dev/sdd: device or resource busy` hatasıyla
+   düştü.
+5. Kurtarma: `wsl --shutdown` (dağıtım `Stopped` olur, disk serbest kalır)
+   → Docker Desktop yeniden başlatılır. Daemon 29.9.3 olarak geri geldi,
+   imaj ve birimler yerinde, kayıp yok.
+
+Üç şey kayda geçiyor:
+
+- **Docker'ı yeniden başlatmanın doğru sırası** süreç öldürmek değil:
+  `wsl --shutdown`, sonra Docker Desktop. Süreç öldürmek diski kilitli
+  bırakıyor.
+- **`docker builder prune` kurulum adımlarının parçası.** Ölçüm: prune
+  yalnızca **kullanılmayan** cache'i siliyor, imajın kendi katmanı
+  kullanımda olduğu için kalıyor (bu turda 79 MB geri geldi, çünkü 20 GB
+  zaten daemon yeniden kurulurken temizlenmişti).
+- **CPU-only torch artık "iyi olurdu" değil, ölçülmüş bir ihtiyaç.** İmajın
+  ağırlığının neredeyse tamamı konteynerde hiç kullanılmayan CUDA
+  paketlerinden geliyor ve bu ağırlık bu makinede bir kez kurulumu
+  durdurdu. Yine de `uv.lock`'un yeniden çözülmesini gerektirdiği için bu
+  turda yapılmadı; gerekçesi güçlenmiş bir öneri olarak duruyor.
+
+Bir yöntem notu: "45 dakika süren derleme" diye raporlamak yanlış olurdu.
+Süreçlerin CPU'suna bakmak ilerlemediğini gösterdi — duvar saati ilerleme
+kanıtı değil.
+
+## 4. Gradio doğrulaması kullanıcıya dönük bir kusur buldu: harita boştu
+
+2. bölüm Gradio'yu "doğrulanmadı" diye bırakmıştı. Doğrulamanın kendisi,
+`/ask`'in yakalamadığı bir hatayı ortaya çıkardı.
+
+### Ölçüm
+
+Konteynerden Gradio açıldı ve soru **arayüzün kendi fonksiyonundan**
+sürüldü (`POST /gradio_api/call/run_question`), sayfa yüklemesiyle
+yetinilmedi. Soru: *"Kadıköy çevresinde scooter park alanı var mı?"*
+
+| Çıktı alanı | Sonuç |
+|---|---|
+| Cevap | doğru: mikromobilite park alanlarını sayıyor, *"canlı doluluk bilgisi yoktur"* diyor, kaynağın 2026-11 tarihli dosya olduğunu söylüyor |
+| Durum satırı | `ollama (qwen3.5:4b) · 47.7 s · 1 araç çağrısı` |
+| Çağrılan araçlar tablosu | `find_mobility_options` + parametreleri |
+| **Harita** | **`null`** — oysa araç çıktısı her nokta için `lat`/`lon` taşıyor |
+
+### Sebep
+
+`graph.py` araç sonucunu `existing.result = str(message.content)` ile
+saklıyordu. MCP araç sonucu **içerik bloğu listesi** olarak geliyor
+(`[{'type': 'text', 'text': '...'}]`) ve `str()` onu Python repr'ına
+çeviriyor: JSON'un satır sonları iki karakterlik `\n` dizisine
+dönüşüyor. `app.extract_points` koordinatları `"lat": x, "lon": y`
+deseniyle arıyor ve desenin `\s*` kısmı o diziye uymuyor.
+
+Ölçüldü: düz metinde **1** eşleşme, repr biçiminde **0**.
+
+Kusur yeni araca özgü değil: bu biçimde sonuç dönen **her araç** için
+harita boş kalıyordu, yani README'nin özellik olarak saydığı harita bir
+süredir çalışmıyordu.
+
+### Düzeltme
+
+Aynı modülde zaten duran düzleştirici kullanıldı:
+`existing.result = _text(message.content)`. `_text` Gemini'nin blok
+listesini okumak için yazılmıştı; araç sonucunda kullanılmamıştı.
+
+**Modele giden girdi değişmiyor** — bu alan yalnızca bizim kaydımız. Bu
+yüzden eval yeniden koşulmadı ve araç yüzeyi özeti aynı kaldı (karar
+0018'in kuralı: karşılaştırmanın iki ucu aynı yüzeyde olmalı; burada
+yüzey hiç değişmiyor).
+
+### Niçin hiçbir test yakalamamıştı
+
+Testler fonksiyonları sınıyordu, **araç çıktısının gerçek biçimini**
+sınamıyordu. `extract_points` düz JSON metniyle çağrıldığında doğru
+çalışıyor; hata yalnızca gerçek akışta, `_collect`'in sakladığı biçimde
+ortaya çıkıyor. Yeni testler bu yüzden iki yerde duruyor:
+
+- `_collect` blok listesini düzleştiriyor mu, repr işareti bırakıyor mu
+- `extract_points` **gerçek araç çıktısı biçiminden** nokta çıkarıyor mu,
+  İstanbul dışı koordinatı atıyor mu, ve repr biçiminin hiçbir şey
+  bulmadığı (yani farkın kendisi) sabitlendi
+
+Bu, karar 0013'ün kuralının arayüz tarafındaki karşılığı: *fixture tabanlı
+test kodun kendi varsayımını doğrular, kaynağı doğrulamaz.* Burada
+"kaynak" araç çıktısının gerçek biçimiydi.
+
+### Düzeltmeden sonra: konteynerde ölçüldü
+
+İmaj yeniden derlendi (945 s) ve aynı soru aynı yoldan tekrar soruldu:
+
+| Çıktı alanı | Önce | Sonra |
+|---|---|---|
+| Harita | `null` | **11 nokta** (`scattermap`), adlarıyla |
+| Yanıt boyutu | 1053 bayt | 9996 bayt |
+| Cevap, durum satırı, araç tablosu | doğru | aynı |
+
+Yani Gradio artık konteynerden **uçtan uca** doğrulanmış durumda: cevap,
+çağrılan araçlar tablosu ve harita. Karar 0011'in "Docker yolu
+doğrulanmadı" satırından buraya kadarki tek gerçek kusur bu haritaydı.
+
+Kalan bir pürüz, kozmetik ve bilinçli bırakıldı: haritadaki ilk nokta
+arama **merkezi** ve etiketi `find_mobility_options (find_mobility_options)`
+oluyor. Sebep `extract_points`'in nokta adını yalnızca `"name"` alanından
+okuması; üst düzey `lat`/`lon` çiftinin öncesinde `"around"` var, `"name"`
+yok, o yüzden araç adına düşüyor. Veri doğru, etiket çirkin.

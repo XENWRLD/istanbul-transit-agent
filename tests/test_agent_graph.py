@@ -286,3 +286,46 @@ class TestToolSurfaceDigest:
         value = surface(FakeTool("geocode_place", "Yer bulur."))
         assert len(value) == 12
         assert all(char in "0123456789abcdef" for char in value)
+
+
+NL = chr(10)
+B = chr(92)
+
+
+class TestToolResultText:
+    """Araç sonucu okunabilir metin olarak saklanmalı, Python repr'ı olarak değil.
+
+    MCP araç sonucu içerik bloğu **listesi** olarak geliyor.
+    `str(content)` bunu `[{'type': 'text', 'text': '...'}]` repr'ına
+    çeviriyordu ve JSON'un satır sonları iki karakterlik dizilere
+    dönüşüyordu; Gradio haritası koordinatları bu yüzden hiç bulamıyordu
+    (karar 0016/4). Modele giden girdi bu alandan etkilenmiyor.
+    """
+
+    def _run(self, content) -> ToolCall:
+        messages = [
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "find_mobility_options", "args": {}, "id": "t1"}],
+            ),
+            ToolMessage(content=content, tool_call_id="t1", name="find_mobility_options"),
+        ]
+        return _collect(messages)[0]
+
+    def test_a_block_list_is_flattened_to_its_text(self):
+        payload = NL.join(("{", '  "lat": 40.99,', '  "lon": 29.02', "}"))
+        call = self._run([{"type": "text", "text": payload}])
+        assert call.result == payload
+
+    def test_the_stored_result_has_no_python_repr_markers(self):
+        call = self._run([{"type": "text", "text": '{"ok": true}'}])
+        assert "'type':" not in call.result
+        assert (B + "n") not in call.result
+
+    def test_a_plain_string_result_is_kept_as_is(self):
+        call = self._run('{"ok": true}')
+        assert call.result == '{"ok": true}'
+
+    def test_several_blocks_are_joined(self):
+        call = self._run([{"type": "text", "text": "bir"}, {"type": "text", "text": "iki"}])
+        assert "bir" in call.result and "iki" in call.result

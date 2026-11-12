@@ -250,7 +250,15 @@ def _collect(messages: list[BaseMessage]) -> list[ToolCall]:
         elif isinstance(message, ToolMessage):
             existing = calls.get(str(message.tool_call_id))
             if existing is not None:
-                existing.result = str(message.content)
+                # `str(content)` yerine `_text`: MCP araç sonucu içerik
+                # bloğu **listesi** olarak geliyor ve `str()` onu Python
+                # repr'ına çeviriyordu, yani JSON'un satır sonları iki
+                # karakterlik `\n` dizisine dönüşüyordu. Gradio haritası
+                # koordinatları `"lat": x, "lon": y` deseniyle aradığı için
+                # hiçbir nokta bulamıyordu (ölçüldü: düz metinde 1 eşleşme,
+                # liste repr'ında 0). Modele giden girdi bundan etkilenmiyor;
+                # bu alan yalnızca bizim kaydımız.
+                existing.result = _text(message.content)
     return [calls[identifier] for identifier in order]
 
 

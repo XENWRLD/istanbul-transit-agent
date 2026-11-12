@@ -117,6 +117,14 @@ taşıdı.
 
 İlk `/ask` isteği BGE-M3'ü indirdiği için uzun sürer (ölçülen 505 s'nin
 378 s'si indirme); `huggingface` hacmi bağlandığı sürece bir daha inmez.
+
+**İmaj kodu içerir, bağlanan birim yalnızca veriyi.** Kod değiştiğinde imajı
+yeniden derlemek gerekiyor; `data/` bağlı olduğu için veri yeniden
+kurulmuyor. Derlemeden önce `docker builder prune` koşturmak iyi olur:
+imaj + build cache bu makinede 40 GB'ı aşıp bir kez diski doldurdu ve
+daemon'u kilitledi (karar 0016/3). Docker'ı yeniden başlatmak gerekirse
+sıra **`wsl --shutdown` → Docker Desktop**; süreçleri öldürmek veri diskini
+kilitli bırakıp `device or resource busy` hatası üretiyor.
 İmajın ağırlığı neredeyse tamamen tek bağımlılık katmanından geliyor:
 linux `torch` tekerlekleri varsayılan olarak CUDA paketlerini çekiyor,
 oysa konteynerde GPU kullanılmıyor. CPU-only torch birkaç GB düşürürdü ama
@@ -350,10 +358,11 @@ Düşen yedi senaryonun hepsi **araç seçimi**: model özel araç yerine `geoco
   uç noktaları **sunucu taraflı bozuk** (43/43 deneme istisna); bu veriler
   GTFS'ten geliyor.
 - **Docker yalnızca bu makinede derlendi** (karar 0016): imaj kuruluyor,
-  `/health` ve `/ask` konteyner içinden çalışıyor, ama "yeni bir makinede
-  çalışır" iddiası tek makinelik ölçüme dayanıyor. Gradio arayüzü
-  konteynerden açılmadı ve ingest konteyner içinde koşulmadı; imaj da GPU
-  kullanmadığı hâlde CUDA'lı torch taşıyor.
+  `/health`, `/ask` ve Gradio arayüzü (cevap + araç tablosu + harita)
+  konteyner içinden doğrulandı, ama "yeni bir makinede çalışır" iddiası tek
+  makinelik ölçüme dayanıyor. İngest konteyner içinde koşulmadı. İmaj GPU
+  kullanmadığı hâlde CUDA'lı torch taşıyor ve bu ağırlık bir kez diski
+  doldurup daemon'u kilitledi (karar 0016/3).
 - **Yerel model araç çıktısını kullanıcıdan gelmiş gibi anlatıyor**
   (*"Verdiğiniz JSON verisi, İstanbul İETT'nin… GTFS formatında hazırlanmış
   olup"*) ve soruyu cevaplamayı bırakıp veri setini tanıtıyor. Kalan dört

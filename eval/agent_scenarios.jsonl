@@ -52,3 +52,6 @@
 {"id": "live-03", "question": "500T otobüsü hafta içi ilk kaçta kalkıyor?", "expect_tools": ["get_next_departures", "get_line_route"], "expect_any": true, "must_mention": [":"], "note": "otobüs sefer saati artık canlı İETT servisinden"}
 {"id": "live-04", "question": "Metro ağında kaç asansör arızalı?", "expect_tools": ["get_station_accessibility"], "must_mention": ["asansör"], "note": "istasyon verilmeden ağ geneli arıza sayısı"}
 {"id": "live-05", "question": "Kadıköy'de park edecek yer bulabilir miyim?", "expect_tools": ["find_parking"], "must_mention": ["otopark", "boş", "dolu"], "note": "otopark doluluğu, yakınlık sıralı"}
+{"id": "mob-01", "question": "Kadıköy çevresinde scooter park alanı var mı?", "expect_tools": ["find_mobility_options"], "note": "mikromobilite park alanı; kaynak 2026-11 tarihli taze veri"}
+{"id": "mob-02", "question": "Levent'te elektrikli arabamı nerede şarj edebilirim?", "expect_tools": ["find_mobility_options"], "must_mention": ["2025", "eski", "güncel olmayabilir"], "note": "şarj verisi 2025-05 tarihli; is_stale uyarısı cevaba taşınmalı"}
+{"id": "mob-03", "question": "Beşiktaş'ta kaç tane müsait şarj soketi var şu an?", "expect_tools": ["find_mobility_options"], "must_mention": ["anlık", "bilinmiyor", "yok", "alt sınır"], "note": "kaynak anlık doluluk içermiyor; aracın söylemesi gereken şey yokluk"}

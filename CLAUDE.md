@@ -7,7 +7,7 @@ Yol haritası, aşamalar ve "bitti" tanımları: `documents/PLAN.md`. Veri kayna
 ## Mimari (özet)
 
 - `src/istanbul_agent/servers/transit_server.py` → MCP: toplu taşıma araçları (yerel GTFS/GeoJSON + canlı İETT/Metro)
-- `src/istanbul_agent/servers/city_server.py` → MCP: otopark (`find_parking`), trafik (`get_traffic_status`). Hava kalitesi aracı **yok**: kaynakta ölçüm yok (karar 0012/3)
+- `src/istanbul_agent/servers/city_server.py` → MCP: otopark (`find_parking`), trafik (`get_traffic_status`), mikromobilite ve şarj (`find_mobility_options`, karar 0019). Hava kalitesi aracı **yok**: kaynakta ölçüm yok (karar 0012/3)
 - `src/istanbul_agent/servers/knowledge_server.py` → MCP: `search_knowledge` (RAG); gömme modelini **açılışta** yükler (`warm_up`)
 - `src/istanbul_agent/clients/` → `base.py` (zaman aşımı, yeniden deneme, kaynak bazlı TTL önbellek), `iett.py` (**elle kurulan SOAP zarfı**, `zeep` değil), `metro.py`, `city.py` (İSPARK, trafik, hava kalitesi)
 - `src/istanbul_agent/store/` → GTFS ve GeoJSON ingest, DuckDB sorguları (`ingest` otobüs + nokta katmanları, `ingest_rail` raylı sistem, `ingest_timetable` sefer saatleri)
@@ -56,6 +56,9 @@ uv run python -m istanbul_agent.store.ingest          # İETT GTFS + nokta katma
 uv run python -m istanbul_agent.store.ingest --only-places  # yalnızca transit_places
 uv run python scripts/download_knowledge.py            # RAG metin kaynakları (509, 541, 445, 442, 435, 496)
 uv run python scripts/inspect_knowledge.py             # kaynakların metni gerçekte nasıl çıkıyor
+uv run python scripts/inspect_mobility_sources.py      # mikromobilite kaynaklarının ağzı (ağa çıkar)
+uv run python scripts/download_mobility.py             # bisiklet/şarj katmanları (1, 16, 275, 276)
+uv run python -m istanbul_agent.store.ingest_mobility  # mikromobilite katmanları → DuckDB (~3 dk)
 uv run python -m istanbul_agent.rag.ingest             # dokümanları indeksle (~6 dk, CPU)
 uv run python -m istanbul_agent.rag.ingest --dry-run   # gömme yapmadan parça ölçümü
 uv run python -m istanbul_agent.servers.transit_server   # MCP sunucusu (stdio)
@@ -119,6 +122,8 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - **Araç çağırmadan verilen cevap kaynaksızdır.** `answer()` araç çağrılmayan turu bir kez geri çevirir (soruyu tekrarlayan bir uyarıyla) ve ikinci turda da çağrılmazsa sonucu `unverified=True` işaretler; CLI bunu uyarı olarak basar. Prompt'a "kaynak göster" yazmak tek başına yetmedi — model kaynağı da uydurdu (karar 0010).
 - Türkçe metin karşılaştırmasında `str.casefold()` kullanma: `"YAKLAŞIK".casefold()` noktalı `i` üretip `yaklaşık` ile eşleşmiyor. `store.station_names.fold_case()` kullan.
 - `OLLAMA_NUM_CTX` araç yüzeyine bağlıdır: yedi araçta prompt + şemalar ~5900 token, 8192'lik pencere taşıyor ve model hiç araç çağırmıyor. Varsayılan 16384 (kararlar 0006, 0010); araç eklenince yeniden ölç.
+- **Mikromobilite kaynaklarında üç ölçülmüş kusur var ve araç üçünü de söylemek zorunda** (karar 0019): bisiklet yolu kayıtlarının 212/477'si henüz yol değil (`exists_now`, varsayılan olarak gizli), şarj soketi sayıları **alt sınırdır** (soket dosyasının 30 073/38 950 satırı istasyonsuz), şarj verisi 2025-05 tarihli (`is_stale`) ama park ve yol verisi 2026-11 (taze) — aynı araç iki tazelikte veri döndürüyor ve bunu kayıt bazında taşıyor.
+- `store.station_names.normalize()` Türkçe harfleri de katlıyor ("Park Alanı" → "park alani"); sabit sözlük anahtarlarını **katlanmış** biçimde yaz. Katlanmamış anahtar yazmak ingest'te 1300 park alanının tamamını ve 265 mevcut bisiklet yolunu sessizce atmıştı (karar 0019); testler artık anahtarların normalize'dan geçmiş olmasını tutuyor.
 - Mimari bir karar verdiğinde (chunk boyutu, model seçimi, araç tasarımı) `documents/decisions/` altına kısa bir not ekle: bağlam, seçenekler, karar, gerekçe.
 - Yeni bir araç veya RAG değişikliği eklerken ilgili test ve değerlendirme senaryosunu da ekle.
 - Araçlar yalnızca veri hatasını değil **kurulum** hatasını da açıkça döner: depo yoksa ham `IOException` değil, çalıştırılacak komutu içeren `depo_yok` hatası (karar 0011).

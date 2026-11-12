@@ -135,6 +135,78 @@ def _unavailable(problem: LiveDataError) -> LiveDataUnavailable:
     return LiveDataUnavailable(source=problem.source, message=problem.message)
 
 
+class MobilityPointOut(BaseModel):
+    """Bir park alanı ya da şarj istasyonu."""
+
+    name: str = Field(description="Yerin adı")
+    kind: str = Field(description="bisiklet_park | mikromobilite_park | sarj")
+    kind_label: str = Field(description="Türün Türkçe adı")
+    district: str | None = Field(default=None, description="İlçe, kaynakta varsa")
+    detail: str | None = Field(default=None, description="Park tipi ya da şarj istasyonu adresi")
+    lat: float
+    lon: float
+    distance_m: float = Field(description="Sorulan konuma kuş uçuşu mesafe")
+    public_access: bool | None = Field(
+        default=None, description="Halka açık mı; şarj istasyonlarında kaynaktan gelir"
+    )
+    operator: str | None = Field(default=None, description="Şarj istasyonunun işletmecisi")
+    sockets_known: bool = Field(
+        description="Soket bilgisi kaynakta var mı; false ise soket sayısı bilinmiyor (sıfır değil)"
+    )
+    socket_count_at_least: int | None = Field(
+        default=None, description="Bilinen soket sayısı — **alt sınır**, toplam değil"
+    )
+    socket_types: str | None = Field(
+        default=None, description="Soket türleri, ör. DC_CCS, AC_TYPE2"
+    )
+    max_power_kw: float | None = Field(default=None, description="Bilinen en yüksek soket gücü")
+
+
+class MobilityPathOut(BaseModel):
+    """Bir bisiklet yolu kaydı; mevcut olabilir ya da henüz proje olabilir."""
+
+    name: str = Field(description="Proje adı")
+    district: str | None = Field(default=None, description="İlçe")
+    stage: str = Field(description="Kaynaktaki aşama, ör. 'Mevcut Ayrılmış', 'UTK kararı alınan'")
+    exists_now: bool = Field(description="Yol fiilen var mı; false ise henüz yapılmamış")
+    length_km: float | None = Field(default=None, description="Proje uzunluğu, km")
+    distance_m: float = Field(description="Yolun en yakın düğümüne kuş uçuşu mesafe")
+
+
+class MobilityOut(BaseModel):
+    """`find_mobility_options` çıktısı."""
+
+    ok: bool = True
+    around: str = Field(description="Arama merkezi olarak alınan yer")
+    lat: float
+    lon: float
+    radius_m: float
+    points: list[MobilityPointOut] = Field(default_factory=list)
+    paths: list[MobilityPathOut] = Field(default_factory=list)
+    source: str = Field(description="Veri kaynakları")
+    data_as_of: str = Field(description="Kaynakların portal tarihi")
+    is_stale: bool = Field(description="Sonuçlarda eski veri var mı")
+    notes: list[str] = Field(default_factory=list)
+
+
+class StoreNotReady(BaseModel):
+    """Depo kurulmamış: ne çalıştırılacağını söyler (karar 0011)."""
+
+    ok: bool = False
+    error: str = "depo_yok"
+    message: str
+
+
+class InvalidKind(BaseModel):
+    """Geçersiz tür: boş sonuç yerine geçerli değerleri sayar."""
+
+    ok: bool = False
+    error: str = "gecersiz_tur"
+    asked: str
+    valid_kinds: list[str]
+    message: str
+
+
 @mcp.tool()
 def find_parking(
     around: str | None = None,
@@ -332,6 +404,175 @@ def get_traffic_status() -> TrafficOut | LiveDataUnavailable:
     )
 
 
+@mcp.tool()
+def find_mobility_options(
+    around: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    radius_m: float = DEFAULT_RADIUS_M,
+    kind: str | None = None,
+    public_only: bool = True,
+    include_planned_paths: bool = False,
+    limit: int = 10,
+) -> MobilityOut | PlaceNotFound | InvalidKind | StoreNotReady:
+    """Bir yerin çevresindeki bisiklet/scooter park alanlarını, elektrikli araç şarj istasyonlarını ve bisiklet yollarını verir.
+
+    Üç katman tek araçta: 1300 park alanı (1099 mikromobilite + 201
+    bisiklet), 2933 şarj istasyonu ve 477 bisiklet yolu kaydı. Hepsi
+    **dosya** verisi, canlı servis değil; boş park yeri ya da müsait soket
+    sayısı bu veride **yok**.
+
+    Parametreler:
+        around: çevresi aranacak yerin adı ("Kadıköy", "Taksim"). Ad önce
+            durak/istasyon tablosunda konuma çevrilir; `lat`/`lon`
+            verilmişse bu alan göz ardı edilir.
+        lat: enlem; `lon` ile birlikte kullan.
+        lon: boylam; `lat` ile birlikte.
+        radius_m: arama yarıçapı, metre. Varsayılan 1000, en çok 5000.
+        kind: tek türe kısıtlar — `bisiklet_park`, `mikromobilite_park`,
+            `sarj`. `park` iki park türünü birlikte verir; `scooter`
+            mikromobiliteye, `elektrikli` şarja eşlenir. Boş bırakılırsa
+            hepsi döner.
+        public_only: varsayılan true — kaynaktaki 904 özel (halka kapalı)
+            şarj istasyonu listelenmez ve kaç tanesinin düştüğü nota yazılır.
+        include_planned_paths: varsayılan false — yalnızca **mevcut**
+            bisiklet yolları döner.
+        limit: en çok kaç kayıt dönecek. Varsayılan 10, en çok 50.
+
+    `distance_m` kuş uçuşu mesafedir. Bisiklet yolunda mesafe yolun en
+    yakın düğümüne ölçülür.
+
+    **Üç şeyi karıştırmamak gerekiyor, araç bunları ayrı alanlarda söyler:**
+
+    - **Bisiklet yolu kayıtlarının %44'ü henüz yol değil.** 477 kaydın
+      212'si proje, karar ya da inşaat aşamasında; `exists_now` bunu
+      söyler ve varsayılan olarak yalnızca mevcut olanlar listelenir.
+      Planlı bir yolu "var" diye sunmak yanlış cevaptır.
+    - **Şarj soketi sayıları alt sınırdır.** Soket dosyasının 30 073/38 950
+      satırı istasyon numarası taşımıyor; `socket_count_at_least` bilinen
+      kısmı verir, toplamı vermez. `sockets_known` false ise soket sayısı
+      **sıfır değil, bilinmiyor**.
+    - **Şarj verisi eski.** Portal tarihi 2025-05; sonuç `is_stale: true`
+      taşır ve cevapta bunu söylemek gerekir. Park alanları ve bisiklet
+      yolu verisi 2026-11 tarihli, taze.
+
+    NE ZAMAN KULLANMA:
+    - Otopark (araba) aramak için kullanma — `find_parking` kullan. Bu araç
+      bisiklet/scooter parkı ve şarj istasyonu bilir, İSPARK otoparkını değil.
+    - Toplu taşıma durağı için kullanma — `find_nearby_stops` kullan.
+    - **Müsait soket ya da boş park yeri sormak için kullanma**; bu veri
+      anlık doluluk içermiyor, yalnızca noktanın varlığını söylüyor.
+    - Bisiklet kiralama (İsbike) için kullanma: servis kapalı ve veri yok.
+    - Şarj ücreti ya da ödeme yöntemi için kullanma; kaynakta fiyat yok.
+    - İki nokta arası bisiklet rotası için kullanma; araç yol kayıtlarını
+      listeler, rota planlamaz.
+    """
+    from istanbul_agent.store.mobility import (
+        KIND_VOCABULARY,
+        find_mobility_near,
+        resolve_kinds,
+    )
+
+    radius = max(50.0, min(float(radius_m), MAX_RADIUS_M))
+    count = max(1, min(int(limit), 50))
+    kinds, kind_error = resolve_kinds(kind)
+    if kind_error:
+        return InvalidKind(asked=kind or "", valid_kinds=list(KIND_VOCABULARY), message=kind_error)
+
+    notes: list[str] = []
+    if lat is not None and lon is not None:
+        origin_name = f"{lat:.5f},{lon:.5f}"
+        origin_lat, origin_lon = float(lat), float(lon)
+    else:
+        if not around:
+            return PlaceNotFound(
+                asked="",
+                message="Ya `around` (yer adı) ya da `lat` ve `lon` birlikte verilmeli.",
+            )
+        from istanbul_agent.store.places import find_places
+
+        search = find_places(around, limit=3)
+        if not search.found:
+            return PlaceNotFound(
+                asked=around,
+                candidates=list(search.candidates),
+                message=(
+                    f"'{around}' adlı bir yer bulunamadı, bu yüzden çevresi aranamadı. "
+                    "Adaylar arasından doğru olanı kullanıcıya sor."
+                ),
+            )
+        anchor = search.clusters[0]
+        origin_name, origin_lat, origin_lon = anchor.name, anchor.lat, anchor.lon
+        notes.append(f"Merkez olarak '{anchor.name}' ({anchor.mode_label}) alındı.")
+
+    result = find_mobility_near(
+        origin_lat,
+        origin_lon,
+        radius_m=radius,
+        kinds=kinds,
+        public_only=public_only,
+        include_planned_paths=include_planned_paths,
+        limit=count,
+    )
+    if not result.store_ready:
+        return StoreNotReady(message=result.notes[0])
+
+    notes.extend(result.notes)
+    if not result.points and not result.paths:
+        notes.append(
+            f"{radius:.0f} m içinde kayıtlı bisiklet/scooter parkı, şarj istasyonu ya da "
+            "bisiklet yolu bulunamadı; yarıçapı artırmayı dene."
+        )
+
+    sources = sorted(
+        {point.source for point in result.points} | {path.source for path in result.paths}
+    )
+    dates = sorted(
+        {point.data_as_of for point in result.points} | {path.data_as_of for path in result.paths}
+    )
+    return MobilityOut(
+        around=origin_name,
+        lat=round(origin_lat, 6),
+        lon=round(origin_lon, 6),
+        radius_m=radius,
+        points=[
+            MobilityPointOut(
+                name=point.name,
+                kind=point.kind,
+                kind_label=point.kind_label,
+                district=point.district,
+                detail=point.detail,
+                lat=round(point.lat, 6),
+                lon=round(point.lon, 6),
+                distance_m=point.distance_m,
+                public_access=point.public_access,
+                operator=point.operator,
+                sockets_known=point.sockets_known,
+                socket_count_at_least=point.socket_count_at_least,
+                socket_types=point.socket_types,
+                max_power_kw=point.max_power_kw,
+            )
+            for point in result.points
+        ],
+        paths=[
+            MobilityPathOut(
+                name=path.name,
+                district=path.district,
+                stage=path.stage,
+                exists_now=path.exists_now,
+                length_km=path.length_km,
+                distance_m=path.distance_m,
+            )
+            for path in result.paths
+        ],
+        source=" | ".join(sources) if sources else "İBB Açık Veri 1, 16, 275, 276",
+        data_as_of=", ".join(dates) if dates else "-",
+        is_stale=any(point.is_stale for point in result.points)
+        or any(path.is_stale for path in result.paths),
+        notes=notes,
+    )
+
+
 def main() -> None:
     mcp.run()
 
@@ -340,4 +581,4 @@ if __name__ == "__main__":
     main()
 
 
-__all__ = ["find_parking", "get_traffic_status", "mcp"]
+__all__ = ["find_mobility_options", "find_parking", "get_traffic_status", "mcp"]

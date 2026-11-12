@@ -25,7 +25,7 @@ from istanbul_agent.config import PROJECT_ROOT
 
 EVAL_PATH = PROJECT_ROOT / "eval" / "run_agent_eval.py"
 
-# Üç MCP sunucusunun sunduğu araçların tamamı (Faz 2 ile 11 oldu).
+# Üç MCP sunucusunun sunduğu araçların tamamı (Faz 2 ile 11, karar 0019 ile 12).
 ALL_TOOLS = {
     "geocode_place",
     "find_nearby_stops",
@@ -38,6 +38,7 @@ ALL_TOOLS = {
     "search_knowledge",
     "find_parking",
     "get_traffic_status",
+    "find_mobility_options",
 }
 
 

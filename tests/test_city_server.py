@@ -19,8 +19,17 @@ import pytest
 from istanbul_agent.clients.base import LiveDataError
 from istanbul_agent.clients.city import CarPark, TrafficIndex
 from istanbul_agent.servers import city_server as server
+from istanbul_agent.store.db import database_path
+from istanbul_agent.store.mobility import (
+    KIND_LABELS,
+    KIND_SYNONYMS,
+    KIND_VOCABULARY,
+    STORED_KINDS,
+    resolve_kinds,
+    tables_present,
+)
 
-TOOLS = ("find_parking", "get_traffic_status")
+TOOLS = ("find_parking", "get_traffic_status", "find_mobility_options")
 
 
 @pytest.fixture(scope="module")
@@ -53,7 +62,9 @@ def park(
 
 
 class TestRegistration:
-    def test_both_tools_are_exposed(self, listed):
+    def test_every_tool_is_exposed(self, listed):
+        # Araç tanımı `main()` bloğundan sonra kalırsa stdio'da hiç
+        # kaydolmuyor (karar 0012'de ölçüldü: in-process 8, stdio 6).
         assert set(listed) == set(TOOLS)
 
     @pytest.mark.parametrize("name", TOOLS)
@@ -204,3 +215,115 @@ class TestTrafficStatus:
         result = server.get_traffic_status()
         assert result.ok is False
         assert result.error == "canli_veri_yok"
+
+
+needs_store = pytest.mark.skipif(
+    not database_path().exists(), reason="data/transit.duckdb kurulmamış"
+)
+needs_mobility = pytest.mark.skipif(
+    not tables_present(), reason="mikromobilite tabloları kurulmamış"
+)
+
+
+class TestMobilityKinds:
+    """Tür sözlüğü tabloyla karşılaştırılıyor (karar 0015'in hata sınıfı)."""
+
+    def test_every_synonym_resolves_inside_the_stored_kinds(self):
+        for kinds in KIND_SYNONYMS.values():
+            assert set(kinds) <= STORED_KINDS
+
+    def test_the_labels_cover_exactly_the_stored_kinds(self):
+        assert set(KIND_LABELS) == set(STORED_KINDS)
+
+    def test_every_word_the_error_lists_is_accepted(self):
+        # Mesaj ne yazıyorsa araç onu kabul etmek zorunda (karar 0015/4).
+        for word in KIND_VOCABULARY:
+            kinds, error = resolve_kinds(word)
+            assert error is None, word
+            assert kinds
+
+    def test_an_unknown_kind_is_an_error_not_an_empty_result(self):
+        kinds, error = resolve_kinds("metro")
+        assert kinds == ()
+        assert error and "bisiklet_park" in error
+
+    def test_no_kind_means_no_constraint(self):
+        assert resolve_kinds(None) == ((), None)
+
+
+@needs_store
+@needs_mobility
+class TestFindMobilityOptions:
+    def test_points_are_sorted_by_distance(self):
+        result = server.find_mobility_options(around="Kadıköy", radius_m=600)
+        assert result.ok is True
+        distances = [point.distance_m for point in result.points]
+        assert distances == sorted(distances)
+
+    def test_a_kind_narrows_the_result(self):
+        result = server.find_mobility_options(around="Levent", kind="sarj", radius_m=800)
+        assert {point.kind for point in result.points} == {"sarj"}
+
+    def test_charging_data_is_marked_stale(self):
+        # Kaynak portal tarihi 2025-05; eski veri uyarısız sunulmamalı.
+        result = server.find_mobility_options(around="Levent", kind="sarj", radius_m=800)
+        assert result.is_stale is True
+
+    def test_fresh_layers_are_not_marked_stale(self):
+        result = server.find_mobility_options(around="Kadıköy", kind="park", radius_m=600)
+        assert result.points
+        assert result.is_stale is False
+
+    def test_socket_counts_are_a_lower_bound_and_say_so(self):
+        result = server.find_mobility_options(around="Levent", kind="sarj", radius_m=800)
+        assert any("alt sınır" in note for note in result.notes)
+
+    def test_planned_paths_are_hidden_by_default(self):
+        result = server.find_mobility_options(around="Kadıköy", radius_m=1500)
+        assert all(path.exists_now for path in result.paths)
+
+    def test_planned_paths_can_be_asked_for_and_carry_their_stage(self):
+        result = server.find_mobility_options(
+            around="Kadıköy", radius_m=1500, include_planned_paths=True
+        )
+        planned = [path for path in result.paths if not path.exists_now]
+        assert planned, "bu yarıçapta planlı kayıt bekleniyor"
+        assert all(path.stage for path in planned)
+
+    def test_private_charging_is_hidden_by_default_and_counted(self):
+        hidden = server.find_mobility_options(around="Levent", kind="sarj", radius_m=800)
+        shown = server.find_mobility_options(
+            around="Levent", kind="sarj", radius_m=800, public_only=False, limit=50
+        )
+        assert all(point.public_access for point in hidden.points)
+        assert any(point.public_access is False for point in shown.points)
+
+    def test_the_radius_is_capped(self):
+        result = server.find_mobility_options(around="Kadıköy", radius_m=99_999)
+        assert result.radius_m == 5000.0
+
+    def test_a_coordinate_works_without_a_name(self):
+        result = server.find_mobility_options(lat=40.9907, lon=29.0220, radius_m=400)
+        assert result.ok is True
+        assert result.around.startswith("40.99")
+
+    def test_neither_name_nor_coordinate_is_refused(self):
+        result = server.find_mobility_options()
+        assert result.ok is False
+
+    def test_an_unknown_place_returns_candidates(self):
+        result = server.find_mobility_options(around="Paris")
+        assert result.ok is False
+        assert result.candidates
+
+    def test_an_invalid_kind_lists_the_valid_ones(self):
+        result = server.find_mobility_options(around="Kadıköy", kind="otobus")
+        assert result.ok is False
+        assert result.error == "gecersiz_tur"
+        assert "sarj" in result.valid_kinds
+
+    def test_an_empty_radius_says_so_instead_of_returning_silence(self):
+        # Boş sonuç sessizce dönmesin: not yarıçapı artırmayı söylüyor.
+        result = server.find_mobility_options(lat=41.6, lon=28.0, radius_m=100)
+        assert result.points == []
+        assert any("bulunamadı" in note for note in result.notes)

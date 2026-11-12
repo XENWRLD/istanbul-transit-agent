@@ -122,7 +122,7 @@ linux `torch` tekerlekleri varsayılan olarak CUDA paketlerini çekiyor,
 oysa konteynerde GPU kullanılmıyor. CPU-only torch birkaç GB düşürürdü ama
 `uv.lock`'u yeniden çözmek gerekiyor (karar 0016).
 
-## Araçlar (11)
+## Araçlar (12)
 
 | Araç | Ne yapar | Kaynak |
 |---|---|---|
@@ -137,6 +137,7 @@ oysa konteynerde GPU kullanılmıyor. CPU-only torch birkaç GB düşürürdü a
 | `get_station_accessibility` | asansör/merdiven sayısı ve **anlık arızalar** | Metro İstanbul REST |
 | `find_parking` | otopark ve **anlık boş kapasite** | İSPARK REST |
 | `get_traffic_status` | trafik indeksi ve eğilimi | İBB trafik indeksi |
+| `find_mobility_options` | bisiklet/scooter parkı, şarj istasyonu, bisiklet yolu | 16 (1300 nokta), 275+276 (2933 istasyon, **2025-05, eski**), 1 (477 yol kaydı; 212'si henüz yapılmamış) |
 
 Her araç çıktısı `source` ve `data_as_of` taşır. Her aracın açıklamasında
 **ne zaman kullanılmaması gerektiği** yazılı; araç seçimi bu metne dayandığı

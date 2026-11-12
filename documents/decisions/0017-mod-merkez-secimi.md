@@ -1,7 +1,7 @@
 # 0017 — `find_nearby_stops` merkezi modsuz arıyordu
 
 **Tarih:** 12 Kasım 2026
-**Durum:** kod uygulandı; agent ölçümü koşuldu ve **sonuç yorumlanamadı** (bkz. karar 0018)
+**Durum:** uygulandı; docstring'in bedeli ölçüldü ve metin kısaltıldı (bkz. karar 0018)
 **İlgili:** [0008](0008-yer-ve-hat-araclari.md) (yer araçları, küme kuralı), [0015](0015-olu-mod-degerleri.md) (aynı sınıf: parametre var, bir çağrı yeri kullanmıyor), [0016](0016-onbellek-anahtari-ve-docker.md) (önbellek anahtarı bu değişikliği kendisi geçersiz kılıyor)
 
 ## Bağlam: `near-04`'ün gerçek sebebi
@@ -135,3 +135,33 @@ ancak aracın düzeltilmiş hâliyle koşulan ölçümden sonra karar verilebili
 model artık `find_nearby_stops`'u çağırırsa senaryo kendiliğinden geçer;
 hâlâ `geocode_place` çağırıyorsa soru "hangi araç doğru cevabı veriyor"dan
 "araç seçimi ölçütü doğru mu"ya döner.
+
+## Docstring'in bedeli ölçüldü: dört satır iki senaryo
+
+Karar 0018'in bandı ölçmesi bu notun açık ucunu kapatmayı mümkün kıldı.
+Aynı pencerede, aynı kodla, **tek değişken docstring metni** olacak şekilde
+altı senaryo koşuldu (etkilenen dört + iki kontrol):
+
+| Varyant | `rail-03` | `know-08` | `rail-06` | `know-06` | kontrol | geçen |
+|---|---|---|---|---|---|---|
+| dört satırlık açıklama | ✗ `get_line_route` | ✗ `get_next_departures`×6 | ✗ | ✗ | ✓✓ | **2/6** |
+| açıklama yok | ✓ | ✓ | ✗ | ✗ | ✓✓ | **4/6** |
+| **tek cümle** | ✓ `get_rail_travel_time` | ✓ | ✗ | ✗ | ✓✓ | **4/6** |
+
+Dört satır iki senaryoya mal oluyor; tek cümle aynı bilgiyi taşıyıp bedeli
+ödemiyor. **Docstring tek cümleye indirildi** (yüzey özeti `b0f402ed0873`):
+
+> `mode` verildiğinde merkez de önce o modda aranır.
+
+Merkez düşme yolunun ayrıntısı (hangi notun basıldığı) docstring'den çıktı
+ve bu notta duruyor; aracın dönen `notes` alanı zaten söylüyor.
+
+`rail-06` ve `know-06` **üç varyantta da** düşüyor, yani sebebi docstring
+değil — ikisi de saatler önceki taban kaydında geçiyordu. Bu, karar
+0018'in pencere kayması bulgusu.
+
+Tek uyarı: her varyant bir kez ölçüldü. Pencere içi yinelenebilirlik yüksek
+(0018: 9 senaryonun 8'i dört turda sabit), ama mutlak değil — `rail-03`
+0017'nin koşusunda yinelenmeyen bir satır vermişti. `know-08` da geçiyor
+ama `get_next_departures`'ı dört kez gereksizce çağırıyor: senaryo geçiyor,
+davranış hâlâ savurgan.

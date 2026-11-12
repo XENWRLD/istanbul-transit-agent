@@ -876,12 +876,8 @@ def find_nearby_stops(
         limit: en çok kaç yer dönecek. Varsayılan 10, en çok 50.
 
     Aynı adlı yakın noktalar tek satırda birleşir; `distance_m` sorulan
-    konuma uzaklıktır (kuş uçuşu, yürüme mesafesi değil).
-
-    `mode` verildiğinde **merkez de önce o modda aranır**: "Bostancı" +
-    `vapur` metro istasyonunu değil iskeleyi merkez alır (ikisi 1.7 km
-    uzakta). O adda o modda bir yer yoksa merkez başka moddan alınır ve
-    notlar bunu söyler; sonuçlar her durumda sorulan moddadır.
+    konuma uzaklıktır (kuş uçuşu, yürüme mesafesi değil). `mode` verildiğinde
+    merkez de önce o modda aranır.
 
     NE ZAMAN KULLANMA:
     - Bir adresin çevresini aramak için kullanma; başlangıç noktası bir

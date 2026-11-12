@@ -1,7 +1,7 @@
 # 0018 — Gürültü bandı ölçüldü: dar çıktı, ve bu ilk okumamı çürüttü
 
 **Tarih:** 12 Kasım 2026
-**Durum:** band ölçüldü; ilk yorum düzeltildi, nedensellik deneyi **sırada**
+**Durum:** band ölçüldü, nedensellik deneyi koşuldu; pencere kayması **açık kaldı**
 **İlgili:** [0014](0014-degerlendirmeyi-hizlandirma.md) ("davranış tekrarlanıyor, oynayan tek şey süre"), [0015](0015-olu-mod-degerleri.md) (`rail-04` dört koşuda üç davranış; nudge +3), [0017](0017-mod-merkez-secimi.md) (bu bulguyu ortaya çıkaran koşu)
 
 ## Bağlam
@@ -163,3 +163,49 @@ Dört satır geri alınır (kod düzeltmesi kalır), etkilenen dört senaryo
 (`route-02`, `live-02`) koşulur. Yüzey özeti eski değere (`1d626e3dea52`)
 döneceği için taban satırları önbellekte hazır duruyor; karşılaştırma
 aynı yüzey üzerinde yapılabilir. Maliyet ~10 dakika, 57 değil.
+
+## Nedensellik deneyi: docstring iki senaryo, ama hepsini açıklamıyor
+
+Band dar çıktığı için 0017'nin −3'ü tek adaya kalmıştı: docstring. Deney
+aynı pencerede, aynı kodla, yalnızca metni değiştirerek koşuldu (ayrıntılı
+tablo karar 0017'de). Sonuç:
+
+| Varyant | geçen (6 senaryoda) |
+|---|---|
+| dört satırlık açıklama | 2/6 |
+| açıklama yok | 4/6 |
+| tek cümle | 4/6 |
+
+Dördün ikisi (`rail-03`, `know-08`) docstring kısaltılınca geri geldi,
+kontroller hiç oynamadı. **Araç açıklamasının davranış olduğu iddiası
+artık ölçülü:** o aracı hiç çağırmayan senaryoların seçimi, başka bir
+aracın açıklamasına eklenen dört satırla bozuluyor.
+
+## Pencere kayması: ölçülen bandın sınırı
+
+`rail-06` ve `know-06` üç varyantın **hepsinde** düşüyor — ama ikisi de
+saatler önceki taban koşusunda geçiyordu, aynı prompt, aynı uyarı metni,
+aynı yüzey özeti (`1d626e3dea52`) altında. Aradaki kodda bu iki senaryonun
+dokunduğu hiçbir şey değişmedi.
+
+Yani:
+
+- **pencere içi** band ±0 (4 ayrı süreç, 9 senaryo),
+- **pencereler arası** kayma var ve en az iki senaryoyu çeviriyor.
+
+Aday sebepler ölçülmedi: Ollama sunucusunun durumu (bu turda yeniden
+başlatıldı ve portu 11435 çıktı), model dosyasının GPU'ya bölünme biçimi,
+makinedeki bellek baskısı (bu turda Docker 20 GB imaj ve BGE-M3'ü bir
+hacme yazdı). Hangisi olduğunu bu veriyle söyleyemem.
+
+### Bunun yöntemsel sonucu
+
+1. **Taban, karşılaştırmayla aynı pencerede koşulur.** Saatler önceki bir
+   kayda karşı ölçüm yapmak güvenli değil; 0014, 0015 ve 0017'nin
+   karşılaştırmaları bu kuralı sağlamıyordu.
+2. **Band her A/B ile birlikte, aynı pencerede ölçülür.** `±0` değeri bir
+   pencerenin özelliği, ölçüm düzeninin kalıcı özelliği değil.
+3. 54 senaryoluk oranın bu varyant altındaki değeri **ölçülmedi**: dürüst
+   bir sayı için taban ile varyantın aynı pencerede koşulması gerekir,
+   yani ~2 saat. Altı senaryoluk pencere içi sonuç elde olan en iyi kanıt
+   ve olduğu gibi raporlanıyor.

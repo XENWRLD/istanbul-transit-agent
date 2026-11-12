@@ -31,7 +31,19 @@
 #
 # Yerel LLM (Ollama) konteynerin dışında çalışır; `OLLAMA_BASE_URL` konteyner
 # içinden erişilebilir bir adres olmalı (Docker Desktop'ta
-# `http://host.docker.internal:11434`).
+# `http://host.docker.internal:11434`). `--env-file .env` ile gelen
+# `OLLAMA_BASE_URL` konteyner içinde **konteynerin kendisini** gösterir, bu
+# yüzden `-e` ile ezilmeli; `OLLAMA_HOST` ayarlıysa port da varsayılan
+# olmayabilir (ölçüm makinesinde 11435). Karar 0016.
+#
+# **Windows:** yukarıdaki `$PWD/data` biçimi Git Bash'te yol dönüşümüne
+# uğruyor ve sessizce boş bir dizin bağlıyor — konteyner kalkıyor, `/health`
+# "veri yok" diyor ve sebep görünmüyor. PowerShell'den tam yol kullan:
+#
+#   docker run -d -p 8000:8000 --env-file .env `
+#     -e LLM_PROVIDER=ollama -e OLLAMA_BASE_URL=http://host.docker.internal:11435 `
+#     -v "C:\Users\<kullanici>\...\IBB PROJECT\data:/app/data" `
+#     -v huggingface:/root/.cache/huggingface istanbul-agent
 
 FROM python:3.12-slim AS base
 

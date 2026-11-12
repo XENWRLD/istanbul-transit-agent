@@ -85,13 +85,42 @@ veri olmayan bir servis "sağlıklı" görünmez:
 > arayüz/servis açık olmamalı, çünkü ikisi de `knowledge_server`'ı alt süreç
 > olarak başlatıyor.
 
-Docker ile çalıştırma adımları `Dockerfile` başındaki yorumda; imaj veriyi
-içermez, `data/` birim olarak bağlanır.
+### Docker
 
-> **Dockerfile doğrulanmadı.** Bu makinede Docker CLI kurulu ama daemon
-> çalışmıyor, bu yüzden imaj derlenip denenemedi (karar 0011). Doğrulamak
-> için: `docker build -t istanbul-agent .` ve ardından
-> `curl localhost:8000/health`.
+İmaj veriyi içermez: `data/` birim olarak bağlanır, gömme modeli de ayrı
+bir hacme iner. Adımların tamamı `Dockerfile` başındaki yorumda.
+
+**Derlendi ve çalıştırıldı** (12 Kasım 2026, karar 0016): soğuk build
+1145 s, `docker image inspect` 6.78 GB (containerd deposunun disk ayak izi
+20.4 GB, ayrıca build cache 20.4 GB — `docker builder prune` ile geri
+alınır). Veri bağlanmadan konteyner ayağa kalkıyor ve `/health` iki eksiği
+çalıştırılacak komutla söylüyor; `data/` bağlandığında `ok:true`.
+Konteyner içinden gerçek bir soru (`/ask`, ollama): doğru aracı çağırdı,
+13 dakikalık rotayı aktarmalarıyla verdi ve tazelik uyarısını cevaba
+taşıdı.
+
+**Windows'ta üç tuzak, hepsi ölçümle çıktı:**
+
+1. `-v "$PWD/data:/app/data"` **Git Bash'te sessizce boş dizin bağlar**
+   (yol dönüşümü). PowerShell'den tam yol kullan:
+   ```powershell
+   docker run -d -p 8000:8000 --env-file .env `
+     -e LLM_PROVIDER=ollama -e OLLAMA_BASE_URL=http://host.docker.internal:11434 `
+     -v "C:\Users\<kullanici>\...\IBB PROJECT\data:/app/data" `
+     -v huggingface:/root/.cache/huggingface istanbul-agent
+   ```
+2. `.env`'i olduğu gibi vermek LLM adresini bozar: `OLLAMA_BASE_URL`
+   içindeki `127.0.0.1` konteynerin kendisidir, `host.docker.internal` ile
+   ezilmeli (yukarıdaki `-e`).
+3. **Ollama'nın portunu kontrol et.** `OLLAMA_HOST` ayarlıysa varsayılan
+   11434 olmayabilir (bu makinede 11435).
+
+İlk `/ask` isteği BGE-M3'ü indirdiği için uzun sürer (ölçülen 505 s'nin
+378 s'si indirme); `huggingface` hacmi bağlandığı sürece bir daha inmez.
+İmajın ağırlığı neredeyse tamamen tek bağımlılık katmanından geliyor:
+linux `torch` tekerlekleri varsayılan olarak CUDA paketlerini çekiyor,
+oysa konteynerde GPU kullanılmıyor. CPU-only torch birkaç GB düşürürdü ama
+`uv.lock`'u yeniden çözmek gerekiyor (karar 0016).
 
 ## Araçlar (11)
 
@@ -319,7 +348,11 @@ Düşen yedi senaryonun hepsi **araç seçimi**: model özel araç yerine `geoco
 - Metro İstanbul'un `GetTimeTable` (552) ve `GetStationBetweenTime` (513)
   uç noktaları **sunucu taraflı bozuk** (43/43 deneme istisna); bu veriler
   GTFS'ten geliyor.
-- **Dockerfile derlenip denenmedi** (bu makinede Docker daemon kapalı).
+- **Docker yalnızca bu makinede derlendi** (karar 0016): imaj kuruluyor,
+  `/health` ve `/ask` konteyner içinden çalışıyor, ama "yeni bir makinede
+  çalışır" iddiası tek makinelik ölçüme dayanıyor. Gradio arayüzü
+  konteynerden açılmadı ve ingest konteyner içinde koşulmadı; imaj da GPU
+  kullanmadığı hâlde CUDA'lı torch taşıyor.
 - **Yerel model araç çıktısını kullanıcıdan gelmiş gibi anlatıyor**
   (*"Verdiğiniz JSON verisi, İstanbul İETT'nin… GTFS formatında hazırlanmış
   olup"*) ve soruyu cevaplamayı bırakıp veri setini tanıtıyor. Kalan dört

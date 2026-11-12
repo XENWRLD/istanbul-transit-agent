@@ -1,7 +1,7 @@
 # 0016 — Önbellek anahtarı araç yüzeyini kapsıyor; Docker yolu doğrulandı
 
 **Tarih:** 12 Kasım 2026
-**Durum:** 1. bölüm uygulandı, 2. bölüm ölçülüyor
+**Durum:** uygulandı
 **İlgili:** [0014](0014-degerlendirmeyi-hizlandirma.md) (boşluğu açan karar), [0015](0015-olu-mod-degerleri.md) (anahtara uyarı metnini ekleyen karar), [0011](0011-degerlendirme-ve-paketleme.md) (paketleme)
 
 ## Bağlam
@@ -79,3 +79,86 @@ geri dönüş için bırakıldı.
 Taşımadan sonra dört senaryoluk kontrol: dördü de önbellekten geldi,
 kayıttaki oran **50/54** olarak sabit kaldı. Yani değişiklik ölçümü
 korudu, değiştirmedi — amaç tam olarak bu.
+
+## 2. Docker yolu: derlendi, çalıştı, ölçüldü
+
+### Bağlam
+
+Karar 0011 Dockerfile'ı yazdı ama **derleyemedi** (bu makinede Docker
+daemon kapalıydı) ve README'ye "Docker yolu doğrulanmadı" diye geçti.
+Doğrulanmamış bir kurulum adımı README'de iddia olarak durmamalı: yeni bir
+makinede projeyi çalıştıracak kişinin izleyeceği yol o.
+
+### Önce eksik olan: `.dockerignore`
+
+Dosya **yoktu**. Dockerfile'ın kendi yorumu "imaj veriyi içermez" diyor,
+ama build context öyle demiyordu: `.venv` (torch dahil birkaç GB), `data/`
+(124 MB), `.git` ve `eval/.cache` daemon'a gönderiliyordu. `.env` de
+context'e giriyordu — imaja kopyalanmıyordu, ama gizli anahtarı build
+context'ine koymak gereksiz bir risk. Dosya yazıldı: yalnızca Dockerfile'ın
+kopyaladığı dört dizin ve üç dosya kalıyor.
+
+### Ölçüm
+
+| Ne | Sonuç |
+|---|---|
+| `docker build` (soğuk, cache yok) | **1145 s** (19 dk) |
+| `docker image inspect .Size` | **6.78 GB** |
+| `docker images` / `system df` disk kullanımı | **20.4 GB** (ayrıca 20.4 GB build cache, tamamı geri kazanılabilir) |
+| veri bağlamadan `/health` | `ok:false`, iki eksiği **çalıştırılacak komutla** söylüyor |
+| `data/` bağlı `/health` | `ok:true, duckdb:true, qdrant:true` |
+| HEALTHCHECK | konteyner içinden koşuyor, konteyner `healthy` |
+| `/ask` (ollama, konteyner içinden) | **çalıştı**: 504.9 s duvar saati, agent 126.8 s |
+
+İki boyut rakamı aynı şeyi saymıyor: `inspect` katman toplamını veriyor,
+`docker images` containerd deposunun disk ayak izini (blob + açılmış
+snapshot). İkisi de ölçüldüğü gibi yazıldı; hangisinin "imaj boyutu"
+olduğunu tek sayıya indirmek yanıltıcı olurdu.
+
+`/ask` cevabı (`get_rail_travel_time` çağrıldı, `unverified: false`):
+Üsküdar→Ayrılıkçeşme Marmaray ile 5 dk, aktarma 6 dk, M4 ile Kadıköy 2 dk,
+toplam 13 dk — ve *"Süreler 2019 verisinden, bugün farklı olabilir."* Yani
+`is_stale` bayrağı konteyner içinden de cevaba taşınıyor. Duvar saatinin
+378 saniyesi BGE-M3'ün Hugging Face'ten inmesi; model `huggingface` adlı
+Docker hacmine indiği için bir sonraki çalıştırmada inmiyor.
+
+### Üç kurulum kusuru, hepsi ölçümle çıktı
+
+1. **Dockerfile'ın `-v "$PWD/data:/app/data"` örneği Windows'ta sessizce
+   boş dizin bağlıyor.** Git Bash yol dönüşümü argümanı bozuyor; konteyner
+   ayağa kalkıyor, `/health` "veri yok" diyor ve sebep görünmüyor. Doğru
+   biçim PowerShell'den tam Windows yolu. README'ye iki biçim de yazıldı.
+   Bu, projenin "boş sonuç hatayı gizlemesin" kuralının kurulum tarafındaki
+   karşılığı: `/health` doğru cevap veriyordu, yanlış olan mount'tı.
+2. **`.env`'i konteynere olduğu gibi vermek LLM adresini bozuyor.**
+   `OLLAMA_BASE_URL=http://127.0.0.1:11435` konteyner içinde konteynerin
+   kendisini gösterir. `host.docker.internal` ile ezilmesi gerekiyor —
+   Dockerfile başlığı bunu söylüyordu, README söylemiyordu.
+3. **Ollama bu makinede 11434 değil 11435'te.** `OLLAMA_HOST` öyle kurulu.
+   Dockerfile'ın örnek adresi varsayılan portu yazıyordu; README artık
+   portun kontrol edilmesi gerektiğini söylüyor.
+
+### İmaj boyutu: sebebi ölçüldü, düzeltme ayrı bir karara bırakıldı
+
+Katman dökümü tek suçluyu gösteriyor: bağımlılık katmanı. İkinci
+`uv sync` yalnızca 1.99 MB, yani katman tekrarı **yok**. Ağırlık
+`sentence-transformers` → `torch` zincirinden geliyor ve linux tekerlekleri
+varsayılan olarak CUDA paketlerini çekiyor (`nvidia-cublas`, `cudnn`,
+`nccl`, `cufft`, `cusolver`, `triton`…) — **konteynerde GPU kullanılmıyor**,
+gömme modeli CPU'da koşuyor.
+
+CPU-only torch imajı birkaç GB düşürürdü, ama bunun için
+`[tool.uv.sources]` ile ayrı bir indeks tanımlamak ve `uv.lock`'u yeniden
+çözmek gerekiyor; kilit dosyası geliştirme ortamıyla paylaşıldığı için bu,
+bu makinedeki CUDA'lı kurulumu da etkileyebilir. Bu turun kuralı
+"cevapları değiştirmeyen değişiklik" olduğu için **yapılmadı**; ölçülmüş
+bir öneri olarak duruyor.
+
+### Ne doğrulanmadı
+
+- **Gradio arayüzü konteynerden açılmadı.** `/ask` çalıştığı için aynı
+  yığını kullanan arayüzün çalışması bekleniyor, ama beklenti ölçüm değil.
+- **Konteyner içinden ingest koşulmadı.** Dockerfile başlığındaki veri
+  kurulum komutu denenmedi; depo bu makinede hazır olduğu için bağlandı.
+- **İmaj yalnızca bu makinede derlendi.** "Yeni bir makinede çalışır"
+  iddiası hâlâ tek makinelik bir ölçüme dayanıyor.

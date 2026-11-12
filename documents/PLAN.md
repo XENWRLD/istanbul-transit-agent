@@ -168,13 +168,22 @@ Başarısız 8 senaryo üç gruba düşüyor: araca bakmadan "bende yok" demek (
 
 ### Faz 5 — Değerlendirme, paketleme, demo ✅ bitti (11 Kasım 2026)
 - Gemini Flash vs yerel `qwen3.5:4b` (bitti): karşılaştırma **ortak senaryolar** üzerinden yapılıyor (`eval/compare_providers.py`), çünkü Gemini kotası 49 senaryoya yetmiyor. Ortak 6 senaryoda Gemini 6/6, yerel model 3/6; adım 10 vs 17, gecikme 25.9 s vs 53.1 s. **Yönlendirici deneyi yapılmadı** — yerel modelin kaybı araç sayısından değil bağlam penceresi, araç çıktısını yorumlama ve çok adımlı soruda döngüye girmeden geliyor (karar 0011).
-- Gradio demo (bitti): cevap + **çağrılan araçlar tablosu** + araç çıktısındaki koordinatların haritası. FastAPI (bitti): `/ask`, `/health`. Dockerfile yazıldı ama **derlenemedi** (bu makinede Docker daemon kapalı).
+- Gradio demo (bitti): cevap + **çağrılan araçlar tablosu** + araç çıktısındaki koordinatların haritası. FastAPI (bitti): `/ask`, `/health`. Dockerfile yazıldı; **12 Kasım 2026'da derlendi ve çalıştırıldı** (karar 0016).
 - README (bitti): mimari diyagram, kurulum adımları, ölçüm tabloları, iki önce/sonra tablosu, veri tazeliği tablosu ve bilinen sınırlamalar.
 - Ek: araçlar depo kurulmamışken ham `IOException` yerine ne çalıştırılacağını söylüyor (karar 0011/3).
 
 **Bitti tanımı:** Yeni bir makinede README'yi izleyen biri projeyi çalıştırabiliyor; README'de en az iki "önce/sonra" tablosu var.
 
-**Sonuç:** README'deki her komutun hedefi var (betik/modül/dosya olarak doğrulandı); kurulum adımı atlanırsa araçlar ne çalıştırılacağını söylüyor; `/health` eksik veriyi raporluyor. İki önce/sonra tablosu: kaynaksız cevap koruması ve bağlam penceresi. **Docker yolu doğrulanmadı.**
+**Sonuç:** README'deki her komutun hedefi var (betik/modül/dosya olarak doğrulandı); kurulum adımı atlanırsa araçlar ne çalıştırılacağını söylüyor; `/health` eksik veriyi raporluyor. İki önce/sonra tablosu: kaynaksız cevap koruması ve bağlam penceresi.
+
+**Docker yolu doğrulandı (12 Kasım 2026, karar 0016):** soğuk build 1145 s,
+imaj 6.78 GB; veri bağlanmadan `/health` eksikleri komutla söylüyor, `data/`
+bağlı iken `ok:true`; konteyner içinden `/ask` doğru aracı çağırıp tazelik
+uyarısını cevaba taşıyor. Eksik olan `.dockerignore` yazıldı. Üç kurulum
+tuzağı ölçümle çıktı ve README'ye geçti (Git Bash mount'u sessizce boş
+bağlıyor, `.env` LLM adresini bozuyor, Ollama portu varsayılan olmayabilir).
+Doğrulanmayanlar: Gradio konteynerden açılmadı, ingest konteyner içinde
+koşulmadı, imaj tek makinede derlendi.
 
 ### Ölçümün güncel hali (12 Kasım 2026)
 
@@ -199,8 +208,9 @@ Aynı prompt üzerinde ölçülen ortak senaryolarda ikisi de 3/3; ayrışan tek
 Açık kalan işler: `chain-05`/`route-05` (model araç çıktısını veri seti
 gibi tanıtıyor — prompt kuralı yazıldı, paket halinde ölçülünce geri
 alındı, tek başına ölçülmeyi bekliyor), `near-04` (senaryo katılığı
-olabilir), `rail-04` (yinelenmiyor), RAGAS, `find_mobility_options`,
-Docker doğrulaması.
+olabilir), `rail-04` (yinelenmiyor), RAGAS, `find_mobility_options`.
+İmajın CUDA'lı torch taşıması (CPU-only torch `uv.lock`'un yeniden
+çözülmesini gerektiriyor, karar 0016).
 
 ### Faz 6 (opsiyonel) — Rota motoru
 - GTFS üzerinden gerçek A→B toplu taşıma rotası: `r5py` veya OpenTripPlanner, `plan_trip` aracı olarak.

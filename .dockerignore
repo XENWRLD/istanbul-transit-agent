@@ -1,0 +1,47 @@
+# Build context'e yalnızca imajın gerçekten ihtiyaç duyduğu şey girsin.
+# Dockerfile dört dizin kopyalıyor (src, scripts, datasets, eval) artı
+# pyproject.toml, uv.lock ve README.md; geri kalan her şey daemon'a boşuna
+# gönderilir. Bu dosya yokken context `.venv` (torch dahil birkaç GB),
+# `data/` ve `.git`'i de taşıyordu.
+
+# Gizli anahtarlar imaja hiç girmemeli; `.env` çalışma anında
+# `--env-file` ile verilir (Dockerfile başlığındaki örnekler).
+.env
+.env.*
+!.env.example
+
+# Sanal ortam: imaj bağımlılıkları `uv sync --locked` ile kendisi kurar.
+.venv/
+venv/
+
+# Üretilen veri depoları: imaj veriyi içermez, `data/` birim olarak bağlanır.
+data/
+
+# Değerlendirme çıktıları: ölçüm bu makinede koşuyor, imajda işi yok.
+eval/.cache/
+eval/results/
+
+# Python ve araç önbellekleri
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Sürüm geçmişi ve editör ayarları
+.git/
+.gitattributes
+.gitignore
+.vscode/
+.idea/
+
+# Belgeler imajda çalışmıyor; README'yi Dockerfile ayrıca kopyalıyor
+# (hatchling paket kurulumunda okuyor).
+documents/
+CLAUDE.md
+
+# OS artıkları
+Thumbs.db
+desktop.ini
+.DS_Store

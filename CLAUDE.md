@@ -66,6 +66,7 @@ uv run python -m istanbul_agent.servers.knowledge_server
 uv run python -m istanbul_agent.app                   # Gradio demo arayüzü
 uv run uvicorn istanbul_agent.api:app --reload        # FastAPI: /ask, /health
 uv run python eval/compare_providers.py               # iki sağlayıcı, ortak senaryolar
+uv run python eval/measure_variance.py                # olcumun gurultu bandi: 9 senaryo x 3 tekrar
 uv run python eval/run_rag_eval.py
 uv run python eval/run_agent_eval.py --refresh        # 54 senaryo, hepsi taze (~57 dk, seri)
 uv run python eval/run_agent_eval.py --provider gemini --limit 5   # kota: günde 20 istek
@@ -125,5 +126,6 @@ Bu komutlar aşamalar ilerledikçe gerçekleşecek; bir komut değişirse bu bö
 - **Değerlendirme koşarken aynı makinede başka iş çalıştırılmaz** (karar 0014): test takımını eval'in yanında koşturmak tek bir LLM isteğini 120 saniyelik `LLM_REQUEST_TIMEOUT`'un üstüne çıkardı ve bir senaryoyu sahte biçimde başarısız gösterdi (`rail-02`: çekişmeyle 144.9 s hata, sessiz makinede 14.4 s geçti). `--concurrency` seçeneği bu yüzden 1'de duruyor.
 - Çok soru soracak çağıran yığını **bir kez** açar: `istanbul_agent()` ile aç, `ask()` ile sor. `answer()` her çağrıda yeni yığın açar ve bu 15.0 saniye (üç sunucu; `knowledge_server` BGE-M3'ü açılışta yükler) — tek soruluk arayüzler için doğru, 54 senaryo için değil (karar 0014).
 - Araç şemaları önbellek anahtarına **girmiyor** (`sağlayıcı-model-promptözeti-senaryo`): araç çıktısı değişince önbellek kendini geçersiz kılmaz, ölçümü `--refresh` ile koş (karar 0014).
+- **Tek koşudan ±3 mertebesinde sonuç çıkarılmaz** (karar 0018): kod sabitken 54 senaryonun 12'si araç dizisini değiştirdi, yani oran farkı gürültü bandının içinde kalabiliyor. Bir A/B sonucu, `eval/measure_variance.py` ile ölçülmüş bandın dışındaysa rapor edilir; niteliksel kanıt (hangi senaryo neyi uydurdu) orandan güçlüdür.
 - Sağlayıcı karşılaştırması **ortak senaryolar** üzerinden yapılır; farklı kapsamdaki oranları yan yana koymak kıyas değil yanıltmadır (karar 0011).
 - Küçük, anlamlı commit'ler at; commit mesajları İngilizce.

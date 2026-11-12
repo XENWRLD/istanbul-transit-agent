@@ -1,7 +1,7 @@
 # 0017 — `find_nearby_stops` merkezi modsuz arıyordu
 
 **Tarih:** 12 Kasım 2026
-**Durum:** kod uygulandı, agent üzerindeki etkisi **ölçülmedi**
+**Durum:** kod uygulandı; agent ölçümü koşuldu ve **sonuç yorumlanamadı** (bkz. karar 0018)
 **İlgili:** [0008](0008-yer-ve-hat-araclari.md) (yer araçları, küme kuralı), [0015](0015-olu-mod-degerleri.md) (aynı sınıf: parametre var, bir çağrı yeri kullanmıyor), [0016](0016-onbellek-anahtari-ve-docker.md) (önbellek anahtarı bu değişikliği kendisi geçersiz kılıyor)
 
 ## Bağlam: `near-04`'ün gerçek sebebi
@@ -87,7 +87,38 @@ devreye giriyor ve bir test bunu tutuyor.
 - mod eşleşmesi yokken merkez düşüyor **ve notu basıyor** (Sultanbeyli + vapur)
 - modsuz arama merkezini koruyor (regresyon)
 
-## Ölçülmeyen: agent üzerindeki etkisi
+## Ölçüldü: sonuç yorumlanamıyor
+
+54 senaryo yeni araç yüzeyiyle koşuldu (`--refresh`, ollama, 2375 s):
+**47/54 (%87.0)**, taban 50/54 (%92.6). Araç doğruluğu %88.9 (taban %94.4),
+kaynaksız cevap 2 (taban 1), ifade doğruluğu %96.2 (taban %92.3).
+
+Bu sayıyı "düzeltme −3 verdi" diye raporlamak yanlış olurdu. Önce/sonra
+önbellek dosyaları satır satır karşılaştırıldığında **54 senaryonun 12'si
+araç çağrı dizisini değiştirdi** ve bunların hiçbiri bu düzeltmenin
+dokunduğu yoldan geçmiyor (düzeltme yalnızca `find_nearby_stops` modlu
+çağrıldığında devreye giriyor):
+
+| Senaryo | Önce | Sonra |
+|---|---|---|
+| `rail-03` | `get_line_route`, `get_rail_travel_time` | **sıfır araç** |
+| `rail-06` | `get_rail_travel_time` | **sıfır araç** |
+| `know-06` | `search_knowledge` | `find_parking` |
+| `know-08` | `get_service_alerts`, `search_knowledge` | `get_service_alerts` + `get_next_departures` ×6 |
+| `rail-04` | sıfır araç | `geocode_place`×2 → `get_rail_travel_time` (geçti) |
+| `refuse-03` | sıfır araç | `get_traffic_status` (geçti) |
+| `chain-01`, `chain-04`, `live-05`, `near-01`, `refuse-05`, `refuse-08` | — | dizi uzadı ya da kısaldı |
+
+Geçme durumu değişenler: `rail-04` düzeldi, `rail-03` / `rail-06` /
+`know-06` / `know-08` düştü. Net −3, ama hiçbiri bu değişiklikle nedensel
+olarak bağlanamıyor. Ölçümün kendi kararsızlığı karar 0018'de.
+
+`near-04` **değişmedi**: model düzeltmeden sonra da `geocode_place`
+çağırıyor. Yani araçtaki kusur gerçekti ve veri katmanında düzeldi, ama bu
+senaryoyu kendiliğinden geçirmiyor; senaryonun katı olup olmadığı sorusu
+hâlâ açık ve bu koşu onu cevaplamıyor.
+
+## Bu bölüm yazıldığında ölçülmemişti
 
 Bu değişiklik araç **çıktısını** ve **açıklamasını** değiştiriyor, yani
 proje kuralına göre davranış değişikliğidir ve 54 senaryo yeniden

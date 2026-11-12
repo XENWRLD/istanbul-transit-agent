@@ -22,6 +22,7 @@ from istanbul_agent.agent.graph import (
     _collect,
     _text,
     ask,
+    tool_surface_digest,
 )
 
 
@@ -211,3 +212,77 @@ class TestAsk:
         run = await ask(Broken(), "s", provider="ollama", model="m")
         assert run.error and "model runner" in run.error
         assert run.answer == ""
+
+
+class FakeTool:
+    """`load_mcp_tools`'un döndürdüğü aracın özeti ilgilendiren üç alanı."""
+
+    def __init__(self, name: str, description: str, schema: dict | None = None) -> None:
+        self.name = name
+        self.description = description
+        self.args_schema = schema if schema is not None else {"type": "object"}
+
+
+def surface(*tools: FakeTool) -> str:
+    return tool_surface_digest(list(tools))
+
+
+class TestToolSurfaceDigest:
+    """Özet, modelin gördüğü yüzeyin değiştiğini yakalamak zorunda.
+
+    Değerlendirme önbelleği buna bakıyor (karar 0016): yakalamadığı her
+    değişiklik, ölçümün sessizce eski cevapları raporlaması demek.
+    """
+
+    def test_the_same_surface_gives_the_same_digest(self):
+        first = surface(FakeTool("geocode_place", "Yer bulur."))
+        second = surface(FakeTool("geocode_place", "Yer bulur."))
+        assert first == second
+
+    def test_a_changed_description_changes_the_digest(self):
+        # Proje kuralı: araç açıklamasını değiştirmek davranış değişikliğidir.
+        before = surface(FakeTool("geocode_place", "Yer bulur."))
+        after = surface(FakeTool("geocode_place", "Yer bulur. Metro için kullanma."))
+        assert before != after
+
+    def test_a_changed_schema_changes_the_digest(self):
+        before = surface(FakeTool("find_nearby_stops", "Durak arar.", {"type": "object"}))
+        after = surface(
+            FakeTool(
+                "find_nearby_stops",
+                "Durak arar.",
+                {"type": "object", "properties": {"mode": {"type": "string"}}},
+            )
+        )
+        assert before != after
+
+    def test_a_changed_order_changes_the_digest(self):
+        # Araç sırası da modele giden girdinin parçası.
+        one = FakeTool("geocode_place", "Yer bulur.")
+        two = FakeTool("find_parking", "Otopark bulur.")
+        assert surface(one, two) != surface(two, one)
+
+    def test_dropping_a_tool_changes_the_digest(self):
+        one = FakeTool("geocode_place", "Yer bulur.")
+        two = FakeTool("find_parking", "Otopark bulur.")
+        assert surface(one, two) != surface(one)
+
+    def test_a_pydantic_schema_is_rendered_too(self):
+        # MCP araçları şemayı sözlük olarak veriyor, ama LangChain aracı
+        # Pydantic modeli de verebilir; ikisi de özete girmeli.
+        from pydantic import BaseModel
+
+        class Args(BaseModel):
+            query: str
+
+        class Other(BaseModel):
+            query: int
+
+        with_model = tool_surface_digest([FakeTool("geocode_place", "Yer bulur.", Args)])
+        with_other = tool_surface_digest([FakeTool("geocode_place", "Yer bulur.", Other)])
+        assert with_model != with_other
+
+    def test_the_digest_is_short_and_hex(self):
+        value = surface(FakeTool("geocode_place", "Yer bulur."))
+        assert len(value) == 12
+        assert all(char in "0123456789abcdef" for char in value)

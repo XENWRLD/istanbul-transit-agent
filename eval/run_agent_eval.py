@@ -99,8 +99,8 @@ def load_scenarios() -> list[Scenario]:
     return scenarios
 
 
-def cache_key(scenario: Scenario, provider: str, model: str) -> str:
-    """Soru + sağlayıcı + model + (prompt + uyarı) özeti.
+def cache_key(scenario: Scenario, provider: str, model: str, surface: str = "") -> str:
+    """Soru + sağlayıcı + model + (prompt + uyarı) özeti + araç yüzeyi özeti.
 
     Prompt özeti anahtarda: sistem prompt'u değiştiğinde davranış değişir
     (CLAUDE.md kuralı), eski cevabı yeniden kullanmak ölçümü yalanlar.
@@ -109,11 +109,25 @@ def cache_key(scenario: Scenario, provider: str, model: str) -> str:
     `SYSTEM_PROMPT` hashleniyordu, yani `graph.py` içindeki `NUDGE`'ı
     değiştirip prompt'a dokunmamak önbelleği geçersiz kılmıyordu: uyarıyı
     tek başına ölçmek istendiğinde betik sessizce eski cevapları
-    raporlardı. Araç şemaları hâlâ dışarıda (karar 0014'ün açtığı boşluk) —
-    araç çıktısı ya da açıklaması değişince ölçümü `--refresh` ile koş.
+    raporlardı.
+
+    **Araç yüzeyi de anahtarda** (karar 0016): `surface`,
+    `graph.tool_surface_digest()` ile hesaplanan ad + açıklama + şema
+    özeti. Araç açıklamasını değiştirmek proje kuralına göre davranış
+    değişikliğidir; anahtar bunu taşımadığı sürece ölçüm sessizce eski
+    cevapları raporluyordu. Boş `surface` eski anahtarı verir — yalnızca
+    yığın açılmadan anahtar hesaplaması gerektiğinde.
+
+    Kapanmayan boşluk: araç **gövdesi**. Açıklama ve şema aynı kalıp
+    dönen değer değişirse (ör. bir sorgu düzeltilirse) anahtar değişmez;
+    o durumda ölçüm `--refresh` ile koşulur.
     """
     digest = hashlib.sha256((SYSTEM_PROMPT + NUDGE).encode("utf-8")).hexdigest()[:12]
-    stem = f"{provider}-{model}-{digest}-{scenario.id}"
+    stem = (
+        f"{provider}-{model}-{digest}-{surface}-{scenario.id}"
+        if surface
+        else (f"{provider}-{model}-{digest}-{scenario.id}")
+    )
     return stem.replace("/", "_").replace(":", "_")
 
 
@@ -160,9 +174,7 @@ def check(scenario: Scenario, run: Any) -> dict[str, Any]:
         # Yalnızca ad yetmiyor: karar 0015'te `rail-04`'ün hangi mod
         # değeriyle düştüğü kayıtta görünmediği için teşhis tahmin kaldı.
         # Argümanlar da kaydediliyor; sonuç gövdeleri kaydedilmiyor (uzun).
-        "calls": [
-            {"name": call.name, "arguments": call.arguments} for call in run.tool_calls
-        ],
+        "calls": [{"name": call.name, "arguments": call.arguments} for call in run.tool_calls],
         "tools_ok": tools_ok,
         "order_ok": order_ok,
         "mention_ok": mention_ok,
@@ -231,6 +243,7 @@ async def run_scenario(
     max_steps: int,
     agent: Any = None,
     model_name: str | None = None,
+    surface: str = "",
 ) -> tuple[Any, bool]:
     """Senaryoyu çalıştır ya da önbellekten oku; `(run, önbellekten_mi)`.
 
@@ -247,7 +260,7 @@ async def run_scenario(
 
     settings = get_settings()
     model = settings.ollama_model if provider == "ollama" else settings.gemini_model
-    path = CACHE_DIR / f"{cache_key(scenario, provider, model)}.json"
+    path = CACHE_DIR / f"{cache_key(scenario, provider, model, surface)}.json"
 
     if path.exists() and not refresh:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -336,7 +349,7 @@ async def main_async(args: argparse.Namespace) -> int:
             flush=True,
         )
 
-    from istanbul_agent.agent.graph import istanbul_agent
+    from istanbul_agent.agent.graph import istanbul_agent, tool_surface_digest
 
     # Yığın koşu başına **bir kez** açılıyor. Ölçüm: üç sunucuyu açmak
     # 15.0 s sürüyor (`knowledge_server` BGE-M3'ü açılışta yüklemek
@@ -347,7 +360,12 @@ async def main_async(args: argparse.Namespace) -> int:
         agent,
         _used,
         model_name,
+        tools,
     ):
+        # Araç yüzeyi önbellek anahtarına giriyor (karar 0016): açıklama ya
+        # da şema değişince eski cevap yeniden kullanılmasın.
+        surface = tool_surface_digest(tools)
+        print(f"    araç yüzeyi: {len(tools)} araç, özet {surface}", flush=True)
         results: dict[str, tuple[dict[str, Any], bool]] = {}
         lane = asyncio.Semaphore(lanes)
 
@@ -360,6 +378,7 @@ async def main_async(args: argparse.Namespace) -> int:
                     max_steps=args.max_steps,
                     agent=agent,
                     model_name=str(model_name),
+                    surface=surface,
                 )
                 # Bekleme yalnızca gerçekten LLM'e gidildiyse ve son senaryo
                 # değilse. Gemini kotası için; paralel koşuda da geçerli.

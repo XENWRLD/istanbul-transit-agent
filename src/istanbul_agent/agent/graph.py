@@ -22,6 +22,8 @@ parametresiyle seçilir.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sys
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
@@ -43,6 +45,7 @@ __all__ = [
     "ToolCall",
     "answer",
     "istanbul_agent",
+    "tool_surface_digest",
     "transit_agent",
 ]
 
@@ -95,18 +98,53 @@ class AgentRun:
         return [call.name for call in self.tool_calls]
 
 
+def tool_surface_digest(tools: Sequence[Any]) -> str:
+    """Modelin gördüğü araç yüzeyinin 12 haneli özeti.
+
+    Yüzey = her aracın adı + açıklaması + girdi şeması, **modele verildiği
+    sırayla**. Değerlendirme önbelleği bu özeti anahtarına alıyor: proje
+    kuralı "araç açıklamasını değiştirmek davranış değişikliğidir" diyor,
+    ama anahtar yalnızca prompt + uyarı özetini taşıdığı sürece açıklama
+    değişince eski cevaplar sessizce yeniden kullanılıyordu (karar 0014'te
+    açılan, 0015'te kapanmayan boşluk).
+
+    Sıralama **yapılmıyor**: araç sırası da modele giden girdinin parçası,
+    o yüzden sıranın değişmesi de özeti değiştirmeli. Sunucu altkümesiyle
+    açılan bir yığın (`servers=("transit",)`) bu yüzden farklı özet verir
+    ve kendi önbelleğini kullanır.
+    """
+    parts: list[str] = []
+    for tool in tools:
+        name = str(getattr(tool, "name", ""))
+        description = str(getattr(tool, "description", "") or "")
+        schema = getattr(tool, "args_schema", None)
+        if isinstance(schema, dict):
+            rendered = json.dumps(schema, sort_keys=True, ensure_ascii=False)
+        elif schema is not None and hasattr(schema, "model_json_schema"):
+            rendered = json.dumps(schema.model_json_schema(), sort_keys=True, ensure_ascii=False)
+        else:
+            rendered = ""
+        parts.append(f"{name}\n{description}\n{rendered}")
+    joined = ("\n--\n").join(parts)
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:12]
+
+
 @asynccontextmanager
 async def istanbul_agent(
     provider: str | None = None,
     *,
     max_steps: int = 8,
     servers: Sequence[str] = DEFAULT_SERVERS,
-) -> AsyncIterator[tuple[Any, str, str]]:
+) -> AsyncIterator[tuple[Any, str, str, list[Any]]]:
     """A ReAct agent wired to the MCP servers over stdio.
 
-    Yields `(agent, provider, model)`. Every MCP session lives as long as the
-    context manager, so tools stay callable while the graph runs and each
-    server process starts only once.
+    Yields `(agent, provider, model, tools)`. Every MCP session lives as long
+    as the context manager, so tools stay callable while the graph runs and
+    each server process starts only once.
+
+    `tools` yüklenen araç listesidir; çağıran `tool_surface_digest()` ile
+    modelin gördüğü yüzeyin özetini alabilir (değerlendirme önbelleği buna
+    bakıyor).
     """
     from contextlib import AsyncExitStack
 
@@ -131,14 +169,14 @@ async def istanbul_agent(
             tools.extend(await load_mcp_tools(session))
         agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
         agent = agent.with_config({"recursion_limit": max_steps * 2})
-        yield agent, used, str(model_name)
+        yield agent, used, str(model_name), tools
 
 
 # Faz 1'den kalan ad; tek sunucuya bağlanmak isteyen çağrılar için.
 @asynccontextmanager
 async def transit_agent(
     provider: str | None = None, *, max_steps: int = 8
-) -> AsyncIterator[tuple[Any, str, str]]:
+) -> AsyncIterator[tuple[Any, str, str, list[Any]]]:
     """Yalnızca `transit_server`'a bağlı agent (geriye dönük ad)."""
     async with istanbul_agent(provider, max_steps=max_steps, servers=("transit",)) as bundle:
         yield bundle
@@ -307,5 +345,6 @@ async def answer(
         agent,
         used,
         model_name,
+        _tools,
     ):
         return await ask(agent, question, provider=used, model=str(model_name), nudge=nudge)

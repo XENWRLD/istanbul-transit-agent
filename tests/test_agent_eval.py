@@ -221,3 +221,42 @@ class TestOptions:
         )
         assert "doğruluğu" in (action.help or "")
         assert "VRAM" in (action.help or "")
+
+
+class TestCacheKey:
+    """Anahtar, cevabı değiştiren her girdiyi taşımak zorunda (karar 0016).
+
+    Taşımadığı girdi değişince betik eski cevapları önbellekten okuyup
+    yeni ölçüm diye raporlar — ölçümün kendisi yalan olur.
+    """
+
+    def test_the_tool_surface_changes_the_key(self):
+        case = scenario()
+        before = harness.cache_key(case, "ollama", "qwen3.5:4b", "aaaaaaaaaaaa")
+        after = harness.cache_key(case, "ollama", "qwen3.5:4b", "bbbbbbbbbbbb")
+        assert before != after
+
+    def test_the_same_surface_gives_the_same_key(self):
+        case = scenario()
+        first = harness.cache_key(case, "ollama", "qwen3.5:4b", "aaaaaaaaaaaa")
+        second = harness.cache_key(case, "ollama", "qwen3.5:4b", "aaaaaaaaaaaa")
+        assert first == second
+
+    def test_an_absent_surface_keeps_the_older_key(self):
+        # Yığın açılmadan anahtar hesaplanabilsin diye `surface` isteğe
+        # bağlı; verilmediğinde anahtar karar 0015'teki biçimde kalır.
+        case = scenario()
+        assert harness.cache_key(case, "ollama", "qwen3.5:4b") == harness.cache_key(
+            case, "ollama", "qwen3.5:4b", ""
+        )
+
+    def test_the_scenario_the_provider_and_the_model_still_separate_keys(self):
+        one = harness.cache_key(scenario(id="t-01"), "ollama", "qwen3.5:4b", "aaaaaaaaaaaa")
+        two = harness.cache_key(scenario(id="t-02"), "ollama", "qwen3.5:4b", "aaaaaaaaaaaa")
+        three = harness.cache_key(scenario(id="t-01"), "gemini", "qwen3.5:4b", "aaaaaaaaaaaa")
+        four = harness.cache_key(scenario(id="t-01"), "ollama", "gemini-3.5-flash", "aaaaaaaaaaaa")
+        assert len({one, two, three, four}) == 4
+
+    def test_the_key_is_a_usable_file_name(self):
+        key = harness.cache_key(scenario(), "ollama", "qwen3.5:4b", "aaaaaaaaaaaa")
+        assert ":" not in key and "/" not in key
